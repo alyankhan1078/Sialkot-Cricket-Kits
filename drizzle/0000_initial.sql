@@ -16,6 +16,17 @@ CREATE TABLE IF NOT EXISTS `products` (
 	`updated_at` text DEFAULT (datetime('now')) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS `product_images` (
+	`id` text PRIMARY KEY NOT NULL,
+	`product_id` text NOT NULL,
+	`url` text NOT NULL,
+	`alt` text DEFAULT '' NOT NULL,
+	`position` integer DEFAULT 0 NOT NULL,
+	`is_main` integer DEFAULT false NOT NULL,
+	`created_at` text DEFAULT (datetime('now')) NOT NULL,
+	`updated_at` text DEFAULT (datetime('now')) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS `categories` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL UNIQUE,

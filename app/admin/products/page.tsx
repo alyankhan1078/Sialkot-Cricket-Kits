@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, Star } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Star, Image as ImageIcon } from "lucide-react";
 import { formatPrice } from "@/src/data/products";
 import type { DBProduct } from "@/src/lib/data-service";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
@@ -219,6 +219,14 @@ export default function AdminProductsPage() {
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "0.5rem" }}>
+                        <Link
+                          href={`/admin/products/${product.id}/images`}
+                          className="admin-btn admin-btn-secondary"
+                          style={{ padding: "0.4rem 0.6rem" }}
+                          title="Manage product images & gallery"
+                        >
+                          <ImageIcon size={14} />
+                        </Link>
                         <Link
                           href={`/admin/products/${product.id}`}
                           className="admin-btn admin-btn-secondary"

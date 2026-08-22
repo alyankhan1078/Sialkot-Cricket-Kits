@@ -19,6 +19,17 @@ export interface DBProduct {
   updatedAt: string;
 }
 
+export interface DBProductImage {
+  id: string;
+  productId: string;
+  url: string;
+  alt: string;
+  position: number;
+  isMain: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DBCategory {
   id: number;
   name: string;
@@ -432,7 +443,218 @@ export async function updateProduct(id: string, data: Partial<DBProduct>): Promi
 export async function deleteProduct(id: string): Promise<boolean> {
   const initialLength = memoryProducts.length;
   memoryProducts = memoryProducts.filter((p) => p.id !== id);
+  memoryProductImages.delete(id);
   return memoryProducts.length < initialLength;
+}
+
+// In-memory product image storage keyed by productId
+const memoryProductImages = new Map<string, DBProductImage[]>();
+
+// ─── Product Image Operations ───────────────────────────────────────────────
+export async function getProductImages(productId: string): Promise<DBProductImage[]> {
+  if (memoryProductImages.has(productId)) {
+    const list = memoryProductImages.get(productId) || [];
+    return [...list].sort((a, b) => a.position - b.position);
+  }
+
+  // Auto-initialize from product.image and product.images
+  const product = memoryProducts.find((p) => p.id === productId);
+  if (!product) return [];
+
+  const imagesList: DBProductImage[] = [];
+  const nowStr = new Date().toISOString();
+
+  // Primary main image
+  if (product.image) {
+    imagesList.push({
+      id: `img_${productId}_main`,
+      productId,
+      url: product.image,
+      alt: `${product.name} - Main View`,
+      position: 0,
+      isMain: true,
+      createdAt: nowStr,
+      updatedAt: nowStr,
+    });
+  }
+
+  // Additional gallery images
+  if (product.images && product.images.length > 0) {
+    let pos = 1;
+    for (const gUrl of product.images) {
+      if (gUrl !== product.image) {
+        imagesList.push({
+          id: `img_${productId}_gallery_${pos}`,
+          productId,
+          url: gUrl,
+          alt: `${product.name} - View ${pos}`,
+          position: pos,
+          isMain: false,
+          createdAt: nowStr,
+          updatedAt: nowStr,
+        });
+        pos++;
+      }
+    }
+  }
+
+  memoryProductImages.set(productId, imagesList);
+  return imagesList;
+}
+
+export async function saveProductImages(
+  productId: string,
+  images: Array<{
+    id?: string;
+    url: string;
+    alt?: string;
+    isMain?: boolean;
+    position?: number;
+  }>
+): Promise<DBProductImage[]> {
+  const nowStr = new Date().toISOString();
+  let mainSet = false;
+
+  const normalized: DBProductImage[] = images.map((img, index) => {
+    const isMain = img.isMain ?? (index === 0 && !mainSet);
+    if (isMain) mainSet = true;
+    return {
+      id: img.id || `img_${productId}_${Date.now()}_${index}`,
+      productId,
+      url: img.url,
+      alt: img.alt || "",
+      position: img.position ?? index,
+      isMain,
+      createdAt: nowStr,
+      updatedAt: nowStr,
+    };
+  });
+
+  // Ensure at least one image is main if there are images
+  if (normalized.length > 0 && !normalized.some((img) => img.isMain)) {
+    normalized[0].isMain = true;
+  }
+
+  normalized.sort((a, b) => a.position - b.position);
+  memoryProductImages.set(productId, normalized);
+
+  // Sync with product record
+  const product = memoryProducts.find((p) => p.id === productId);
+  if (product) {
+    const mainImg = normalized.find((img) => img.isMain) || normalized[0];
+    if (mainImg) {
+      product.image = mainImg.url;
+    }
+    product.images = normalized.map((img) => img.url);
+    product.updatedAt = nowStr;
+  }
+
+  return normalized;
+}
+
+export async function addProductImage(
+  productId: string,
+  image: { url: string; alt?: string; isMain?: boolean }
+): Promise<DBProductImage> {
+  const current = await getProductImages(productId);
+  const nowStr = new Date().toISOString();
+  const isMain = image.isMain ?? current.length === 0;
+
+  if (isMain) {
+    current.forEach((img) => (img.isMain = false));
+  }
+
+  const newImg: DBProductImage = {
+    id: `img_${productId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    productId,
+    url: image.url,
+    alt: image.alt || "",
+    position: current.length,
+    isMain,
+    createdAt: nowStr,
+    updatedAt: nowStr,
+  };
+
+  current.push(newImg);
+  await saveProductImages(productId, current);
+  return newImg;
+}
+
+export async function updateProductImage(
+  productId: string,
+  imageId: string,
+  data: Partial<DBProductImage>
+): Promise<DBProductImage | null> {
+  const current = await getProductImages(productId);
+  const target = current.find((img) => img.id === imageId);
+  if (!target) return null;
+
+  if (data.isMain) {
+    current.forEach((img) => (img.isMain = false));
+  }
+
+  Object.assign(target, data, { updatedAt: new Date().toISOString() });
+  await saveProductImages(productId, current);
+  return target;
+}
+
+export async function deleteProductImage(productId: string, imageId: string): Promise<boolean> {
+  const current = await getProductImages(productId);
+  const index = current.findIndex((img) => img.id === imageId);
+  if (index === -1) return false;
+
+  const wasMain = current[index].isMain;
+  current.splice(index, 1);
+
+  // If deleted image was main, make the first remaining image main
+  if (wasMain && current.length > 0) {
+    current[0].isMain = true;
+  }
+
+  // Re-index positions
+  current.forEach((img, idx) => {
+    img.position = idx;
+  });
+
+  await saveProductImages(productId, current);
+  return true;
+}
+
+export async function setMainProductImage(productId: string, imageId: string): Promise<boolean> {
+  const current = await getProductImages(productId);
+  const target = current.find((img) => img.id === imageId);
+  if (!target) return false;
+
+  current.forEach((img) => {
+    img.isMain = img.id === imageId;
+  });
+
+  await saveProductImages(productId, current);
+  return true;
+}
+
+export async function reorderProductImages(productId: string, orderedImageIds: string[]): Promise<DBProductImage[]> {
+  const current = await getProductImages(productId);
+  const reordered: DBProductImage[] = [];
+
+  orderedImageIds.forEach((id, idx) => {
+    const found = current.find((img) => img.id === id);
+    if (found) {
+      found.position = idx;
+      reordered.push(found);
+    }
+  });
+
+  // Include any images that weren't in orderedImageIds
+  current.forEach((img) => {
+    if (!orderedImageIds.includes(img.id)) {
+      img.position = reordered.length;
+      reordered.push(img);
+    }
+  });
+
+  await saveProductImages(productId, reordered);
+  return reordered;
 }
 
 // ─── Category Operations ─────────────────────────────────────────────────────

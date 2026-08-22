@@ -20,6 +20,18 @@ export const products = sqliteTable("products", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+// ─── Product Images (Dedicated Media Table) ──────────────────────────────────
+export const productImages = sqliteTable("product_images", {
+  id: text("id").primaryKey(), // e.g. "img_apex_pro_01" or uuid
+  productId: text("product_id").notNull(),
+  url: text("url").notNull(),
+  alt: text("alt").notNull().default(""),
+  position: integer("position").notNull().default(0),
+  isMain: integer("is_main", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const categories = sqliteTable("categories", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -91,6 +103,8 @@ export const adminConfig = sqliteTable("admin_config", {
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type Product = typeof products.$inferSelect;
 export type ProductInsert = typeof products.$inferInsert;
+export type ProductImage = typeof productImages.$inferSelect;
+export type ProductImageInsert = typeof productImages.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type Faq = typeof faqs.$inferSelect;
 export type SiteSetting = typeof siteSettings.$inferSelect;
