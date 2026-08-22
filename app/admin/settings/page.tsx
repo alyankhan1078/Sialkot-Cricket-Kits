@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Lock, Phone, Mail, MapPin, Globe, CheckCircle2 } from "lucide-react";
+import { Save, Lock, Globe, CheckCircle2 } from "lucide-react";
 import type { DBSettings } from "@/src/lib/data-service";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminSettingsPage() {
+  const { showToast } = useAdminFeedback();
   const [settings, setSettings] = useState<DBSettings>({
     whatsappNumber: "+92 323 1438214",
     contactEmail: "sialkotcricketkits@gmail.com",
@@ -49,12 +51,13 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (data.success) {
         setSettingsSaved(true);
+        showToast("Store settings saved successfully!", "success");
         setTimeout(() => setSettingsSaved(false), 3000);
       } else {
-        alert("Failed to save settings");
+        showToast(data.error || "Failed to save settings", "error");
       }
     } catch {
-      alert("Network error");
+      showToast("Network error while saving settings", "error");
     } finally {
       setSavingSettings(false);
     }
@@ -64,10 +67,12 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setPasswordMsg("Passwords do not match");
+      showToast("Passwords do not match", "warning");
       return;
     }
     if (newPassword.length < 6) {
       setPasswordMsg("Password must be at least 6 characters");
+      showToast("Password must be at least 6 characters", "warning");
       return;
     }
 
@@ -83,13 +88,16 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (data.success) {
         setPasswordMsg("Password updated successfully!");
+        showToast("Admin password updated successfully!", "success");
         setNewPassword("");
         setConfirmPassword("");
       } else {
         setPasswordMsg(data.error || "Failed to update password");
+        showToast(data.error || "Failed to update password", "error");
       }
     } catch {
       setPasswordMsg("Network error");
+      showToast("Network error while updating password", "error");
     } finally {
       setSavingPassword(false);
     }

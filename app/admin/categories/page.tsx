@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Layers } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { DBCategory } from "@/src/lib/data-service";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminCategoriesPage() {
+  const { showToast, confirmAction } = useAdminFeedback();
   const [categories, setCategories] = useState<DBCategory[]>([]);
   const [newCatName, setNewCatName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export default function AdminCategoriesPage() {
         setCategories(json.data);
       }
     } catch {
-      // error
+      showToast("Failed to load categories", "error");
     } finally {
       setLoading(false);
     }
@@ -41,13 +43,14 @@ export default function AdminCategoriesPage() {
       });
       const data = await res.json();
       if (data.success) {
+        showToast(`Category "${newCatName}" added successfully!`, "success");
         setNewCatName("");
         fetchCategories();
       } else {
-        alert(data.error || "Failed to add category");
+        showToast(data.error || "Failed to add category", "error");
       }
     } catch {
-      alert("Network error");
+      showToast("Network error while adding category", "error");
     } finally {
       setSaving(false);
     }
@@ -55,25 +58,44 @@ export default function AdminCategoriesPage() {
 
   const handleToggleActive = async (cat: DBCategory) => {
     try {
+      const newActive = !cat.active;
       await fetch(`/api/admin/categories/${cat.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: !cat.active }),
+        body: JSON.stringify({ active: newActive }),
       });
+      showToast(
+        newActive ? `Category "${cat.name}" is now active` : `Category "${cat.name}" is now hidden`,
+        "info"
+      );
       fetchCategories();
     } catch {
-      alert("Failed to update category");
+      showToast("Failed to update category status", "error");
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Delete category "${name}"? Products in this category will remain.`)) return;
-    try {
-      await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
-      fetchCategories();
-    } catch {
-      alert("Failed to delete category");
-    }
+  const handleDelete = (id: number, name: string) => {
+    confirmAction({
+      title: `Delete "${name}" Category?`,
+      message: `Are you sure you want to delete the category "${name}"? Products in this category will remain in the catalogue.`,
+      confirmText: "Delete Category",
+      cancelText: "Keep Category",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) {
+            showToast(`Category "${name}" was deleted successfully`, "success");
+            fetchCategories();
+          } else {
+            showToast(json.error || "Failed to delete category", "error");
+          }
+        } catch {
+          showToast("Network error while deleting category", "error");
+        }
+      },
+    });
   };
 
   return (

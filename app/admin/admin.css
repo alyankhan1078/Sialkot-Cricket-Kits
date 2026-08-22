@@ -222,6 +222,7 @@
 
 .admin-btn-primary:hover {
   background: var(--adm-primary-hover);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
 }
 
 .admin-btn-secondary {
@@ -241,6 +242,16 @@
 .admin-btn-danger:hover {
   background: var(--adm-danger);
   color: #fff;
+}
+
+.admin-btn-danger-solid {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.admin-btn-danger-solid:hover {
+  background: #dc2626;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
 .admin-form-group {
@@ -273,6 +284,7 @@
 .admin-select:focus,
 .admin-textarea:focus {
   border-color: var(--adm-primary);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
 .admin-badge {
@@ -291,4 +303,236 @@
 .admin-badge-inactive {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Custom On-Screen Confirmation Modal & Toast Design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 1.5rem;
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-modal-card {
+  background: #111c2e;
+  border: 1px solid #22354f;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 460px;
+  padding: 1.75rem;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 0, 0, 0.4);
+  position: relative;
+  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.admin-modal-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-modal-badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.admin-modal-badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--adm-muted);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.admin-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.admin-modal-body {
+  margin-bottom: 1.75rem;
+}
+
+.admin-modal-body h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem;
+}
+
+.admin-modal-body p {
+  color: var(--adm-muted);
+  font-size: 0.925rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.admin-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* ── Toast Notifications ── */
+.admin-toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 100000;
+  pointer-events: none;
+  max-width: 420px;
+  width: 100%;
+}
+
+.admin-toast {
+  pointer-events: auto;
+  background: #111c2e;
+  border: 1px solid var(--adm-card-border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #fff;
+}
+
+.admin-toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-toast-success {
+  border-left: 4px solid var(--adm-primary);
+}
+.admin-toast-success .admin-toast-icon {
+  color: #34d399;
+}
+
+.admin-toast-error {
+  border-left: 4px solid var(--adm-danger);
+}
+.admin-toast-error .admin-toast-icon {
+  color: #f87171;
+}
+
+.admin-toast-warning {
+  border-left: 4px solid var(--adm-warning);
+}
+.admin-toast-warning .admin-toast-icon {
+  color: #fbbf24;
+}
+
+.admin-toast-info {
+  border-left: 4px solid var(--adm-accent);
+}
+.admin-toast-info .admin-toast-icon {
+  color: #60a5fa;
+}
+
+.admin-toast-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-toast-title {
+  font-size: 0.875rem;
+  color: #fff;
+  margin-bottom: 0.15rem;
+}
+
+.admin-toast-message {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.admin-toast-close {
+  background: transparent;
+  border: none;
+  color: var(--adm-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.admin-toast-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

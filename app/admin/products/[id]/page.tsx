@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { categoryOrder } from "@/src/data/products";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminEditProductPage({
   params,
@@ -13,6 +14,7 @@ export default function AdminEditProductPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { showToast, confirmAction } = useAdminFeedback();
   const [categories, setCategories] = useState<string[]>([...categoryOrder]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,25 +105,42 @@ export default function AdminEditProductPage({
 
       const data = await res.json();
       if (data.success) {
+        showToast("Product updated successfully", "success");
         router.push("/admin/products");
       } else {
         setError(data.error || "Failed to update product");
+        showToast(data.error || "Failed to update product", "error");
       }
     } catch {
       setError("Network error");
+      showToast("Network error while updating product", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete this product?`)) return;
-    try {
-      await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-      router.push("/admin/products");
-    } catch {
-      alert("Failed to delete product");
-    }
+  const handleDelete = () => {
+    confirmAction({
+      title: `Delete "${formData.name}"?`,
+      message: "Are you sure you want to delete this product? This action cannot be undone.",
+      confirmText: "Delete Product",
+      cancelText: "Keep Product",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) {
+            showToast("Product deleted successfully", "success");
+            router.push("/admin/products");
+          } else {
+            showToast(json.error || "Failed to delete product", "error");
+          }
+        } catch {
+          showToast("Network error while deleting product", "error");
+        }
+      },
+    });
   };
 
   if (loading) {

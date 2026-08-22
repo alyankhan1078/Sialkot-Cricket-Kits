@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { categoryOrder } from "@/src/data/products";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminNewProductPage() {
   const router = useRouter();
+  const { showToast } = useAdminFeedback();
   const [categories, setCategories] = useState<string[]>([...categoryOrder]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,12 +72,15 @@ export default function AdminNewProductPage() {
 
       const data = await res.json();
       if (data.success) {
+        showToast(`"${formData.name}" created successfully!`, "success");
         router.push("/admin/products");
       } else {
         setError(data.error || "Failed to create product");
+        showToast(data.error || "Failed to create product", "error");
       }
     } catch {
       setError("Network error");
+      showToast("Network error while creating product", "error");
     } finally {
       setLoading(false);
     }

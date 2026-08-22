@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, CheckCircle2, XCircle, Star } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Star } from "lucide-react";
 import { formatPrice } from "@/src/data/products";
 import type { DBProduct } from "@/src/lib/data-service";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminProductsPage() {
+  const { showToast, confirmAction } = useAdminFeedback();
   const [products, setProducts] = useState<DBProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -23,7 +25,7 @@ export default function AdminProductsPage() {
         setCategories(uniqueCats);
       }
     } catch {
-      // error handling
+      showToast("Failed to load products list", "error");
     } finally {
       setLoading(false);
     }
@@ -35,38 +37,62 @@ export default function AdminProductsPage() {
 
   const handleToggleFeatured = async (product: DBProduct) => {
     try {
+      const newStatus = !product.featured;
       await fetch(`/api/admin/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ featured: !product.featured }),
+        body: JSON.stringify({ featured: newStatus }),
       });
+      showToast(
+        newStatus ? `"${product.name}" is now featured on homepage` : `Removed "${product.name}" from featured`,
+        "success"
+      );
       fetchProducts();
     } catch {
-      alert("Failed to update product");
+      showToast("Failed to update featured status", "error");
     }
   };
 
   const handleToggleActive = async (product: DBProduct) => {
     try {
+      const newActive = !product.active;
       await fetch(`/api/admin/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: !product.active }),
+        body: JSON.stringify({ active: newActive }),
       });
+      showToast(
+        newActive ? `"${product.name}" is now visible in shop` : `"${product.name}" is now hidden`,
+        "info"
+      );
       fetchProducts();
     } catch {
-      alert("Failed to update status");
+      showToast("Failed to update product visibility", "error");
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-    try {
-      await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-      fetchProducts();
-    } catch {
-      alert("Failed to delete product");
-    }
+  const handleDelete = (id: string, name: string) => {
+    confirmAction({
+      title: `Delete "${name}"?`,
+      message: "Are you sure you want to delete this product? It will be permanently removed from your catalogue.",
+      confirmText: "Delete Product",
+      cancelText: "Keep Product",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) {
+            showToast(`"${name}" was deleted successfully`, "success");
+            fetchProducts();
+          } else {
+            showToast(json.error || "Failed to delete product", "error");
+          }
+        } catch {
+          showToast("Network error while deleting product", "error");
+        }
+      },
+    });
   };
 
   const filtered = products.filter((p) => {

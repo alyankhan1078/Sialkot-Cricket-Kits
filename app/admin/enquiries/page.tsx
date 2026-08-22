@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, Check, Trash2, Phone, Globe, MessageSquare, Tag } from "lucide-react";
+import { Mail, Check, Trash2, Phone, Globe, Tag } from "lucide-react";
 import type { DBEnquiry } from "@/src/lib/data-service";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminEnquiriesPage() {
+  const { showToast, confirmAction } = useAdminFeedback();
   const [enquiries, setEnquiries] = useState<DBEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEnquiry, setSelectedEnquiry] = useState<DBEnquiry | null>(null);
@@ -17,7 +19,7 @@ export default function AdminEnquiriesPage() {
         setEnquiries(json.data);
       }
     } catch {
-      // error
+      showToast("Failed to load enquiries", "error");
     } finally {
       setLoading(false);
     }
@@ -38,20 +40,35 @@ export default function AdminEnquiriesPage() {
       if (selectedEnquiry?.id === enquiry.id) {
         setSelectedEnquiry({ ...selectedEnquiry, read });
       }
+      showToast(read ? "Marked as read" : "Marked as unread", "info");
     } catch {
-      alert("Failed to update status");
+      showToast("Failed to update status", "error");
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this customer enquiry?")) return;
-    try {
-      await fetch(`/api/admin/enquiries/${id}`, { method: "DELETE" });
-      if (selectedEnquiry?.id === id) setSelectedEnquiry(null);
-      fetchEnquiries();
-    } catch {
-      alert("Failed to delete enquiry");
-    }
+  const handleDelete = (id: number, senderName: string) => {
+    confirmAction({
+      title: "Delete Customer Enquiry?",
+      message: `Are you sure you want to delete the enquiry from "${senderName}"? This action cannot be undone.`,
+      confirmText: "Delete Enquiry",
+      cancelText: "Keep Enquiry",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/enquiries/${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) {
+            if (selectedEnquiry?.id === id) setSelectedEnquiry(null);
+            showToast("Enquiry deleted successfully", "success");
+            fetchEnquiries();
+          } else {
+            showToast(json.error || "Failed to delete enquiry", "error");
+          }
+        } catch {
+          showToast("Network error while deleting enquiry", "error");
+        }
+      },
+    });
   };
 
   const handleSelect = (enquiry: DBEnquiry) => {
@@ -167,7 +184,7 @@ export default function AdminEnquiriesPage() {
                     <span>{selectedEnquiry.read ? "Mark Unread" : "Mark Read"}</span>
                   </button>
                   <button
-                    onClick={() => handleDelete(selectedEnquiry.id)}
+                    onClick={() => handleDelete(selectedEnquiry.id, selectedEnquiry.name)}
                     className="admin-btn admin-btn-danger"
                     style={{ padding: "0.4rem 0.6rem" }}
                   >

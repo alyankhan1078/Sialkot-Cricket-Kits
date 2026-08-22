@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit2, Save, X } from "lucide-react";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 import type { DBFaq } from "@/src/lib/data-service";
+import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminFaqsPage() {
+  const { showToast, confirmAction } = useAdminFeedback();
   const [faqs, setFaqs] = useState<DBFaq[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingFaq, setEditingFaq] = useState<DBFaq | null>(null);
@@ -21,7 +23,7 @@ export default function AdminFaqsPage() {
         setFaqs(json.data);
       }
     } catch {
-      // error
+      showToast("Failed to load FAQs", "error");
     } finally {
       setLoading(false);
     }
@@ -44,14 +46,15 @@ export default function AdminFaqsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        showToast("FAQ added successfully!", "success");
         setNewQuestion("");
         setNewAnswer("");
         fetchFaqs();
       } else {
-        alert(data.error || "Failed to create FAQ");
+        showToast(data.error || "Failed to create FAQ", "error");
       }
     } catch {
-      alert("Network error");
+      showToast("Network error while creating FAQ", "error");
     } finally {
       setSaving(false);
     }
@@ -70,26 +73,41 @@ export default function AdminFaqsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        showToast("FAQ updated successfully!", "success");
         setEditingFaq(null);
         fetchFaqs();
       } else {
-        alert(data.error || "Failed to update FAQ");
+        showToast(data.error || "Failed to update FAQ", "error");
       }
     } catch {
-      alert("Network error");
+      showToast("Network error while updating FAQ", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this FAQ entry?")) return;
-    try {
-      await fetch(`/api/admin/faqs/${id}`, { method: "DELETE" });
-      fetchFaqs();
-    } catch {
-      alert("Failed to delete FAQ");
-    }
+  const handleDelete = (id: number, questionText: string) => {
+    confirmAction({
+      title: "Delete FAQ Entry?",
+      message: `Are you sure you want to delete this FAQ: "${questionText.slice(0, 50)}..."?`,
+      confirmText: "Delete FAQ",
+      cancelText: "Keep FAQ",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/faqs/${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) {
+            showToast("FAQ deleted successfully", "success");
+            fetchFaqs();
+          } else {
+            showToast(json.error || "Failed to delete FAQ", "error");
+          }
+        } catch {
+          showToast("Network error while deleting FAQ", "error");
+        }
+      },
+    });
   };
 
   return (
@@ -244,7 +262,7 @@ export default function AdminFaqsPage() {
                       <Edit2 size={14} />
                     </button>
                     <button
-                      onClick={() => handleDelete(faq.id)}
+                      onClick={() => handleDelete(faq.id, faq.question)}
                       className="admin-btn admin-btn-danger"
                       style={{ padding: "0.4rem 0.6rem" }}
                       title="Delete FAQ"
