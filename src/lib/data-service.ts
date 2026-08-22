@@ -58,6 +58,60 @@ export interface DBEnquiry {
   createdAt: string;
 }
 
+export interface OrderItem {
+  productId?: string;
+  name: string;
+  category?: string;
+  price: number;
+  quantity: number;
+}
+
+export interface DBOrder {
+  id: string;
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  country: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: "completed" | "confirmed" | "pending" | "cancelled";
+  paymentMethod: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalesStats {
+  dailySales: {
+    revenue: number;
+    orderCount: number;
+    date: string;
+  };
+  weeklySales: {
+    revenue: number;
+    orderCount: number;
+  };
+  monthlySales: {
+    revenue: number;
+    orderCount: number;
+    month: string;
+  };
+  yearlySales: {
+    revenue: number;
+    orderCount: number;
+    year: string;
+  };
+  lifetime: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+  recentOrders: DBOrder[];
+  salesByCategory: Array<{ category: string; revenue: number; count: number }>;
+  monthlyTrend: Array<{ month: string; revenue: number; orders: number }>;
+  dailyTrend: Array<{ date: string; label: string; revenue: number; orders: number }>;
+}
+
 // Default in-memory state initialized with all catalogue products & FAQs
 let memoryProducts: DBProduct[] = initialProducts.map((p, index) => ({
   id: p.id,
@@ -106,6 +160,208 @@ const memoryEnquiries: DBEnquiry[] = [];
 let nextEnquiryId = 1;
 let nextCategoryId = categoryOrder.length + 1;
 let nextFaqId = initialFaqs.length + 1;
+let nextOrderSequence = 101;
+
+// Seed realistic historical and current sales/orders across daily, weekly, monthly, yearly
+const now = new Date();
+const formatOffsetDate = (daysAgo: number, hoursOffset = 0) => {
+  const d = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - hoursOffset * 60 * 60 * 1000);
+  return d.toISOString();
+};
+
+let memoryOrders: DBOrder[] = [
+  // Today's Sales
+  {
+    id: "SCK-2026-042",
+    customerName: "Imran Siddiqui",
+    customerPhone: "+44 7911 123456",
+    customerEmail: "imran.s@gmail.com",
+    country: "United Kingdom",
+    items: [
+      { name: "Apex Pro Beauty Processed Bat", category: "Beauty Processed Bats", price: 65499, quantity: 1 },
+      { name: "Gray-Nicolls Legend Batting Pads", category: "Batting Pads", price: 9999, quantity: 1 },
+    ],
+    totalAmount: 75498,
+    status: "completed",
+    paymentMethod: "Wise Transfer",
+    notes: "Shipped via DHL Express to London. Knocked-in.",
+    createdAt: formatOffsetDate(0, 2),
+    updatedAt: formatOffsetDate(0, 1),
+  },
+  {
+    id: "SCK-2026-041",
+    customerName: "Tariq Mahmood",
+    customerPhone: "+92 300 5554321",
+    customerEmail: "tariq.m@yahoo.com",
+    country: "Pakistan",
+    items: [
+      { name: "GM Original LE Batting Gloves", category: "Batting Gloves", price: 8999, quantity: 2 },
+      { name: "DSC Fearless Intense Pro Bag", category: "Kit & Duffle Bags", price: 12499, quantity: 1 },
+    ],
+    totalAmount: 30497,
+    status: "completed",
+    paymentMethod: "Bank Transfer (UBL)",
+    notes: "Local delivery Lahore.",
+    createdAt: formatOffsetDate(0, 5),
+    updatedAt: formatOffsetDate(0, 4),
+  },
+  // Yesterday / This Week
+  {
+    id: "SCK-2026-040",
+    customerName: "Hamza Farooq",
+    customerPhone: "+971 50 9876543",
+    customerEmail: "h.farooq@outlook.com",
+    country: "United Arab Emirates",
+    items: [
+      { name: "VVIP Bonafide Original - Grade A+", category: "Bonafide Bats", price: 159999, quantity: 1 },
+      { name: "Shrey Kit Bag", category: "Kit & Duffle Bags", price: 19499, quantity: 1 },
+    ],
+    totalAmount: 179498,
+    status: "completed",
+    paymentMethod: "Remitly",
+    notes: "Dubai priority air shipment.",
+    createdAt: formatOffsetDate(1, 4),
+    updatedAt: formatOffsetDate(1, 2),
+  },
+  {
+    id: "SCK-2026-039",
+    customerName: "David Campbell",
+    customerPhone: "+61 412 345678",
+    customerEmail: "d.campbell@cricketclub.com.au",
+    country: "Australia",
+    items: [
+      { name: "Bounce Edition Beauty Processed Bat", category: "Beauty Processed Bats", price: 63499, quantity: 1 },
+      { name: "Gray-Nicolls Classic Gloves", category: "Batting Gloves", price: 8299, quantity: 1 },
+      { name: "Gray-Nicolls Stratos Pads", category: "Batting Pads", price: 9699, quantity: 1 },
+    ],
+    totalAmount: 81497,
+    status: "completed",
+    paymentMethod: "Western Union",
+    notes: "Sydney delivery. Weight 1175g verified.",
+    createdAt: formatOffsetDate(3, 1),
+    updatedAt: formatOffsetDate(3, 1),
+  },
+  {
+    id: "SCK-2026-038",
+    customerName: "Zahid Qureshi",
+    customerPhone: "+92 333 4441122",
+    customerEmail: "zahid@qureshi.pk",
+    country: "Pakistan",
+    items: [
+      { name: "Monster Series Beauty Bat", category: "Beauty Processed Bats", price: 67499, quantity: 1 },
+    ],
+    totalAmount: 67499,
+    status: "completed",
+    paymentMethod: "Direct Transfer",
+    notes: "Custom name engraving requested.",
+    createdAt: formatOffsetDate(5, 3),
+    updatedAt: formatOffsetDate(5, 2),
+  },
+  // Earlier This Month
+  {
+    id: "SCK-2026-037",
+    customerName: "Bilal Aslam",
+    customerPhone: "+1 647 555 9988",
+    customerEmail: "bilal.aslam@gmail.com",
+    country: "Canada",
+    items: [
+      { name: "Special Edition - Grade A Bonafide Bat", category: "Bonafide Bats", price: 114999, quantity: 1 },
+      { name: "Gray-Nicolls Legend Wheelie Bag", category: "Kit & Duffle Bags", price: 16499, quantity: 1 },
+    ],
+    totalAmount: 131498,
+    status: "completed",
+    paymentMethod: "TapTap Send",
+    notes: "Toronto delivery. Grain count 11 verified.",
+    createdAt: formatOffsetDate(10, 2),
+    updatedAt: formatOffsetDate(10, 1),
+  },
+  {
+    id: "SCK-2026-036",
+    customerName: "Fawad Khan",
+    customerPhone: "+92 321 8887766",
+    customerEmail: "fawad.k@gmail.com",
+    country: "Pakistan",
+    items: [
+      { name: "Silver Edition Beauty Bat", category: "Beauty Processed Bats", price: 43499, quantity: 1 },
+      { name: "Gray-Nicolls Helmet - Green", category: "Helmets", price: 9499, quantity: 1 },
+    ],
+    totalAmount: 52998,
+    status: "completed",
+    paymentMethod: "Bank Transfer",
+    notes: "Islamabad club team.",
+    createdAt: formatOffsetDate(16, 6),
+    updatedAt: formatOffsetDate(16, 4),
+  },
+  {
+    id: "SCK-2026-035",
+    customerName: "Marcus Thornton",
+    customerPhone: "+44 7700 900123",
+    customerEmail: "marcus.t@leicestercricket.co.uk",
+    country: "United Kingdom",
+    items: [
+      { name: "Player Edition Bonafide Bat", category: "Bonafide Bats", price: 74999, quantity: 2 },
+      { name: "SS Millennium Pro White Gloves", category: "Batting Gloves", price: 8499, quantity: 2 },
+    ],
+    totalAmount: 166996,
+    status: "completed",
+    paymentMethod: "Wise",
+    notes: "County league order.",
+    createdAt: formatOffsetDate(22, 3),
+    updatedAt: formatOffsetDate(22, 2),
+  },
+  // Earlier This Year
+  {
+    id: "SCK-2026-034",
+    customerName: "Ahmad Raza",
+    customerPhone: "+966 50 123 4567",
+    customerEmail: "ahmad.raza@saudi.com",
+    country: "Saudi Arabia",
+    items: [
+      { name: "VVIP Bat 45mm Edge", category: "Beauty Processed Bats", price: 85499, quantity: 1 },
+      { name: "Gray-Nicolls Kit Bag Trolley", category: "Kit & Duffle Bags", price: 19499, quantity: 1 },
+    ],
+    totalAmount: 104998,
+    status: "completed",
+    paymentMethod: "MoneyGram",
+    notes: "Riyadh shipment.",
+    createdAt: formatOffsetDate(45, 5),
+    updatedAt: formatOffsetDate(45, 3),
+  },
+  {
+    id: "SCK-2026-033",
+    customerName: "Salman Butt",
+    customerPhone: "+92 301 9991122",
+    customerEmail: "salman@butt.pk",
+    country: "Pakistan",
+    items: [
+      { name: "Gray-Nicolls Playing Kit - Large", category: "Teamwear", price: 7999, quantity: 10 },
+    ],
+    totalAmount: 79990,
+    status: "completed",
+    paymentMethod: "Bank Transfer",
+    notes: "Academy batch teamwear order.",
+    createdAt: formatOffsetDate(60, 2),
+    updatedAt: formatOffsetDate(60, 1),
+  },
+  {
+    id: "SCK-2026-032",
+    customerName: "Usman Ghani",
+    customerPhone: "+1 214 555 7890",
+    customerEmail: "usman.ghani@dallascricket.org",
+    country: "United States",
+    items: [
+      { name: "VVIP Bonafide Original - Grade A+", category: "Bonafide Bats", price: 159999, quantity: 1 },
+      { name: "Apex Pro Beauty Bat", category: "Beauty Processed Bats", price: 65499, quantity: 1 },
+      { name: "Gray-Nicolls Legend Pads", category: "Batting Pads", price: 9999, quantity: 2 },
+    ],
+    totalAmount: 245496,
+    status: "completed",
+    paymentMethod: "Wise",
+    notes: "Texas premier league order.",
+    createdAt: formatOffsetDate(85, 4),
+    updatedAt: formatOffsetDate(85, 2),
+  },
+];
 
 // Admin password (default: admin123; can be updated from admin panel)
 let adminPasswordHash = "admin123";
@@ -280,6 +536,247 @@ export async function deleteEnquiry(id: number): Promise<boolean> {
   if (index === -1) return false;
   memoryEnquiries.splice(index, 1);
   return true;
+}
+
+// ─── Orders & Sales Analytics Operations ──────────────────────────────────────
+export async function getOrders(options?: {
+  status?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<DBOrder[]> {
+  let list = [...memoryOrders];
+
+  if (options?.status && options.status !== "all") {
+    list = list.filter((o) => o.status === options.status);
+  }
+
+  if (options?.search) {
+    const q = options.search.toLowerCase();
+    list = list.filter(
+      (o) =>
+        o.id.toLowerCase().includes(q) ||
+        o.customerName.toLowerCase().includes(q) ||
+        (o.customerPhone && o.customerPhone.includes(q)) ||
+        o.country.toLowerCase().includes(q) ||
+        o.items.some((i) => i.name.toLowerCase().includes(q))
+    );
+  }
+
+  if (options?.startDate) {
+    const start = new Date(options.startDate).getTime();
+    list = list.filter((o) => new Date(o.createdAt).getTime() >= start);
+  }
+
+  if (options?.endDate) {
+    const end = new Date(options.endDate).getTime();
+    list = list.filter((o) => new Date(o.createdAt).getTime() <= end);
+  }
+
+  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function getOrderById(id: string): Promise<DBOrder | null> {
+  return memoryOrders.find((o) => o.id === id) || null;
+}
+
+export async function createOrder(
+  data: Omit<DBOrder, "id" | "createdAt" | "updatedAt"> & { id?: string }
+): Promise<DBOrder> {
+  const year = new Date().getFullYear();
+  const id = data.id || `SCK-${year}-${String(nextOrderSequence++).padStart(3, "0")}`;
+  const newOrder: DBOrder = {
+    ...data,
+    id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  memoryOrders.unshift(newOrder);
+  return newOrder;
+}
+
+export async function updateOrder(id: string, data: Partial<DBOrder>): Promise<DBOrder | null> {
+  const index = memoryOrders.findIndex((o) => o.id === id);
+  if (index === -1) return null;
+  memoryOrders[index] = {
+    ...memoryOrders[index],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  return memoryOrders[index];
+}
+
+export async function deleteOrder(id: string): Promise<boolean> {
+  const initialLength = memoryOrders.length;
+  memoryOrders = memoryOrders.filter((o) => o.id !== id);
+  return memoryOrders.length < initialLength;
+}
+
+export async function getSalesStats(): Promise<SalesStats> {
+  const allOrders = [...memoryOrders].filter((o) => o.status !== "cancelled");
+  const nowDate = new Date();
+
+  // Start timestamps
+  const startOfToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+  const startOfWeek = new Date(nowDate.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
+  const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
+  const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
+
+  // Daily
+  const dailyOrders = allOrders.filter((o) => new Date(o.createdAt).getTime() >= startOfToday);
+  const dailyRevenue = dailyOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  // Weekly (last 7 days)
+  const weeklyOrders = allOrders.filter((o) => new Date(o.createdAt).getTime() >= startOfWeek);
+  const weeklyRevenue = weeklyOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  // Monthly (this month)
+  const monthlyOrders = allOrders.filter((o) => new Date(o.createdAt).getTime() >= startOfMonth);
+  const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  // Yearly (this year)
+  const yearlyOrders = allOrders.filter((o) => new Date(o.createdAt).getTime() >= startOfYear);
+  const yearlyRevenue = yearlyOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  // Lifetime
+  const totalRevenue = allOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalCount = allOrders.length;
+  const aov = totalCount > 0 ? Math.round(totalRevenue / totalCount) : 0;
+
+  // Sales by Category
+  const categoryMap = new Map<string, { revenue: number; count: number }>();
+  for (const order of allOrders) {
+    for (const item of order.items) {
+      const cat = item.category || "Cricket Bats & Gear";
+      const existing = categoryMap.get(cat) || { revenue: 0, count: 0 };
+      existing.revenue += item.price * item.quantity;
+      existing.count += item.quantity;
+      categoryMap.set(cat, existing);
+    }
+  }
+  const salesByCategory = Array.from(categoryMap.entries())
+    .map(([category, val]) => ({ category, ...val }))
+    .sort((a, b) => b.revenue - a.revenue);
+
+  // Daily trend (last 7 days)
+  const dailyTrend: Array<{ date: string; label: string; revenue: number; orders: number }> = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(nowDate.getTime() - i * 24 * 60 * 60 * 1000);
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    const label = day.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const dayDateStr = day.toISOString().split("T")[0];
+
+    const ordersForDay = allOrders.filter((o) => {
+      const t = new Date(o.createdAt).getTime();
+      return t >= dayStart && t < dayEnd;
+    });
+
+    dailyTrend.push({
+      date: dayDateStr,
+      label,
+      revenue: ordersForDay.reduce((sum, o) => sum + o.totalAmount, 0),
+      orders: ordersForDay.length,
+    });
+  }
+
+  // Monthly trend for current year
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthlyTrend: Array<{ month: string; revenue: number; orders: number }> = [];
+  const currentMonthIdx = nowDate.getMonth();
+
+  for (let m = 0; m <= currentMonthIdx; m++) {
+    const mStart = new Date(nowDate.getFullYear(), m, 1).getTime();
+    const mEnd = new Date(nowDate.getFullYear(), m + 1, 1).getTime();
+    const ordersForMonth = allOrders.filter((o) => {
+      const t = new Date(o.createdAt).getTime();
+      return t >= mStart && t < mEnd;
+    });
+
+    monthlyTrend.push({
+      month: months[m],
+      revenue: ordersForMonth.reduce((sum, o) => sum + o.totalAmount, 0),
+      orders: ordersForMonth.length,
+    });
+  }
+
+  return {
+    dailySales: {
+      revenue: dailyRevenue,
+      orderCount: dailyOrders.length,
+      date: nowDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    },
+    weeklySales: {
+      revenue: weeklyRevenue,
+      orderCount: weeklyOrders.length,
+    },
+    monthlySales: {
+      revenue: monthlyRevenue,
+      orderCount: monthlyOrders.length,
+      month: nowDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    },
+    yearlySales: {
+      revenue: yearlyRevenue,
+      orderCount: yearlyOrders.length,
+      year: String(nowDate.getFullYear()),
+    },
+    lifetime: {
+      revenue: totalRevenue,
+      orderCount: totalCount,
+      averageOrderValue: aov,
+    },
+    recentOrders: [...memoryOrders].slice(0, 8),
+    salesByCategory,
+    dailyTrend,
+    monthlyTrend,
+  };
+}
+
+export async function generateSalesCsv(startDate?: string, endDate?: string): Promise<string> {
+  const orders = await getOrders({ startDate, endDate });
+
+  const headers = [
+    "Order ID",
+    "Date",
+    "Customer Name",
+    "Phone",
+    "Email",
+    "Country",
+    "Items Purchased",
+    "Total Items",
+    "Total Amount (PKR)",
+    "Payment Channel",
+    "Status",
+    "Notes",
+  ];
+
+  const escapeCsv = (val: string | number | undefined) => {
+    if (val === undefined || val === null) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const rows = orders.map((o) => {
+    const itemsSummary = o.items.map((i) => `${i.name} (x${i.quantity} @ PKR ${i.price})`).join(" | ");
+    const totalItems = o.items.reduce((s, i) => s + i.quantity, 0);
+
+    return [
+      escapeCsv(o.id),
+      escapeCsv(new Date(o.createdAt).toLocaleString()),
+      escapeCsv(o.customerName),
+      escapeCsv(o.customerPhone || "N/A"),
+      escapeCsv(o.customerEmail || "N/A"),
+      escapeCsv(o.country),
+      escapeCsv(itemsSummary),
+      escapeCsv(totalItems),
+      escapeCsv(o.totalAmount),
+      escapeCsv(o.paymentMethod),
+      escapeCsv(o.status.toUpperCase()),
+      escapeCsv(o.notes || ""),
+    ].join(",");
+  });
+
+  return [headers.join(","), ...rows].join("\r\n");
 }
 
 // ─── Auth Operations ──────────────────────────────────────────────────────────

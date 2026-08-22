@@ -52,6 +52,21 @@ CREATE TABLE IF NOT EXISTS `enquiries` (
 	`created_at` text DEFAULT (datetime('now')) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS `orders` (
+	`id` text PRIMARY KEY NOT NULL,
+	`customer_name` text NOT NULL,
+	`customer_phone` text,
+	`customer_email` text,
+	`country` text DEFAULT 'Pakistan' NOT NULL,
+	`items` text NOT NULL,
+	`total_amount` real NOT NULL,
+	`status` text DEFAULT 'completed' NOT NULL,
+	`payment_method` text DEFAULT 'Direct Transfer' NOT NULL,
+	`notes` text DEFAULT '',
+	`created_at` text DEFAULT (datetime('now')) NOT NULL,
+	`updated_at` text DEFAULT (datetime('now')) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS `admin_sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` text NOT NULL

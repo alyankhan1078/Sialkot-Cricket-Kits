@@ -60,6 +60,22 @@ export const enquiries = sqliteTable("enquiries", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
+// ─── Orders / Sales ───────────────────────────────────────────────────────────
+export const orders = sqliteTable("orders", {
+  id: text("id").primaryKey(), // e.g. "SCK-2026-001"
+  customerName: text("customer_name").notNull(),
+  customerPhone: text("customer_phone"),
+  customerEmail: text("customer_email"),
+  country: text("country").notNull().default("Pakistan"),
+  items: text("items").notNull(), // JSON string array of { productId, name, price, quantity }
+  totalAmount: real("total_amount").notNull(),
+  status: text("status", { enum: ["completed", "confirmed", "pending", "cancelled"] }).notNull().default("completed"),
+  paymentMethod: text("payment_method").notNull().default("Direct Transfer"),
+  notes: text("notes").default(""),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
 // ─── Admin Sessions ───────────────────────────────────────────────────────────
 export const adminSessions = sqliteTable("admin_sessions", {
   id: text("id").primaryKey(), // random UUID
@@ -80,3 +96,5 @@ export type Faq = typeof faqs.$inferSelect;
 export type SiteSetting = typeof siteSettings.$inferSelect;
 export type Enquiry = typeof enquiries.$inferSelect;
 export type EnquiryInsert = typeof enquiries.$inferInsert;
+export type Order = typeof orders.$inferSelect;
+export type OrderInsert = typeof orders.$inferInsert;

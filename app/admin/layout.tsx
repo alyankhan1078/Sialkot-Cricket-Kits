@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
+  ShoppingBag,
   Package,
   Layers,
   HelpCircle,
@@ -62,6 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Orders & Sales", href: "/admin/orders", icon: ShoppingBag },
     { label: "Products", href: "/admin/products", icon: Package },
     { label: "Categories", href: "/admin/categories", icon: Layers },
     { label: "FAQs", href: "/admin/faqs", icon: HelpCircle },
