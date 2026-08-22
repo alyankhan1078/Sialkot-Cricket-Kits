@@ -7,9 +7,12 @@
     "build": "vite build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:push:supabase": "node scripts/push-to-supabase.js",
+    "db:gen:supabase-sql": "node scripts/generate-supabase-sql.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "drizzle-orm": "0.45.2",
     "lucide-react": "^0.468.0",
     "next": "16.2.6",
