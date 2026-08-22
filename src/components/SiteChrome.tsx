@@ -147,7 +147,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </a>
         </div>
         <p className="footer-legal">
-          Prices are in Pakistani Rupees (PKR), excluding delivery, and remain subject to stock and
+          Prices are in British Pounds (£ / GBP), excluding delivery, and remain subject to stock and
           specification confirmation. Product names and trademarks belong to their respective owners. ©{" "}
           {new Date().getFullYear()} {settings.businessName}.
         </p>

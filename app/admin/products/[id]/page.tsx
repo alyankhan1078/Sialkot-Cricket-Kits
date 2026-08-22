@@ -268,7 +268,7 @@ export default function AdminEditProductPage({
               </div>
 
               <div className="admin-form-group">
-                <label>Price (PKR) *</label>
+                <label>Price (£ / GBP) *</label>
                 <input
                   type="number"
                   className="admin-input"

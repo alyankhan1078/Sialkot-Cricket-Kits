@@ -139,13 +139,13 @@ export default function AdminNewProductPage() {
           </div>
 
           <div className="admin-form-group">
-            <label>Price (PKR) *</label>
+            <label>Price (£ / GBP) *</label>
             <input
               type="number"
               className="admin-input"
               required
               min="0"
-              placeholder="e.g. 65499"
+              placeholder="e.g. 499"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             />

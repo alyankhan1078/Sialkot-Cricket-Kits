@@ -387,6 +387,6 @@ export const categories = categoryOrder.map((name) => ({
   image: products.find((product) => product.category === name)?.image ?? brandImage,
 }));
 
-export const formatPrice = (price: number) => `PKR ${price.toLocaleString("en-PK")}`;
+export const formatPrice = (price: number) => `£${price.toLocaleString("en-GB")}`;
 
 export const getProduct = (id: string) => products.find((product) => product.id === id);

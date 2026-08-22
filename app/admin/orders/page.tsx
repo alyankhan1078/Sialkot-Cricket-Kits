@@ -253,7 +253,7 @@ export default function AdminOrdersPage() {
         </select>
 
         <div style={{ marginLeft: "auto", color: "var(--adm-muted)", fontSize: "0.9rem" }}>
-          Total Revenue: <strong style={{ color: "var(--adm-primary)" }}>PKR {totalFilteredRevenue.toLocaleString()}</strong>
+          Total Revenue: <strong style={{ color: "var(--adm-primary)" }}>£ {totalFilteredRevenue.toLocaleString("en-GB")}</strong>
         </div>
       </div>
 
@@ -306,7 +306,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td>
                       <strong style={{ color: "var(--adm-primary)", fontSize: "0.95rem" }}>
-                        PKR {order.totalAmount.toLocaleString()}
+                        £ {order.totalAmount.toLocaleString("en-GB")}
                       </strong>
                     </td>
                     <td>
@@ -427,9 +427,9 @@ export default function AdminOrdersPage() {
                       <tr key={idx}>
                         <td><strong>{item.name}</strong></td>
                         <td>{item.quantity}</td>
-                        <td>PKR {item.price.toLocaleString()}</td>
+                        <td>£ {item.price.toLocaleString("en-GB")}</td>
                         <td style={{ textAlign: "right", color: "var(--adm-primary)", fontWeight: 700 }}>
-                          PKR {(item.price * item.quantity).toLocaleString()}
+                          £ {(item.price * item.quantity).toLocaleString("en-GB")}
                         </td>
                       </tr>
                     ))}
@@ -438,7 +438,7 @@ export default function AdminOrdersPage() {
                         Total Amount Paid:
                       </td>
                       <td style={{ textAlign: "right", fontWeight: 800, color: "var(--adm-primary)", fontSize: "1.1rem" }}>
-                        PKR {selectedOrder.totalAmount.toLocaleString()}
+                        £ {selectedOrder.totalAmount.toLocaleString("en-GB")}
                       </td>
                     </tr>
                   </tbody>
@@ -465,7 +465,7 @@ export default function AdminOrdersPage() {
                 onClick={() => setSelectedOrder(null)}
                 className="admin-btn admin-btn-primary"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
@@ -476,8 +476,9 @@ export default function AdminOrdersPage() {
       {showAddModal && (
         <div className="admin-modal-backdrop" onClick={() => setShowAddModal(false)}>
           <div
-            className="admin-modal-card admin-modal-card-lg"
+            className="admin-modal-card"
             onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "550px" }}
           >
             <div className="admin-modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -485,7 +486,7 @@ export default function AdminOrdersPage() {
                   <Plus size={24} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0 }}>Record New Sale / Order</h3>
+                  <h3 style={{ margin: 0 }}>Create Order & Record Sale</h3>
                   <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
                     Manually enter a walk-in, WhatsApp, or phone customer order
                   </span>
@@ -501,7 +502,7 @@ export default function AdminOrdersPage() {
 
             <form onSubmit={handleCreateOrder} className="admin-modal-body">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div className="admin-form-group">
+                <div className="admin-form-group" style={{ gridColumn: "span 2" }}>
                   <label>Customer Full Name *</label>
                   <input
                     className="admin-input"
@@ -513,39 +514,28 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <div className="admin-form-group">
-                  <label>Destination Country *</label>
+                  <label>Customer Phone / WhatsApp</label>
                   <input
                     className="admin-input"
-                    required
-                    placeholder="Pakistan, United Kingdom, USA, etc."
-                    value={newOrder.country}
-                    onChange={(e) => setNewOrder({ ...newOrder, country: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Phone / WhatsApp Number</label>
-                  <input
-                    className="admin-input"
-                    placeholder="+92 300 1234567"
+                    placeholder="e.g. +44 7911 123456"
                     value={newOrder.customerPhone}
                     onChange={(e) => setNewOrder({ ...newOrder, customerPhone: e.target.value })}
                   />
                 </div>
 
                 <div className="admin-form-group">
-                  <label>Customer Email (optional)</label>
+                  <label>Country Destination *</label>
                   <input
-                    type="email"
                     className="admin-input"
-                    placeholder="customer@email.com"
-                    value={newOrder.customerEmail}
-                    onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value })}
+                    required
+                    placeholder="e.g. United Kingdom"
+                    value={newOrder.country}
+                    onChange={(e) => setNewOrder({ ...newOrder, country: e.target.value })}
                   />
                 </div>
 
                 <div className="admin-form-group" style={{ gridColumn: "span 2" }}>
-                  <label>Product / Equipment Sold *</label>
+                  <label>Product / Equipment Details *</label>
                   <input
                     className="admin-input"
                     required
@@ -556,13 +546,13 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <div className="admin-form-group">
-                  <label>Unit Price (PKR) *</label>
+                  <label>Unit Price (£ / GBP) *</label>
                   <input
                     type="number"
                     min="0"
                     className="admin-input"
                     required
-                    placeholder="e.g. 65499"
+                    placeholder="e.g. 499"
                     value={newOrder.price}
                     onChange={(e) => setNewOrder({ ...newOrder, price: e.target.value })}
                   />

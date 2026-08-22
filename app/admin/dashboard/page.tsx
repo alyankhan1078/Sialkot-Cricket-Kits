@@ -159,7 +159,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="admin-sales-amount">
-            PKR {(sales?.dailySales.revenue || 0).toLocaleString()}
+            £ {(sales?.dailySales.revenue || 0).toLocaleString("en-GB")}
           </div>
           <div className="admin-sales-subtext">
             <span style={{ color: "#34d399", fontWeight: 600 }}>
@@ -190,7 +190,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="admin-sales-amount">
-            PKR {(sales?.weeklySales.revenue || 0).toLocaleString()}
+            £ {(sales?.weeklySales.revenue || 0).toLocaleString("en-GB")}
           </div>
           <div className="admin-sales-subtext">
             <span style={{ color: "#60a5fa", fontWeight: 600 }}>
@@ -219,7 +219,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="admin-sales-amount">
-            PKR {(sales?.monthlySales.revenue || 0).toLocaleString()}
+            £ {(sales?.monthlySales.revenue || 0).toLocaleString("en-GB")}
           </div>
           <div className="admin-sales-subtext">
             <span style={{ color: "#c084fc", fontWeight: 600 }}>
@@ -248,7 +248,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="admin-sales-amount">
-            PKR {(sales?.yearlySales.revenue || 0).toLocaleString()}
+            £ {(sales?.yearlySales.revenue || 0).toLocaleString("en-GB")}
           </div>
           <div className="admin-sales-subtext">
             <span style={{ color: "#fbbf24", fontWeight: 600 }}>
@@ -292,7 +292,7 @@ export default function AdminDashboardPage() {
                   return (
                     <div key={d.date} className="admin-trend-column">
                       {d.revenue > 0 && (
-                        <span className="admin-trend-value">PKR {(d.revenue / 1000).toFixed(0)}k</span>
+                        <span className="admin-trend-value">£{(d.revenue / 1000).toFixed(0)}k</span>
                       )}
                       <div className="admin-trend-bar-wrapper">
                         <div
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
                   return (
                     <div key={m.month} className="admin-trend-column">
                       {m.revenue > 0 && (
-                        <span className="admin-trend-value">PKR {(m.revenue / 1000).toFixed(0)}k</span>
+                        <span className="admin-trend-value">£{(m.revenue / 1000).toFixed(0)}k</span>
                       )}
                       <div className="admin-trend-bar-wrapper">
                         <div
@@ -424,7 +424,7 @@ export default function AdminDashboardPage() {
 
                   <div style={{ textAlign: "right" }}>
                     <div style={{ color: "var(--adm-primary)", fontWeight: 700, fontSize: "1rem" }}>
-                      PKR {order.totalAmount.toLocaleString()}
+                      £ {order.totalAmount.toLocaleString("en-GB")}
                     </div>
                     <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>{order.paymentMethod}</small>
                   </div>
@@ -554,25 +554,25 @@ export default function AdminDashboardPage() {
                 <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
                   <small style={{ color: "var(--adm-muted)", display: "block" }}>Daily Sales</small>
                   <strong style={{ color: "#34d399", fontSize: "1.1rem" }}>
-                    PKR {(sales?.dailySales.revenue || 0).toLocaleString()}
+                    £ {(sales?.dailySales.revenue || 0).toLocaleString("en-GB")}
                   </strong>
                 </div>
                 <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
                   <small style={{ color: "var(--adm-muted)", display: "block" }}>Weekly Sales</small>
                   <strong style={{ color: "#60a5fa", fontSize: "1.1rem" }}>
-                    PKR {(sales?.weeklySales.revenue || 0).toLocaleString()}
+                    £ {(sales?.weeklySales.revenue || 0).toLocaleString("en-GB")}
                   </strong>
                 </div>
                 <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
                   <small style={{ color: "var(--adm-muted)", display: "block" }}>Monthly Sales</small>
                   <strong style={{ color: "#c084fc", fontSize: "1.1rem" }}>
-                    PKR {(sales?.monthlySales.revenue || 0).toLocaleString()}
+                    £ {(sales?.monthlySales.revenue || 0).toLocaleString("en-GB")}
                   </strong>
                 </div>
                 <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
                   <small style={{ color: "var(--adm-muted)", display: "block" }}>Yearly Sales</small>
                   <strong style={{ color: "#fbbf24", fontSize: "1.1rem" }}>
-                    PKR {(sales?.yearlySales.revenue || 0).toLocaleString()}
+                    £ {(sales?.yearlySales.revenue || 0).toLocaleString("en-GB")}
                   </strong>
                 </div>
               </div>
@@ -600,7 +600,7 @@ export default function AdminDashboardPage() {
                         <td>{o.customerName}</td>
                         <td>{o.country}</td>
                         <td style={{ color: "var(--adm-primary)", fontWeight: 700 }}>
-                          PKR {o.totalAmount.toLocaleString()}
+                          £ {o.totalAmount.toLocaleString("en-GB")}
                         </td>
                         <td><span className="admin-badge admin-badge-completed">{o.status}</span></td>
                       </tr>

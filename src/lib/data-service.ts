@@ -966,7 +966,7 @@ export async function generateSalesCsv(startDate?: string, endDate?: string): Pr
     "Country",
     "Items Purchased",
     "Total Items",
-    "Total Amount (PKR)",
+    "Total Amount (£ / GBP)",
     "Payment Channel",
     "Status",
     "Notes",
@@ -979,7 +979,7 @@ export async function generateSalesCsv(startDate?: string, endDate?: string): Pr
   };
 
   const rows = orders.map((o) => {
-    const itemsSummary = o.items.map((i) => `${i.name} (x${i.quantity} @ PKR ${i.price})`).join(" | ");
+    const itemsSummary = o.items.map((i) => `${i.name} (x${i.quantity} @ £${i.price})`).join(" | ");
     const totalItems = o.items.reduce((s, i) => s + i.quantity, 0);
 
     return [
