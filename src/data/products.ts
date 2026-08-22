@@ -152,127 +152,127 @@ const product = (
 });
 
 const beautyBats: Product[] = [
-  product("Beauty Processed Bats", "Silver Edition", 43499, "Confirm on WhatsApp", silverEditionGallery[0], {
+  product("Beauty Processed Bats", "Silver Edition", 125, "Confirm on WhatsApp", silverEditionGallery[0], {
     images: silverEditionGallery,
     description: "Silver Edition beauty-processed bat. Every image in this gallery belongs only to the uploaded Silver Edition bat, including its face, toe and edge profiles.",
   }),
-  product("Beauty Processed Bats", "Player Edition", 58499, "Confirm on WhatsApp", batImage, {
+  product("Beauty Processed Bats", "Player Edition", 165, "Confirm on WhatsApp", batImage, {
     description: "Player Edition beauty-processed bat from the 2026 catalogue. Ask for the current original product gallery before ordering.",
   }),
-  product("Beauty Processed Bats", "Bounce Edition", 63499, "Confirm on WhatsApp", bounceEditionGallery[0], {
+  product("Beauty Processed Bats", "Bounce Edition", 180, "Confirm on WhatsApp", bounceEditionGallery[0], {
     images: bounceEditionGallery,
     description: "Bounce Edition beauty-processed bat. The gallery is restricted to the uploaded Bounce Edition product only.",
   }),
-  product("Beauty Processed Bats", "Apex Pro", 65499, "Confirm on WhatsApp", apexProGallery[0], {
+  product("Beauty Processed Bats", "Apex Pro", 185, "Confirm on WhatsApp", apexProGallery[0], {
     images: apexProGallery,
     featured: true,
     description: "Apex Pro beauty-processed bat. The complete gallery shows only the uploaded Apex Pro bat and its matching cover from the face, reverse, profile, edge and toe angles.",
   }),
-  product("Beauty Processed Bats", "Monster Series", 67499, "Confirm on WhatsApp", monsterSeriesGallery[0], {
+  product("Beauty Processed Bats", "Monster Series", 195, "Confirm on WhatsApp", monsterSeriesGallery[0], {
     images: monsterSeriesGallery,
     description: "Monster Series beauty-processed bat. The gallery contains only the uploaded Monster Series face, back, profile, edge and weight-proof views.",
   }),
-  product("Beauty Processed Bats", "Special Edition", 75499, "Confirm on WhatsApp", specialBeautyGallery[0], {
+  product("Beauty Processed Bats", "Special Edition", 215, "Confirm on WhatsApp", specialBeautyGallery[0], {
     images: specialBeautyGallery,
     description: "Special Edition beauty-processed bat. These images are mapped only to the uploaded #7 Special Edition bat and are not shared with Apex Pro or VVIP.",
   }),
-  product("Beauty Processed Bats", "VVIP Bat", 85499, "Confirm on WhatsApp", vvipBeautyGallery[0], {
+  product("Beauty Processed Bats", "VVIP Bat", 245, "Confirm on WhatsApp", vvipBeautyGallery[0], {
     images: vvipBeautyGallery,
     description: "VVIP beauty-processed bat with the uploaded 45 mm edge reference. Its gallery is exclusive to the #3 VVIP product and includes face, reverse, profile, edge and measurement views.",
   }),
 ];
 
 const bonafideBats: Product[] = [
-  product("Bonafide Bats", "VVIP Bonafide Original - Grade A+", 159999, "Confirm on WhatsApp", vvipBonafideGallery[0], {
+  product("Bonafide Bats", "VVIP Bonafide Original - Grade A+", 499, "Confirm on WhatsApp", vvipBonafideGallery[0], {
     images: vvipBonafideGallery,
     featured: true,
     description: "Original VVIP bonafide bat presented in its natural, unprocessed condition. The gallery shows the same bat from multiple angles, including its face, grains and edge profile. Contact us for a live ping video and current availability before ordering.",
   }),
-  product("Bonafide Bats", "Special Edition - Grade A", 114999, "Confirm on WhatsApp", specialGradeAGallery[0], {
+  product("Bonafide Bats", "Special Edition - Grade A", 330, "Confirm on WhatsApp", specialGradeAGallery[0], {
     images: specialGradeAGallery,
     description: "Bonafide Special Edition Grade A bat. This gallery uses only the uploaded Grade A product images.",
   }),
-  product("Bonafide Bats", "Player Edition", 74999, "Confirm on WhatsApp", playerBonafideGallery[0], {
+  product("Bonafide Bats", "Player Edition", 215, "Confirm on WhatsApp", playerBonafideGallery[0], {
     images: playerBonafideGallery,
     description: "Bonafide Player Edition bat. The gallery is restricted to the uploaded Player Edition bat and its matching black cover.",
   }),
 ];
 
 const juniorBats: Product[] = [
-  product("Junior & Harrow Bats", "Size 4", 24499, "Confirm on WhatsApp", size4Gallery[0], {
+  product("Junior & Harrow Bats", "Size 4", 70, "Confirm on WhatsApp", size4Gallery[0], {
     images: size4Gallery,
     description: "Size 4 junior bat shown with the original uploaded product photograph.",
   }),
-  product("Junior & Harrow Bats", "Size 5", 29499, "Confirm on WhatsApp", size5Gallery[0], {
+  product("Junior & Harrow Bats", "Size 5", 85, "Confirm on WhatsApp", size5Gallery[0], {
     images: size5Gallery,
     description: "Size 5 junior bat gallery from the uploaded product batch, including the original weight and profile views.",
   }),
-  product("Junior & Harrow Bats", "Size 6", 37499, "Confirm on WhatsApp", harrowOriginalGallery[0], {
+  product("Junior & Harrow Bats", "Size 6", 105, "Confirm on WhatsApp", harrowOriginalGallery[0], {
     images: harrowOriginalGallery,
     description: "Size 6 listing using the same original Harrow-size product photographs requested by the customer. Only the background was cleaned; the photographed handle and bat geometry remain unchanged.",
   }),
-  product("Junior & Harrow Bats", "Harrow Size", 38499, "Confirm on WhatsApp", harrowOriginalGallery[0], {
+  product("Junior & Harrow Bats", "Harrow Size", 110, "Confirm on WhatsApp", harrowOriginalGallery[0], {
     images: harrowOriginalGallery,
     description: "Harrow-size bat shown from the original uploaded photographs. Only the background was cleaned; no handle or bat shape was generated or altered.",
   }),
 ];
 
 const padRows: Array<[string, number, number | string, number | string, number, number]> = [
-  ["DSC Krunch 300", 8999, 5, 1, 6, 0],
-  ["GM B555 Diamond", 9499, 6, 0, 6, 1],
-  ["Gray-Nicolls Legend", 9999, 4, 3, 7, 7],
-  ["Kookaburra Ghost", 9499, 0, 1, 1, 8],
-  ["New Balance TC 1260", 9499, 6, 0, 6, 10],
-  ["SF Maximum Players", 9299, 4, 1, 5, 11],
-  ["SG White Edition", 8999, 2, 1, 3, 12],
-  ["GM Maxi 606 White", 9299, 2, 0, 2, 6],
-  ["SS Players Edition", 9999, 0, 2, 2, 2],
-  ["Gray-Nicolls Stratos", 9699, 5, 2, 7, 3],
-  ["GM Maxi 606", 8999, 3, 1, 4, 4],
-  ["Moulded Pads - White", 8499, "-", "-", 2, 123],
-  ["Moulded Pads - Black", 8699, "-", "-", 2, 124],
-  ["Moulded Pads - Navy", 8799, "-", "-", 2, 126],
+  ["DSC Krunch 300", 28, 5, 1, 6, 0],
+  ["GM B555 Diamond", 29, 6, 0, 6, 1],
+  ["Gray-Nicolls Legend", 32, 4, 3, 7, 7],
+  ["Kookaburra Ghost", 29, 0, 1, 1, 8],
+  ["New Balance TC 1260", 29, 6, 0, 6, 10],
+  ["SF Maximum Players", 28, 4, 1, 5, 11],
+  ["SG White Edition", 28, 2, 1, 3, 12],
+  ["GM Maxi 606 White", 28, 2, 0, 2, 6],
+  ["SS Players Edition", 32, 0, 2, 2, 2],
+  ["Gray-Nicolls Stratos", 30, 5, 2, 7, 3],
+  ["GM Maxi 606", 28, 3, 1, 4, 4],
+  ["Moulded Pads - White", 26, "-", "-", 2, 123],
+  ["Moulded Pads - Black", 26, "-", "-", 2, 124],
+  ["Moulded Pads - Navy", 26, "-", "-", 2, 126],
 ];
 
 const battingPads = padRows.map(([name, price, rightStock, leftStock, stock, image]) =>
   product("Batting Pads", name, price, stock, item(image), { rightStock, leftStock })
 ).concat([
-  product("Batting Pads", "New Balance Batting Pad - Priority Offer", 7999, 1, item(10), { rightStock: 1, leftStock: 0 }),
-  product("Batting Pads", "DSC Batting Pad - Priority Offer", 8299, 2, item(0), { rightStock: 2, leftStock: 0 }),
-  product("Batting Pads", "SG Batting Pad - Priority Offer", 7999, 2, item(12), { rightStock: 0, leftStock: 2 }),
-  product("Batting Pads", "Kookaburra Ghost - Priority Offer", 8499, 1, item(8), { rightStock: 0, leftStock: 1 }),
+  product("Batting Pads", "New Balance Batting Pad - Priority Offer", 24, 1, item(10), { rightStock: 1, leftStock: 0 }),
+  product("Batting Pads", "DSC Batting Pad - Priority Offer", 25, 2, item(0), { rightStock: 2, leftStock: 0 }),
+  product("Batting Pads", "SG Batting Pad - Priority Offer", 24, 2, item(12), { rightStock: 0, leftStock: 2 }),
+  product("Batting Pads", "Kookaburra Ghost - Priority Offer", 26, 1, item(8), { rightStock: 0, leftStock: 1 }),
 ]);
 
 const battingGloveRows: Array<[string, number, number, number, number, number]> = [
-  ["GM Original LE", 8999, 14, 3, 17, 13],
-  ["Gray-Nicolls Vapour 1500 Black", 8799, 14, 5, 19, 14],
-  ["Gray-Nicolls Classic", 8299, 17, 3, 20, 15],
-  ["Gray-Nicolls Classic Green", 8499, 12, 4, 16, 16],
-  ["Kookaburra Ghost 2.0", 8199, 3, 1, 4, 17],
-  ["Gray-Nicolls Legend", 8999, 11, 5, 16, 18],
-  ["Kookaburra Kahuna Pro", 8799, 6, 4, 10, 19],
-  ["MRF Players Edition", 8499, 5, 5, 10, 20],
-  ["New Balance DC 580", 7999, 0, 1, 1, 21],
-  ["New Balance WC 1100", 8299, 0, 1, 1, 22],
-  ["SG Camo Limited Edition", 8999, 16, 3, 19, 24],
-  ["SG Camo Players Edition", 8499, 15, 3, 18, 25],
-  ["SG Spider RP 17", 7999, 4, 0, 4, 26],
-  ["SG Test White", 8299, 24, 6, 30, 27],
-  ["SS Golden Limited Edition", 8999, 7, 6, 13, 28],
-  ["SS Millennium Pro", 8699, 10, 3, 13, 29],
-  ["SS Millennium Pro White", 8499, 11, 4, 15, 30],
-  ["SS Red Premium Super Test", 8899, 17, 0, 17, 31],
-  ["SS Super Test", 8199, 1, 1, 2, 32],
-  ["TON Gold Player Edition", 8899, 17, 6, 23, 33],
-  ["Gray-Nicolls Neo Core 2000", 8499, 9, 5, 14, 39],
-  ["GM Diamond 404", 8299, 16, 11, 27, 35],
-  ["GM Diamond LE", 8999, 19, 4, 23, 36],
-  ["SS Aerolite", 7999, 11, 0, 11, 37],
-  ["New Balance TC 1260", 8499, 13, 2, 15, 38],
-  ["New Balance DC 1280", 8699, 16, 2, 18, 41],
-  ["New Balance White TC 1260", 8599, 9, 1, 10, 42],
-  ["New Balance White", 8299, 5, 2, 7, 43],
-  ["Puma Evo 1 Blue", 8499, 10, 1, 11, 40],
+  ["GM Original LE", 28, 14, 3, 17, 13],
+  ["Gray-Nicolls Vapour 1500 Black", 27, 14, 5, 19, 14],
+  ["Gray-Nicolls Classic", 25, 17, 3, 20, 15],
+  ["Gray-Nicolls Classic Green", 26, 12, 4, 16, 16],
+  ["Kookaburra Ghost 2.0", 25, 3, 1, 4, 17],
+  ["Gray-Nicolls Legend", 28, 11, 5, 16, 18],
+  ["Kookaburra Kahuna Pro", 27, 6, 4, 10, 19],
+  ["MRF Players Edition", 26, 5, 5, 10, 20],
+  ["New Balance DC 580", 24, 0, 1, 1, 21],
+  ["New Balance WC 1100", 25, 0, 1, 1, 22],
+  ["SG Camo Limited Edition", 28, 16, 3, 19, 24],
+  ["SG Camo Players Edition", 26, 15, 3, 18, 25],
+  ["SG Spider RP 17", 24, 4, 0, 4, 26],
+  ["SG Test White", 25, 24, 6, 30, 27],
+  ["SS Golden Limited Edition", 28, 7, 6, 13, 28],
+  ["SS Millennium Pro", 27, 10, 3, 13, 29],
+  ["SS Millennium Pro White", 26, 11, 4, 15, 30],
+  ["SS Red Premium Super Test", 27, 17, 0, 17, 31],
+  ["SS Super Test", 25, 1, 1, 2, 32],
+  ["TON Gold Player Edition", 27, 17, 6, 23, 33],
+  ["Gray-Nicolls Neo Core 2000", 26, 9, 5, 14, 39],
+  ["GM Diamond 404", 25, 16, 11, 27, 35],
+  ["GM Diamond LE", 28, 19, 4, 23, 36],
+  ["SS Aerolite", 24, 11, 0, 11, 37],
+  ["New Balance TC 1260", 26, 13, 2, 15, 38],
+  ["New Balance DC 1280", 27, 16, 2, 18, 41],
+  ["New Balance White TC 1260", 26, 9, 1, 10, 42],
+  ["New Balance White", 25, 5, 2, 7, 43],
+  ["Puma Evo 1 Blue", 26, 10, 1, 11, 40],
 ];
 
 const battingGloves = battingGloveRows.map(([name, price, rightStock, leftStock, stock, image]) =>
@@ -280,13 +280,13 @@ const battingGloves = battingGloveRows.map(([name, price, rightStock, leftStock,
 );
 
 const keepingGloveRows: Array<[string, number, number, number]> = [
-  ["GM Original LE", 9999, 7, 47], ["Gray-Nicolls Heritage", 9499, 3, 48],
-  ["Gray-Nicolls Players Edition", 9999, 1, 49], ["SS Golden Strip", 9299, 2, 55],
-  ["SS Professional", 9699, 9, 53], ["SS White Youth", 8999, 4, 51],
-  ["SS White Boys", 8799, 6, 52], ["SS Players Edition Blue", 9999, 1, 58],
-  ["Gray-Nicolls White Mens", 9499, 2, 44], ["Gray-Nicolls White Boys", 8999, 2, 45],
-  ["Gray-Nicolls White Youth", 8899, 2, 46], ["Gray-Nicolls Legend", 9999, 4, 49],
-  ["GM Keeping Gloves", 9499, 3, 47],
+  ["GM Original LE", 32, 7, 47], ["Gray-Nicolls Heritage", 29, 3, 48],
+  ["Gray-Nicolls Players Edition", 32, 1, 49], ["SS Golden Strip", 28, 2, 55],
+  ["SS Professional", 30, 9, 53], ["SS White Youth", 27, 4, 51],
+  ["SS White Boys", 26, 6, 52], ["SS Players Edition Blue", 32, 1, 58],
+  ["Gray-Nicolls White Mens", 29, 2, 44], ["Gray-Nicolls White Boys", 26, 2, 45],
+  ["Gray-Nicolls White Youth", 26, 2, 46], ["Gray-Nicolls Legend", 32, 4, 49],
+  ["GM Keeping Gloves", 29, 3, 47],
 ];
 
 const keepingGloves = keepingGloveRows.map(([name, price, stock, image]) =>
@@ -294,32 +294,32 @@ const keepingGloves = keepingGloveRows.map(([name, price, stock, image]) =>
 );
 
 const bagRows: Array<[string, number, number, number]> = [
-  ["DSC Fearless Intense Pro", 12499, 1, 68], ["DSC Orange", 11999, 10, 69],
-  ["DXM Hitter", 10999, 6, 70], ["GM Blue", 10499, 10, 71],
-  ["GM Diamond Duffle", 13499, 11, 72], ["GM Original Duffle Black - Classic", 9499, 10, 73],
-  ["GM Original Wheelie Navy - Standard", 13499, 13, 74], ["Gray-Nicolls Legend Duffle - Standard", 14499, 10, 75],
-  ["GM Kit Bag", 14999, 9, 76], ["Gray-Nicolls Red Duffle", 14499, 1, 59],
-  ["Kookaburra Black Duffle - Standard", 12499, 8, 60], ["Kookaburra D 4.5 Green", 14499, 3, 61],
-  ["Kookaburra D 4.5 Red", 12499, 4, 62], ["Kookaburra D 4.5 Sky Blue", 14499, 12, 63],
-  ["Kookaburra Green Duffle", 11499, 2, 64], ["Kookaburra Grey Duffle", 12499, 10, 65],
-  ["Kookaburra Red Duffle", 13499, 4, 66], ["MRF Black Duffle", 12499, 4, 67],
-  ["MRF Game Changer", 16499, 6, 78], ["New Balance Green Duffle", 14499, 7, 79],
-  ["New Balance Red Duffle", 15499, 15, 80], ["Shrey Blue New Duffle", 12499, 9, 77],
-  ["Shrey Navy Duffle", 12499, 9, 81], ["SS Blue Duffle", 11499, 7, 82],
-  ["SS Grey Duffle", 13499, 11, 83], ["Shrey Kit Bag", 19499, 4, 85],
-  ["GM Original Duffle Black - Premium", 11499, 11, 84], ["GM Original Wheelie Navy - Premium", 17499, 6, 87],
-  ["Gray-Nicolls Legend Duffle - Premium", 17499, 12, 88], ["Gray-Nicolls Legend Wheelie", 16499, 9, 89],
-  ["Gray-Nicolls Kit Bag Trolley", 19499, 9, 90], ["Kookaburra Blue Duffle", 15499, 4, 91],
-  ["Shrey Red New Wheelie", 19499, 8, 86],
+  ["DSC Fearless Intense Pro", 40, 1, 68], ["DSC Orange", 38, 10, 69],
+  ["DXM Hitter", 35, 6, 70], ["GM Blue", 34, 10, 71],
+  ["GM Diamond Duffle", 42, 11, 72], ["GM Original Duffle Black - Classic", 30, 10, 73],
+  ["GM Original Wheelie Navy - Standard", 42, 13, 74], ["Gray-Nicolls Legend Duffle - Standard", 45, 10, 75],
+  ["GM Kit Bag", 48, 9, 76], ["Gray-Nicolls Red Duffle", 45, 1, 59],
+  ["Kookaburra Black Duffle - Standard", 40, 8, 60], ["Kookaburra D 4.5 Green", 45, 3, 61],
+  ["Kookaburra D 4.5 Red", 40, 4, 62], ["Kookaburra D 4.5 Sky Blue", 45, 12, 63],
+  ["Kookaburra Green Duffle", 36, 2, 64], ["Kookaburra Grey Duffle", 40, 10, 65],
+  ["Kookaburra Red Duffle", 42, 4, 66], ["MRF Black Duffle", 40, 4, 67],
+  ["MRF Game Changer", 52, 6, 78], ["New Balance Green Duffle", 45, 7, 79],
+  ["New Balance Red Duffle", 48, 15, 80], ["Shrey Blue New Duffle", 40, 9, 77],
+  ["Shrey Navy Duffle", 40, 9, 81], ["SS Blue Duffle", 36, 7, 82],
+  ["SS Grey Duffle", 42, 11, 83], ["Shrey Kit Bag", 62, 4, 85],
+  ["GM Original Duffle Black - Premium", 36, 11, 84], ["GM Original Wheelie Navy - Premium", 55, 6, 87],
+  ["Gray-Nicolls Legend Duffle - Premium", 55, 12, 88], ["Gray-Nicolls Legend Wheelie", 52, 9, 89],
+  ["Gray-Nicolls Kit Bag Trolley", 62, 9, 90], ["Kookaburra Blue Duffle", 48, 4, 91],
+  ["Shrey Red New Wheelie", 62, 8, 86],
 ];
 
 const kitBags = bagRows.map(([name, price, stock, image]) => product("Kit & Duffle Bags", name, price, stock, item(image)));
 
 const thighPadRows: Array<[string, number, number, number, number, number]> = [
-  ["Aero P1", 4999, 0, 2, 2, 92], ["DXM Hitter", 5299, 8, 1, 9, 93],
-  ["Gray-Nicolls Legend", 5999, 15, 7, 22, 94], ["Moonwalkr Black", 5499, 22, 6, 28, 95],
-  ["Moonwalkr Blue", 5199, 4, 0, 4, 96], ["Moonwalkr White", 5599, 16, 16, 32, 98],
-  ["Newbery White", 5299, 2, 1, 3, 99], ["Remfry White", 4999, 1, 5, 6, 100],
+  ["Aero P1", 16, 0, 2, 2, 92], ["DXM Hitter", 17, 8, 1, 9, 93],
+  ["Gray-Nicolls Legend", 20, 15, 7, 22, 94], ["Moonwalkr Black", 18, 22, 6, 28, 95],
+  ["Moonwalkr Blue", 16, 4, 0, 4, 96], ["Moonwalkr White", 18, 16, 16, 32, 98],
+  ["Newbery White", 17, 2, 1, 3, 99], ["Remfry White", 16, 1, 5, 6, 100],
 ];
 
 const thighPads = thighPadRows.map(([name, price, rightStock, leftStock, stock, image]) =>
@@ -327,41 +327,41 @@ const thighPads = thighPadRows.map(([name, price, rightStock, leftStock, stock, 
 );
 
 const keepingInners = [
-  product("Keeping Inners", "Gray-Nicolls Red", 2499, 11, item(112)),
-  product("Keeping Inners", "SS Keeping Inners", 2299, 15, item(116)),
-  product("Keeping Inners", "Puma Pink", 2499, 25, item(115)),
-  product("Keeping Inners", "Puma Grey", 2699, 24, item(114)),
+  product("Keeping Inners", "Gray-Nicolls Red", 8, 11, item(112)),
+  product("Keeping Inners", "SS Keeping Inners", 8, 15, item(116)),
+  product("Keeping Inners", "Puma Pink", 8, 25, item(115)),
+  product("Keeping Inners", "Puma Grey", 9, 24, item(114)),
 ];
 
 const helmets = [
-  product("Helmets", "Gray-Nicolls Helmet - Green", 9499, 1, "/assets/products/helmet-gn-green.webp"),
-  product("Helmets", "Gray-Nicolls Helmet - Navy", 9299, 2, "/assets/products/helmet-gn-navy.webp"),
-  product("Helmets", "Masuri Helmet - Black", 9999, 1, "/assets/products/helmet-masuri-black.webp"),
+  product("Helmets", "Gray-Nicolls Helmet - Green", 30, 1, "/assets/products/helmet-gn-green.webp"),
+  product("Helmets", "Gray-Nicolls Helmet - Navy", 30, 2, "/assets/products/helmet-gn-navy.webp"),
+  product("Helmets", "Masuri Helmet - Black", 35, 1, "/assets/products/helmet-masuri-black.webp"),
 ];
 
 const caps = [
-  product("Waterproof Caps", "Nike Waterproof Cap", 2999, 8, item(103)),
-  product("Waterproof Caps", "Under Armour Waterproof Cap", 2899, 7, item(105)),
-  product("Waterproof Caps", "North Face Waterproof Cap", 2850, 5, item(104)),
-  product("Waterproof Caps", "Icon Waterproof Cap", 2799, 7, item(102)),
-  product("Waterproof Caps", "Adidas Waterproof Cap", 2999, 8, item(101)),
+  product("Waterproof Caps", "Nike Waterproof Cap", 10, 8, item(103)),
+  product("Waterproof Caps", "Under Armour Waterproof Cap", 10, 7, item(105)),
+  product("Waterproof Caps", "North Face Waterproof Cap", 10, 5, item(104)),
+  product("Waterproof Caps", "Icon Waterproof Cap", 10, 7, item(102)),
+  product("Waterproof Caps", "Adidas Waterproof Cap", 10, 8, item(101)),
 ];
 
 const guards = [
-  product("Keeping Guards", "SG Keeping Guard", 999, 30, item(106)),
-  product("Keeping Guards", "GM Keeping Guard", 1099, 23, item(107)),
-  product("Keeping Guards", "Gray-Nicolls Keeping Guard", 1199, 19, item(108)),
+  product("Keeping Guards", "SG Keeping Guard", 4, 30, item(106)),
+  product("Keeping Guards", "GM Keeping Guard", 4, 23, item(107)),
+  product("Keeping Guards", "Gray-Nicolls Keeping Guard", 5, 19, item(108)),
 ];
 
 const otherAccessories = [
-  product("Other Accessories", "SF Batting Inner Gloves", 1999, 25, item(111)),
-  product("Other Accessories", "Guard Underwear", 1999, "Available", brandImage),
+  product("Other Accessories", "SF Batting Inner Gloves", 7, 25, item(111)),
+  product("Other Accessories", "Guard Underwear", 7, "Available", brandImage),
 ];
 
 const teamwear: Product[] = [
-  ...[["Small", 7499, 33], ["Medium", 7499, 22], ["Large", 7999, 17], ["X-Large", 7999, 12], ["XXL", 8499, 21]].map(([size, price, stock]) => product("Teamwear", `Gray-Nicolls Playing Kit - ${size}`, Number(price), Number(stock), brandImage)),
-  ...[["Small", 2999, 25], ["Medium", 2999, 24], ["Large", 2999, 25], ["X-Large", 2999, 25]].map(([size, price, stock]) => product("Teamwear", `Gray-Nicolls Shorts - ${size}`, Number(price), Number(stock), brandImage)),
-  ...[["Small", 2499, 50], ["Medium", 2499, 29], ["Large", 2499, 13], ["X-Large", 2499, 35]].map(([size, price, stock]) => product("Teamwear", `Supreme Shorts - ${size}`, Number(price), Number(stock), brandImage)),
+  ...[["Small", 25, 33], ["Medium", 25, 22], ["Large", 26, 17], ["X-Large", 26, 12], ["XXL", 28, 21]].map(([size, price, stock]) => product("Teamwear", `Gray-Nicolls Playing Kit - ${size}`, Number(price), Number(stock), brandImage)),
+  ...[["Small", 10, 25], ["Medium", 10, 24], ["Large", 10, 25], ["X-Large", 10, 25]].map(([size, price, stock]) => product("Teamwear", `Gray-Nicolls Shorts - ${size}`, Number(price), Number(stock), brandImage)),
+  ...[["Small", 8, 50], ["Medium", 8, 29], ["Large", 8, 13], ["X-Large", 8, 35]].map(([size, price, stock]) => product("Teamwear", `Supreme Shorts - ${size}`, Number(price), Number(stock), brandImage)),
 ];
 
 export const products: Product[] = [
