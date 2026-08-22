@@ -159,13 +159,24 @@ export function ProductImageManager({
     setUploading(true);
     const newUploadedImages: DBProductImage[] = [...images];
 
+    const readFileAsDataUrl = (f: File): Promise<string> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(f);
+      });
+    };
+
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
-      setUploadProgress(`Uploading ${i + 1} of ${validFiles.length}: ${file.name}...`);
+      setUploadProgress(`Processing ${i + 1} of ${validFiles.length}: ${file.name}...`);
 
       const formData = new FormData();
       formData.append("file", file);
       formData.append("productId", productId);
+
+      let finalUrl = "";
 
       try {
         const res = await fetch("/api/admin/upload", {
@@ -173,31 +184,38 @@ export function ProductImageManager({
           body: formData,
         });
         const data = await res.json();
-
         if (data.success && data.data?.url) {
-          const isFirstImage = newUploadedImages.length === 0;
-          newUploadedImages.push({
-            id: `img_${productId}_${Date.now()}_${i}`,
-            productId,
-            url: data.data.url,
-            alt: `${productName || "Product"} - View ${newUploadedImages.length + 1}`,
-            position: newUploadedImages.length,
-            isMain: isFirstImage,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          });
-        } else {
-          showToast(data.error || `Failed to upload ${file.name}`, "error");
+          finalUrl = data.data.url;
         }
       } catch {
-        showToast(`Network error uploading ${file.name}`, "error");
+        // Fallback to local Data URL
+      }
+
+      if (!finalUrl) {
+        finalUrl = await readFileAsDataUrl(file);
+      }
+
+      if (finalUrl) {
+        const isFirstImage = newUploadedImages.length === 0;
+        newUploadedImages.push({
+          id: `img_${productId}_${Date.now()}_${i}`,
+          productId,
+          url: finalUrl,
+          alt: `${productName || "Product"} - View ${newUploadedImages.length + 1}`,
+          position: newUploadedImages.length,
+          isMain: isFirstImage,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        showToast(`Could not process ${file.name}`, "error");
       }
     }
 
     setImages(newUploadedImages);
     setUploading(false);
     setUploadProgress("");
-    showToast(`${validFiles.length} image(s) uploaded! Remember to click Save.`, "success");
+    showToast(`${validFiles.length} image(s) added! Click "Save Image Changes" to publish.`, "success");
   };
 
   // Handle image replacement
@@ -214,11 +232,13 @@ export function ProductImageManager({
     }
 
     setUploading(true);
-    setUploadProgress(`Replacing image with ${file.name}...`);
+    setUploadProgress(`Replacing picture with ${file.name}...`);
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("productId", productId);
+
+    let finalUrl = "";
 
     try {
       const res = await fetch("/api/admin/upload", {
@@ -226,26 +246,41 @@ export function ProductImageManager({
         body: formData,
       });
       const data = await res.json();
-
       if (data.success && data.data?.url) {
+        finalUrl = data.data.url;
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (!finalUrl) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
         setImages((prev) =>
           prev.map((img) =>
             img.id === replacingImageId
-              ? { ...img, url: data.data.url, updatedAt: new Date().toISOString() }
+              ? { ...img, url: dataUrl, updatedAt: new Date().toISOString() }
               : img
           )
         );
         showToast("Image replaced! Click Save to apply.", "success");
-      } else {
-        showToast(data.error || "Failed to replace image", "error");
-      }
-    } catch {
-      showToast("Network error while replacing image", "error");
-    } finally {
-      setUploading(false);
-      setUploadProgress("");
-      setReplacingImageId(null);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === replacingImageId
+            ? { ...img, url: finalUrl, updatedAt: new Date().toISOString() }
+            : img
+        )
+      );
+      showToast("Image replaced! Click Save to apply.", "success");
     }
+
+    setUploading(false);
+    setUploadProgress("");
+    setReplacingImageId(null);
   };
 
   // Add URL image

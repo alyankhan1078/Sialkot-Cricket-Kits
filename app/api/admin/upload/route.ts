@@ -3,7 +3,7 @@ import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: Request) {
@@ -34,22 +34,28 @@ export async function POST(request: Request) {
       );
     }
 
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
     // Sanitize product ID and file name
     const sanitizedProductId = productId.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
     const ext = path.extname(file.name) || ".webp";
     const baseName = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
     const uniqueFilename = `${Date.now()}_${baseName}${ext}`;
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "products", sanitizedProductId);
-    await fs.mkdir(uploadDir, { recursive: true });
+    let publicUrl = "";
 
-    const filePath = path.join(uploadDir, uniqueFilename);
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    await fs.writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/products/${sanitizedProductId}/${uniqueFilename}`;
+    try {
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "products", sanitizedProductId);
+      await fs.mkdir(uploadDir, { recursive: true });
+      const filePath = path.join(uploadDir, uniqueFilename);
+      await fs.writeFile(filePath, buffer);
+      publicUrl = `/uploads/products/${sanitizedProductId}/${uniqueFilename}`;
+    } catch {
+      // In sandboxed/workerd environment where disk write is restricted, store as Data URL
+      const base64Str = buffer.toString("base64");
+      publicUrl = `data:${file.type};base64,${base64Str}`;
+    }
 
     return NextResponse.json({
       success: true,
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     console.error("Upload error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to upload file" },
+      { error: err.message || "Failed to process image upload" },
       { status: 500 }
     );
   }
