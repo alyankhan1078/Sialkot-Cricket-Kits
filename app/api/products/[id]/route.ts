@@ -1,0 +1,26 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getProductById } from "@/src/lib/data-service";
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const product = await getProductById(id);
+
+    if (!product || !product.active) {
+      return NextResponse.json(
+        { success: false, error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: product });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch product" },
+      { status: 500 }
+    );
+  }
+}
