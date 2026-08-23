@@ -256,8 +256,8 @@ function CartDrawer() {
   return (
     <div className={`cart-layer${isCartOpen ? " is-open" : ""}`} aria-hidden={!isCartOpen}>
       <button className="cart-backdrop" aria-label="Close cart" onClick={() => setCartOpen(false)} />
-      <aside className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-        <div className="cart-drawer-head">
+      <aside className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+        <div className="cart-drawer-head" style={{ flexShrink: 0 }}>
           <div>
             <span className="mini-label">Your selection</span>
             <h2 id="cart-title">Cart ({cart.reduce((s, i) => s + i.quantity, 0)})</h2>
@@ -277,349 +277,45 @@ function CartDrawer() {
           </div>
         ) : (
           <>
-            <div className="cart-lines">
-              {lines.map(({ product, quantity }) => (
-                <article className="cart-line" key={product.id}>
-                  <img src={product.image} alt={product.name} />
-                  <div>
-                    <strong>{product.name}</strong>
-                    <small>{formatPrice(product.price)}</small>
-                    <div className="quantity-control">
-                      <button
-                        onClick={() => updateQuantity(product.id, quantity - 1)}
-                        aria-label={`Reduce ${product.name} quantity`}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span>{quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(product.id, quantity + 1)}
-                        aria-label={`Increase ${product.name} quantity`}
-                      >
-                        <Plus size={14} />
-                      </button>
+            {/* Scrollable Center Content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Cart Items List */}
+              <div className="cart-lines" style={{ padding: 0, overflow: "visible" }}>
+                {lines.map(({ product, quantity }) => (
+                  <article className="cart-line" key={product.id}>
+                    <img src={product.image} alt={product.name} />
+                    <div>
+                      <strong>{product.name}</strong>
+                      <small>{formatPrice(product.price)}</small>
+                      <div className="quantity-control">
+                        <button
+                          onClick={() => updateQuantity(product.id, quantity - 1)}
+                          aria-label={`Reduce ${product.name} quantity`}
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span>{quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(product.id, quantity + 1)}
+                          aria-label={`Increase ${product.name} quantity`}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    className="remove-button"
-                    onClick={() => removeFromCart(product.id)}
-                    aria-label={`Remove ${product.name}`}
-                  >
-                    <Trash2 size={17} />
-                  </button>
-                </article>
-              ))}
-            </div>
-
-            {/* Payment Method Selector */}
-            <div style={{
-              margin: "12px 0",
-              padding: "16px",
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid var(--border-color, #2a313d)",
-              borderRadius: "12px"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--accent, #f59e0b)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Choose Payment Method
-                </span>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Worldwide & Local</span>
+                    <button
+                      className="remove-button"
+                      onClick={() => removeFromCart(product.id)}
+                      aria-label={`Remove ${product.name}`}
+                    >
+                      <Trash2 size={17} />
+                    </button>
+                  </article>
+                ))}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("card")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "card" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "card" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "card" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <CreditCard size={16} color={selectedMethod === "card" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Card / Pay</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("wise")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "wise" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "wise" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "wise" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Send size={16} color={selectedMethod === "wise" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Wise Transfer</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("bank")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "bank" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "bank" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "bank" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Building2 size={16} color={selectedMethod === "bank" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Bank Wire</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("pakistan")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "pakistan" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "pakistan" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "pakistan" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Wallet size={16} color={selectedMethod === "pakistan" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>🇵🇰 Raast/Jazz</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("payoneer")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "payoneer" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "payoneer" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "payoneer" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Globe size={16} color={selectedMethod === "payoneer" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Payoneer</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("wise")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "wise" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "wise" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "wise" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Send size={16} color={selectedMethod === "wise" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Wise Transfer</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("bank")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "bank" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "bank" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "bank" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Building2 size={16} color={selectedMethod === "bank" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>UBL Wire</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("pakistan")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "pakistan" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "pakistan" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "pakistan" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Wallet size={16} color={selectedMethod === "pakistan" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>🇵🇰 PK Wallets</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("remitly")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "remitly" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "remitly" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "remitly" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <ShieldCheck size={16} color={selectedMethod === "remitly" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>Remitly / WU</span>
-                </button>
-              </div>
-
-              {/* Dynamic Payment Instruction Badges */}
-              {selectedMethod === "card" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <strong style={{ color: "#4ade80", display: "block", marginBottom: 2 }}>💳 Visa, Mastercard, Apple Pay, Google Pay</strong>
-                  Instant online card processing with 256-bit encryption. Click Direct Checkout below.
-                </div>
-              )}
-
-              {selectedMethod === "payoneer" && (
-                <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>Payoneer: <strong>alyankhan1078@gmail.com</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "payoneer" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>
-                    Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong> · Connected UBL Account
-                  </div>
-                </div>
-              )}
-
-              {selectedMethod === "wise" && (
-                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "wise" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>Fastest & lowest-fee transfer for UK, Europe, USA, Canada & Australia.</span>
-                </div>
-              )}
-
-              {selectedMethod === "bank" && (
-                <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span>IBAN: <strong>PK93UNIL0109000304929964</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "iban" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "iban" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>UBL Bank · SWIFT: <strong>UNILPKKA</strong> · Title: <strong>ALYAN WAZIR</strong> · Branch: 0881-Wana</div>
-                </div>
-              )}
-
-              {selectedMethod === "pakistan" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span>JazzCash / Nayapay / SadaPay / Raast: <strong>03275756188</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("03275756188", "raast")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 4, marginTop: 4 }}>
-                    <span>EasyPaisa Account: <strong>03499585519</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("03499585519", "easypaisa")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "easypaisa" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>Account Title: <strong>ALYAN WAZIR</strong></div>
-                </div>
-              )}
-
-              {selectedMethod === "remitly" && (
-                <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <span>Instant international payout via <strong>Remitly, Western Union, MoneyGram & TapTap Send</strong> to UBL account (ALYAN WAZIR).</span>
-                </div>
-              )}
-            </div>
-
-            <div className="cart-summary">
               {/* Country Destination Selector */}
-              <div style={{ marginBottom: 12, background: "rgba(0,0,0,0.3)", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155" }}>
+              <div style={{ background: "rgba(0,0,0,0.3)", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label style={{ fontSize: "0.8rem", color: "#cbd5e1", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                     <Truck size={14} color="var(--accent, #f59e0b)" /> Destination Country:
@@ -636,7 +332,7 @@ function CartDrawer() {
                     background: "#0f172a",
                     border: "1px solid #334155",
                     color: "#fff",
-                    fontSize: "0.82rem",
+                    fontSize: "0.85rem",
                   }}
                 >
                   {Object.keys(SHIPPING_DESTINATIONS).map((c) => (
@@ -647,57 +343,296 @@ function CartDrawer() {
                 </select>
               </div>
 
-              {/* Breakdown */}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.88rem", marginBottom: 4 }}>
-                <span>Items Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
+              {/* Payment Method Selector (Clean 6 Options) */}
+              <div style={{
+                padding: "12px",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid var(--border-color, #2a313d)",
+                borderRadius: "10px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--accent, #f59e0b)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Payment Channel
+                  </span>
+                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Worldwide &amp; Local</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("card")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "card" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "card" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "card" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <CreditCard size={16} color={selectedMethod === "card" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>Card / Pay</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("payoneer")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "payoneer" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "payoneer" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "payoneer" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <Globe size={16} color={selectedMethod === "payoneer" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>Payoneer</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("wise")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "wise" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "wise" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "wise" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <Send size={16} color={selectedMethod === "wise" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>Wise</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("bank")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "bank" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "bank" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "bank" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <Building2 size={16} color={selectedMethod === "bank" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>UBL Wire</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("pakistan")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "pakistan" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "pakistan" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "pakistan" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <Wallet size={16} color={selectedMethod === "pakistan" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>🇵🇰 Wallets</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod("remitly")}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: selectedMethod === "remitly" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: selectedMethod === "remitly" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                      color: selectedMethod === "remitly" ? "#fff" : "#cbd5e1",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    <ShieldCheck size={16} color={selectedMethod === "remitly" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <span>Remitly / WU</span>
+                  </button>
+                </div>
+
+                {/* Dynamic Payment Instruction Badges */}
+                {selectedMethod === "card" && (
+                  <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <strong style={{ color: "#4ade80", display: "block", marginBottom: 2 }}>💳 Visa, Mastercard, Apple Pay, Google Pay</strong>
+                    Instant online card processing with 256-bit encryption. Click Direct Checkout below.
+                  </div>
+                )}
+
+                {selectedMethod === "payoneer" && (
+                  <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Payoneer: <strong>alyankhan1078@gmail.com</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                      >
+                        {copiedKey === "payoneer" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "payoneer" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 2 }}>
+                      Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong> · Connected UBL Account
+                    </div>
+                  </div>
+                )}
+
+                {selectedMethod === "wise" && (
+                  <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                      >
+                        {copiedKey === "wise" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "wise" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <span style={{ fontSize: "0.72rem", color: "#94a3b8", display: "block", marginTop: 2 }}>Fastest &amp; lowest-fee transfer for UK, Europe, USA, Canada &amp; Australia.</span>
+                  </div>
+                )}
+
+                {selectedMethod === "bank" && (
+                  <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <span>IBAN: <strong>PK93UNIL0109000304929964</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                      >
+                        {copiedKey === "iban" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "iban" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>UBL Bank · SWIFT: <strong>UNILPKKA</strong> · Title: <strong>ALYAN WAZIR</strong> · Branch: 0881-Wana</div>
+                  </div>
+                )}
+
+                {selectedMethod === "pakistan" && (
+                  <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <span>JazzCash / Nayapay / SadaPay / Raast: <strong>03275756188</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("03275756188", "raast")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                      >
+                        {copiedKey === "raast" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "raast" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 2, marginTop: 2 }}>
+                      <span>EasyPaisa Account: <strong>03499585519</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("03499585519", "easypaisa")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                      >
+                        {copiedKey === "easypaisa" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "easypaisa" ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 2 }}>Account Title: <strong>ALYAN WAZIR</strong></div>
+                  </div>
+                )}
+
+                {selectedMethod === "remitly" && (
+                  <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                    <span>Instant international payout via <strong>Remitly, Western Union, MoneyGram &amp; TapTap Send</strong> to UBL account (ALYAN WAZIR).</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sticky Bottom Cart Summary & Direct Checkout Button */}
+            <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid var(--line, #2a313d)", padding: "12px 16px", background: "var(--card-bg, #181c24)" }}>
+              {/* Breakdown Lines */}
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
+                <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
                 <strong>{formatPrice(subtotal)}</strong>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.88rem", marginBottom: 4 }}>
-                <span>Tracked Courier Shipping</span>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
+                <span>Shipping ({selectedCountry})</span>
                 <strong style={{ color: "var(--accent, #f59e0b)" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
               </div>
 
               {shippingCalculation.totalSaved > 0 && (
-                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "6px 10px", borderRadius: 6, fontSize: "0.75rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, marginTop: 4 }}>
-                  <span>🎉 Multi-Bat Shipping Savings:</span>
+                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "4px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span>🎉 Multi-Bat Savings:</span>
                   <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
                 </div>
               )}
 
               {/* Grand Total */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: "1px solid var(--border-color, #2a313d)", marginTop: 6, marginBottom: 12 }}>
-                <div>
-                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#fff", display: "block" }}>Grand Total</span>
-                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Incl. Express Courier</span>
-                </div>
-                <strong style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(grandTotal)}</strong>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 8 }}>
+                <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#fff" }}>Grand Total</span>
+                <strong style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(grandTotal)}</strong>
               </div>
 
               {cardError && (
-                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "8px 12px", borderRadius: 8, fontSize: "0.8rem", marginBottom: 10 }}>
+                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "6px 10px", borderRadius: 6, fontSize: "0.75rem", marginBottom: 6 }}>
                   {cardError}
                 </div>
               )}
 
-              {/* Action Buttons */}
+              {/* Primary Direct Checkout Button (Always Visible) */}
               <Link
                 href="/checkout"
                 className="button primary wide"
                 onClick={() => setCartOpen(false)}
                 style={{
-                  marginBottom: 8,
+                  marginBottom: 6,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  fontSize: "1rem",
-                  padding: "12px 16px",
-                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  padding: "10px 14px",
+                  fontWeight: 700,
                   borderRadius: 8,
                 }}
               >
-                <Lock size={18} /> Proceed to Direct Checkout ({formatPrice(grandTotal)})
+                <Lock size={16} /> Proceed to Checkout ({formatPrice(grandTotal)})
               </Link>
 
               {selectedMethod === "card" && (
@@ -706,30 +641,31 @@ function CartDrawer() {
                   className="button secondary wide"
                   onClick={handleStripeCheckout}
                   disabled={isStripeLoading}
-                  style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  style={{ marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 12px", fontSize: "0.82rem" }}
                 >
                   {isStripeLoading ? (
                     <>
-                      <Loader2 size={18} className="animate-spin" /> Processing Card Checkout...
+                      <Loader2 size={16} className="animate-spin" /> Processing Card...
                     </>
                   ) : (
                     <>
-                      <CreditCard size={18} /> Direct Card Payment
+                      <CreditCard size={16} /> Instant Card Checkout
                     </>
                   )}
                 </button>
               )}
 
               <a
-                className={`button whatsapp wide`}
+                className="button whatsapp wide"
                 href={whatsappUrl(checkoutMessage)}
                 target="_blank"
                 rel="noreferrer"
+                style={{ padding: "8px 12px", fontSize: "0.82rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               >
                 {selectedMethod === "card" ? "Or Order on WhatsApp" : `Or Order via ${getPaymentMethodLabel(selectedMethod).split("(")[0]} on WhatsApp`}
               </a>
 
-              <button className="text-button" onClick={clearCart} style={{ marginTop: 8 }}>
+              <button className="text-button" onClick={clearCart} style={{ marginTop: 2, fontSize: "0.75rem", color: "#94a3b8" }}>
                 Clear cart
               </button>
             </div>
