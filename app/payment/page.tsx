@@ -7,7 +7,7 @@ import {
   Wallet,
   MessageCircle,
   ArrowRight,
-  Globe2,
+  Globe,
   CheckCircle2,
   Copy,
   Factory,
@@ -16,7 +16,7 @@ import { whatsappUrl } from "@/src/lib/whatsapp";
 
 export const metadata: Metadata = {
   title: "Official Payment Methods & Bank Details | Sialkot Cricket Kits",
-  description: "Official accepted payment channels, verified UBL bank wire details, and factory information for Sialkot Cricket Kits orders.",
+  description: "Official accepted payment channels, verified UBL bank wire details, Payoneer account, and factory information for Sialkot Cricket Kits orders.",
   robots: { index: false, follow: false },
 };
 
@@ -41,7 +41,7 @@ export default function PaymentPage() {
           <span className="eyebrow">Verified Payment Information</span>
           <h1>Accepted Payment Methods.</h1>
           <p>
-            You may conveniently send your payment through any of our official banking or international remittance options.
+            You may conveniently send your payment through any of our official banking, Payoneer, or international remittance options.
           </p>
         </div>
       </section>
@@ -95,9 +95,9 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        {/* Bank Details & Factory Information Grid */}
+        {/* Bank, Payoneer & Factory Information Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 24, marginBottom: 32 }}>
-          {/* UBL Bank Details Card */}
+          {/* Card 1: UBL Bank Details Card */}
           <div style={{
             background: "var(--card-bg, #181c24)",
             border: "1px solid var(--border-color, #2a313d)",
@@ -113,7 +113,7 @@ export default function PaymentPage() {
                   <Building2 size={24} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1.25rem", margin: 0, color: "#fff" }}>🏦 Bank Account Details (UBL)</h2>
+                  <h2 style={{ fontSize: "1.25rem", margin: 0, color: "#fff" }}>🏦 Bank Account (UBL)</h2>
                   <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>United Bank Limited (UBL)</span>
                 </div>
               </div>
@@ -125,7 +125,7 @@ export default function PaymentPage() {
                 border: "1px solid #334155",
                 display: "flex",
                 flexDirection: "column",
-                gap: 12,
+                gap: 10,
                 marginBottom: 20,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
@@ -150,7 +150,7 @@ export default function PaymentPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>IBAN:</span>
-                  <strong style={{ color: "#4ade80", fontSize: "0.9rem", wordBreak: "break-all" }}>PK93UNIL0109000304929964</strong>
+                  <strong style={{ color: "#4ade80", fontSize: "0.88rem", wordBreak: "break-all" }}>PK93UNIL0109000304929964</strong>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
@@ -163,14 +163,9 @@ export default function PaymentPage() {
                   <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>UNILPKKA</strong>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Mobile Number:</span>
-                  <strong style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>+92 327 5756188</strong>
-                </div>
-
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Email Address:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>sialkotcricketkits@gmail.com</span>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Mobile:</span>
+                  <strong style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>+92 327 5756188</strong>
                 </div>
               </div>
             </div>
@@ -186,7 +181,76 @@ export default function PaymentPage() {
             </a>
           </div>
 
-          {/* Factory & Workshop Details Card */}
+          {/* Card 2: Payoneer Account Card */}
+          <div style={{
+            background: "var(--card-bg, #181c24)",
+            border: "1px solid var(--border-color, #2a313d)",
+            borderRadius: 16,
+            padding: 28,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <div style={{ padding: 10, borderRadius: 10, background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>
+                  <Globe size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "1.25rem", margin: 0, color: "#fff" }}>🌐 Payoneer Account</h2>
+                  <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>B2B & Global Receiving Accounts</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: "rgba(0,0,0,0.3)",
+                padding: "20px",
+                borderRadius: 12,
+                border: "1px solid #334155",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                marginBottom: 20,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Account Name:</span>
+                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>Alyan Wazir</strong>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Payoneer Email:</span>
+                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>alyankhan1078@gmail.com</strong>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Customer ID:</span>
+                  <strong style={{ color: "#4ade80", fontSize: "0.9rem" }}>99767685</strong>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Connected Bank:</span>
+                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>UBL (United Bank Limited)</span>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Accepted Currencies:</span>
+                  <strong style={{ color: "#fff", fontSize: "0.85rem" }}>GBP (£), USD ($), EUR (€)</strong>
+                </div>
+              </div>
+            </div>
+
+            <a
+              href={whatsappUrl("Hello Sialkot Cricket Kits, I would like to send my order payment via Payoneer.")}
+              target="_blank"
+              rel="noreferrer"
+              className="button secondary"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", borderRadius: 8 }}
+            >
+              <MessageCircle size={18} /> Confirm Payoneer Payment
+            </a>
+          </div>
+
+          {/* Card 3: Factory & Workshop Details Card */}
           <div style={{
             background: "var(--card-bg, #181c24)",
             border: "1px solid var(--border-color, #2a313d)",
@@ -214,7 +278,7 @@ export default function PaymentPage() {
                 border: "1px solid #334155",
                 display: "flex",
                 flexDirection: "column",
-                gap: 12,
+                gap: 10,
                 marginBottom: 20,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
@@ -239,26 +303,17 @@ export default function PaymentPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>City:</span>
-                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>Sialkot</strong>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Country:</span>
-                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>Pakistan</strong>
+                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>Sialkot, Pakistan</strong>
                 </div>
               </div>
-
-              <p style={{ color: "#94a3b8", fontSize: "0.85rem", lineHeight: 1.6 }}>
-                All customized cricket bats and protective equipment are crafted, laser-engraved, gripped, and dispatched directly from our Sialkot factory with worldwide express tracking.
-              </p>
             </div>
 
             <Link
-              href="/custom-bat"
+              href="/checkout"
               className="button primary"
               style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", borderRadius: 8 }}
             >
-              Order Custom Bat from Factory <ArrowRight size={18} />
+              Direct Online Checkout <ArrowRight size={18} />
             </Link>
           </div>
         </div>
@@ -280,7 +335,7 @@ export default function PaymentPage() {
           <div style={{ flex: 1, minWidth: 280 }}>
             <h3 style={{ fontSize: "1.2rem", margin: "0 0 8px", color: "#fff" }}>Official Payment Verification Guarantee</h3>
             <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.6 }}>
-              Always confirm recipient details through our official WhatsApp at <strong>+92 323 1438214</strong> / <strong>+92 327 5756188</strong> or <strong>sialkotcricketkits@gmail.com</strong>.
+              Always verify recipient details with official accounts: <strong>Alyan Wazir</strong> / <strong>Superior Cricket Factory</strong> via WhatsApp at <strong>+92 323 1438214</strong> / <strong>+92 327 5756188</strong> or <strong>alyankhan1078@gmail.com</strong>.
               Upon receiving payment, our team provides an official invoice and live ping demonstration videos before worldwide courier dispatch.
             </p>
           </div>

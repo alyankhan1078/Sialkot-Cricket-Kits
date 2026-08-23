@@ -560,15 +560,17 @@ export default function CheckoutPage() {
                     <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🌐 Payoneer Global Receiving Account</strong>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "payoneer")}
+                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
                       style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
                     >
                       {copiedKey === "payoneer" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer" ? "Copied!" : "Copy Payoneer Email"}
                     </button>
                   </div>
                   <div style={{ fontSize: "0.82rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                    <div>Payoneer Recipient Email: <strong>sialkotcricketkits@gmail.com</strong></div>
-                    <div>Beneficiary: <strong>ALYAN WAZIR (Superior Cricket Factory)</strong></div>
+                    <div>Payoneer Recipient Email: <strong>alyankhan1078@gmail.com</strong></div>
+                    <div>Account Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong></div>
+                    <div>Connected Bank: <strong>United Bank Limited (UBL - 0881304929964)</strong></div>
+                    <div>Accepted Receiving Currencies: <strong>GBP (£), USD ($), EUR (€)</strong></div>
                   </div>
                 </div>
               )}

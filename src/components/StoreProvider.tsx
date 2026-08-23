@@ -498,18 +498,18 @@ function CartDrawer() {
               {selectedMethod === "payoneer" && (
                 <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>Payoneer Email: <strong>sialkotcricketkits@gmail.com</strong></span>
+                    <span>Payoneer: <strong>alyankhan1078@gmail.com</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "payoneer")}
+                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
                       style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
                     >
                       {copiedKey === "payoneer" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer" ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>
-                    Direct Payoneer account-to-account transfer and UK/US/EU receiving accounts supported.
-                  </span>
+                  <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>
+                    Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong> · Connected UBL Account
+                  </div>
                 </div>
               )}
 

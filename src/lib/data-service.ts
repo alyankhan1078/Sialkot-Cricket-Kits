@@ -229,7 +229,7 @@ let memorySettings: DBSettings = {
   easypaisaEnabled: true,
 
   // Payoneer & International Digital
-  payoneerEmail: "sialkotcricketkits@gmail.com",
+  payoneerEmail: "alyankhan1078@gmail.com",
   payoneerEnabled: true,
   wiseEmail: "sialkotcricketkits@gmail.com",
   wiseTag: "@sialkotcricket",
