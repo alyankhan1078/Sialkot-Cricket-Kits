@@ -166,7 +166,7 @@ function CartDrawer() {
   const { cart, isCartOpen, setCartOpen, updateQuantity, removeFromCart, clearCart } = useStore();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>("card");
   const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
-  const [depositPercent, setDepositPercent] = useState<50 | 100 | 30>(50);
+  const [depositPercent, setDepositPercent] = useState<number>(50);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isStripeLoading, setStripeLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -400,59 +400,77 @@ function CartDrawer() {
                   Pay advance to start custom crafting. Balance payable upon live ping video demo before dispatch.
                 </p>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
                   <button
                     type="button"
                     onClick={() => setDepositPercent(50)}
                     style={{
-                      padding: "8px 4px",
+                      padding: "8px 2px",
                       borderRadius: 8,
                       border: depositPercent === 50 ? "1.5px solid #f2a928" : "1px solid #2d3748",
-                      background: depositPercent === 50 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      background: depositPercent === 50 ? "rgba(242, 169, 40, 0.18)" : "#181f2b",
                       color: depositPercent === 50 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 50 ? "#f2a928" : "#ffffff" }}>50% Half</strong>
-                    <span style={{ fontSize: "0.68rem", color: depositPercent === 50 ? "#fde68a" : "#94a3b8", display: "block" }}>Recommended</span>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}</span>
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 50 ? "#f2a928" : "#ffffff" }}>50% Half</strong>
+                    <span style={{ fontSize: "0.65rem", color: depositPercent === 50 ? "#fde68a" : "#94a3b8", display: "block" }}>Standard</span>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDepositPercent(35)}
+                    style={{
+                      padding: "8px 2px",
+                      borderRadius: 8,
+                      border: depositPercent === 35 ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: depositPercent === 35 ? "rgba(242, 169, 40, 0.18)" : "#181f2b",
+                      color: depositPercent === 35 ? "#ffffff" : "#cbd5e1",
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 35 ? "#f2a928" : "#ffffff" }}>35% Flex</strong>
+                    <span style={{ fontSize: "0.65rem", color: depositPercent === 35 ? "#fde68a" : "#94a3b8", display: "block" }}>Popular</span>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.35 * 100) / 100)}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDepositPercent(100)}
                     style={{
-                      padding: "8px 4px",
+                      padding: "8px 2px",
                       borderRadius: 8,
                       border: depositPercent === 100 ? "1.5px solid #f2a928" : "1px solid #2d3748",
-                      background: depositPercent === 100 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      background: depositPercent === 100 ? "rgba(242, 169, 40, 0.18)" : "#181f2b",
                       color: depositPercent === 100 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 100 ? "#f2a928" : "#ffffff" }}>100% Full</strong>
-                    <span style={{ fontSize: "0.68rem", color: depositPercent === 100 ? "#fde68a" : "#94a3b8", display: "block" }}>Full Upfront</span>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(grandTotal)}</span>
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 100 ? "#f2a928" : "#ffffff" }}>100% Full</strong>
+                    <span style={{ fontSize: "0.65rem", color: depositPercent === 100 ? "#fde68a" : "#94a3b8", display: "block" }}>Upfront</span>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(grandTotal)}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDepositPercent(30)}
                     style={{
-                      padding: "8px 4px",
+                      padding: "8px 2px",
                       borderRadius: 8,
                       border: depositPercent === 30 ? "1.5px solid #f2a928" : "1px solid #2d3748",
-                      background: depositPercent === 30 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      background: depositPercent === 30 ? "rgba(242, 169, 40, 0.18)" : "#181f2b",
                       color: depositPercent === 30 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 30 ? "#f2a928" : "#ffffff" }}>30% Min</strong>
-                    <span style={{ fontSize: "0.68rem", color: depositPercent === 30 ? "#fde68a" : "#94a3b8", display: "block" }}>Booking Lock</span>
-                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)}</span>
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 30 ? "#f2a928" : "#ffffff" }}>30% Min</strong>
+                    <span style={{ fontSize: "0.65rem", color: depositPercent === 30 ? "#fde68a" : "#94a3b8", display: "block" }}>Lock Slot</span>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)}</span>
                   </button>
                 </div>
               </div>
