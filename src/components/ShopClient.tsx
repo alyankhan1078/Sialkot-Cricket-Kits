@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { ProductCard } from "@/src/components/ProductCard";
 import { useStore } from "@/src/components/StoreProvider";
-import { categories as defaultCategories, products as defaultProducts, type Product } from "@/src/data/products";
+import { categories as defaultCategories, products as defaultProducts, type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 
 type SortOption = "featured" | "price-low" | "price-high" | "name";
@@ -72,6 +72,7 @@ export function ShopClient() {
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {
       "All equipment": productsList.length,
+      "Best Sellers": productsList.filter((p) => p.isBestSeller || p.featured || BEST_SELLING_PRODUCT_IDS.includes(p.id)).length,
       "Featured": productsList.filter((p) => p.featured).length,
       "Sale": productsList.filter((p) => p.price < 50 || p.featured).length,
     };
@@ -89,7 +90,9 @@ export function ShopClient() {
         `${product.name} ${product.category} ${product.description || ""}`.toLowerCase().includes(normalized);
 
       let matchesCategory = true;
-      if (category === "Featured") {
+      if (category === "Best Sellers") {
+        matchesCategory = Boolean(product.isBestSeller || product.featured || BEST_SELLING_PRODUCT_IDS.includes(product.id));
+      } else if (category === "Featured") {
         matchesCategory = Boolean(product.featured);
       } else if (category === "Sale") {
         matchesCategory = product.price < 50 || Boolean(product.featured);
@@ -197,6 +200,33 @@ export function ShopClient() {
               </span>
               <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.08)", padding: "2px 6px", borderRadius: 4, color: "#94a3b8" }}>
                 {categoryCounts["All equipment"] || 0}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCategory("Best Sellers")}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: category === "Best Sellers" ? "linear-gradient(135deg, rgba(225, 29, 72, 0.22) 0%, rgba(245, 158, 11, 0.2) 100%)" : "transparent",
+                border: category === "Best Sellers" ? "1px solid rgba(245, 158, 11, 0.6)" : "1px solid transparent",
+                color: category === "Best Sellers" ? "#f59e0b" : "#cbd5e1",
+                fontWeight: category === "Best Sellers" ? 700 : 500,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Flame size={15} color="#f59e0b" /> Best Selling Articles
+              </span>
+              <span style={{ fontSize: "0.72rem", background: "rgba(245, 158, 11, 0.18)", padding: "2px 6px", borderRadius: 4, color: "#f59e0b", fontWeight: 700 }}>
+                {categoryCounts["Best Sellers"] || 0}
               </span>
             </button>
 

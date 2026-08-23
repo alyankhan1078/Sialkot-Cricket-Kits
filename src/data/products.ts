@@ -29,6 +29,7 @@ export type Product = {
   images?: string[];
   description: string;
   featured?: boolean;
+  isBestSeller?: boolean;
 };
 
 const item = (number: number) => `/assets/products/item-${String(number).padStart(3, "0")}.webp`;
@@ -539,6 +540,26 @@ export const categories = categoryOrder.map((name) => ({
   image: products.find((product) => product.category === name)?.image ?? brandImage,
 }));
 
-export const formatPrice = (price: number) => `£${price.toLocaleString("en-GB")}`;
+export const formatPrice = (price: number) =>
+  Number.isInteger(price)
+    ? `£${price.toLocaleString("en-GB")}`
+    : `£${price.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const getProduct = (id: string) => products.find((product) => product.id === id);
+
+export const BEST_SELLING_PRODUCT_IDS = [
+  "beauty-processed-bats-apex-pro",
+  "beauty-processed-bats-silver-edition",
+  "bonafide-bats-vvip-bonafide-original-grade-a",
+  "batting-pads-gray-nicolls-legend",
+  "batting-gloves-gm-original-le",
+  "batting-gloves-kookaburra-kahuna-pro",
+  "kit-and-duffle-bags-gray-nicolls-legend-wheelie",
+  "helmets-masuri-helmet-black",
+  "other-accessories-sf-batting-inner-gloves",
+  "batting-pads-moulded-pads-white",
+];
+
+export const getBestSellingProducts = () =>
+  products.filter((product) => product.isBestSeller || product.featured || BEST_SELLING_PRODUCT_IDS.includes(product.id));
+

@@ -27,6 +27,7 @@ import {
   Globe,
   Lock,
   Truck,
+  Flame,
 } from "lucide-react";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -163,7 +164,7 @@ export function useStore() {
 }
 
 function CartDrawer() {
-  const { cart, isCartOpen, setCartOpen, updateQuantity, removeFromCart, clearCart } = useStore();
+  const { cart, isCartOpen, setCartOpen, addToCart, updateQuantity, removeFromCart, clearCart } = useStore();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>("card");
   const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
   const [depositPercent, setDepositPercent] = useState<number>(50);
@@ -291,25 +292,31 @@ function CartDrawer() {
               {/* Cart Items List */}
               <div className="cart-lines" style={{ padding: 0, overflow: "visible" }}>
                 {lines.map(({ product, quantity }) => (
-                  <article className="cart-line" key={product.id}>
-                    <img src={product.image} alt={product.name} />
-                    <div>
-                      <strong>{product.name}</strong>
-                      <small>{formatPrice(product.price)}</small>
-                      <div className="quantity-control">
-                        <button
-                          onClick={() => updateQuantity(product.id, quantity - 1)}
-                          aria-label={`Reduce ${product.name} quantity`}
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span>{quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(product.id, quantity + 1)}
-                          aria-label={`Increase ${product.name} quantity`}
-                        >
-                          <Plus size={14} />
-                        </button>
+                  <article className="cart-line" key={product.id} style={{ display: "grid", gridTemplateColumns: "58px 1fr auto", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <img src={product.image} alt={product.name} style={{ width: 58, height: 58, borderRadius: 8, objectFit: "cover", background: "#181f2b", border: "1px solid rgba(255, 255, 255, 0.1)" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                      <strong style={{ fontSize: "0.86rem", color: "#ffffff", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                        {product.name}
+                      </strong>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ color: "#f2a928", fontWeight: 700, fontSize: "0.9rem" }}>
+                          {formatPrice(product.price)}
+                        </span>
+                        <div className="quantity-control">
+                          <button
+                            onClick={() => updateQuantity(product.id, quantity - 1)}
+                            aria-label={`Reduce ${product.name} quantity`}
+                          >
+                            <Minus size={13} />
+                          </button>
+                          <span>{quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(product.id, quantity + 1)}
+                            aria-label={`Increase ${product.name} quantity`}
+                          >
+                            <Plus size={13} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <button
@@ -323,64 +330,81 @@ function CartDrawer() {
                 ))}
               </div>
 
-              {/* 🌍 Step 1: Prominent Destination Country & Shipping Calculator */}
+              {/* 🔥 Best Selling Articles & Quick Add-ons */}
               <div style={{
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "rgba(242, 169, 40, 0.04)",
+                border: "1px solid rgba(242, 169, 40, 0.2)",
                 borderRadius: "12px",
-                padding: "14px",
+                padding: "12px 14px",
               }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <label style={{ fontSize: "0.82rem", color: "#ffffff", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    <Truck size={15} color="#f2a928" /> Destination Country
-                  </label>
-                  <span style={{ fontSize: "0.72rem", color: "#f2a928", fontWeight: 600 }}>Worldwide Express</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#f2a928", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Flame size={14} color="#f2a928" /> Best Selling Add-Ons
+                  </span>
+                  <Link href="/shop?category=Best+Sellers" onClick={() => setCartOpen(false)} style={{ fontSize: "0.72rem", color: "#94a3b8", textDecoration: "none", fontWeight: 600 }}>
+                    Explore All &rarr;
+                  </Link>
                 </div>
-                <p style={{ fontSize: "0.74rem", color: "#94a3b8", margin: "0 0 10px", lineHeight: 1.4 }}>
-                  Select where your parcel should be delivered. Tracked courier rates are calculated live below:
-                </p>
 
-                <div style={{ position: "relative" }}>
-                  <select
-                    value={selectedCountry}
-                    onChange={(e) => setSelectedCountry(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "#181f2b",
-                      border: "1.5px solid #2d3748",
-                      color: "#ffffff",
-                      fontSize: "0.9rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {Object.keys(SHIPPING_DESTINATIONS).map((c) => {
-                      const dest = SHIPPING_DESTINATIONS[c];
-                      const flag = getCountryFlag(c);
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {products
+                    .filter((p) =>
+                      [
+                        "other-accessories-sf-batting-inner-gloves",
+                        "other-accessories-guard-underwear",
+                        "teamwear-supreme-shorts-medium",
+                        "helmets-masuri-helmet-black",
+                      ].includes(p.id)
+                    )
+                    .map((item) => {
+                      const inCart = cart.some((c) => c.productId === item.id);
                       return (
-                        <option key={c} value={c}>
-                          {flag} {c} — ({formatPrice(dest.baseGbp)} base tracked)
-                        </option>
+                        <div
+                          key={item.id}
+                          style={{
+                            background: "#141922",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: 8,
+                            padding: "8px",
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", background: "#0c1017" }}
+                          />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: "0.72rem", color: "#ffffff", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {item.name}
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#f2a928", fontWeight: 700 }}>
+                              {formatPrice(item.price)}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => addToCart(item.id, 1)}
+                            style={{
+                              background: inCart ? "rgba(34, 197, 94, 0.18)" : "rgba(242, 169, 40, 0.15)",
+                              border: inCart ? "1px solid #22c55e" : "1px solid rgba(242, 169, 40, 0.4)",
+                              color: inCart ? "#4ade80" : "#f2a928",
+                              padding: "4px 7px",
+                              borderRadius: 6,
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {inCart ? "+1" : "+ Add"}
+                          </button>
+                        </div>
                       );
                     })}
-                  </select>
                 </div>
-
-                {/* Delivery Estimation Info */}
-                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "#94a3b8" }}>
-                  <span>📦 {shippingCalculation.destination.estimatedDelivery}</span>
-                  <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
-                </div>
-
-                {/* Multi-bat savings badge */}
-                {shippingCalculation.totalSaved > 0 && (
-                  <div style={{ marginTop: 6, background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "5px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>✨ Combined Shipping Discount:</span>
-                    <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
-                  </div>
-                )}
               </div>
 
               {/* 🛡️ Step 2: Order Confirmation Plan */}
@@ -716,7 +740,48 @@ function CartDrawer() {
             </div>
 
             {/* Sticky Bottom Cart Summary & Direct Checkout Button */}
-            <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid rgba(255, 255, 255, 0.1)", padding: "14px 16px", background: "#141922" }}>
+            <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid rgba(255, 255, 255, 0.12)", padding: "14px 16px", background: "#141922" }}>
+              {/* 🚚 Destination Country Selector (Always Visible in Summary Bar) */}
+              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <label style={{ fontSize: "0.78rem", color: "#ffffff", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <Truck size={14} color="#f2a928" /> Delivery Destination
+                  </label>
+                  <span style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: 600 }}>
+                    ⚡ {shippingCalculation.destination.estimatedDelivery}
+                  </span>
+                </div>
+
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => setSelectedCountry(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      background: "#181f2b",
+                      border: "1.5px solid #334155",
+                      color: "#ffffff",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      outline: "none",
+                    }}
+                  >
+                    {Object.keys(SHIPPING_DESTINATIONS).map((c) => {
+                      const dest = SHIPPING_DESTINATIONS[c];
+                      const flag = getCountryFlag(c);
+                      return (
+                        <option key={c} value={c}>
+                          {flag} {c} — ({formatPrice(dest.baseGbp)} base tracked)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
               {/* Breakdown Lines */}
               <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
                 <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>

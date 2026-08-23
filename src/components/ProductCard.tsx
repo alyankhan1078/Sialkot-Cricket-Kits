@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { ArrowUpRight, Heart, MessageCircle, ShoppingCart } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
-import { formatPrice, type Product } from "@/src/data/products";
+import { formatPrice, type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/products";
 import { productMessage, whatsappUrl } from "@/src/lib/whatsapp";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart, favourites, toggleFavourite } = useStore();
   const favourite = favourites.includes(product.id);
+  const isBest = product.isBestSeller || BEST_SELLING_PRODUCT_IDS.includes(product.id);
+
   return (
     <article className="product-card">
       <div className="product-image-wrap">
@@ -16,7 +18,11 @@ export function ProductCard({ product }: { product: Product }) {
           <img src={product.image} alt={`${product.name} available from Sialkot Cricket Kits`} loading="lazy" />
         </Link>
         <button className={`favourite-button${favourite ? " active" : ""}`} onClick={() => toggleFavourite(product.id)} aria-label={favourite ? `Remove ${product.name} from favourites` : `Add ${product.name} to favourites`}><Heart size={18} fill={favourite ? "currentColor" : "none"} /></button>
-        {product.featured && <span className="product-badge">Featured</span>}
+        {isBest ? (
+          <span className="product-badge" style={{ background: "linear-gradient(135deg, #e11d48 0%, #f59e0b 100%)", color: "#fff", fontWeight: 800, letterSpacing: "0.03em" }}>🔥 Best Seller</span>
+        ) : product.featured ? (
+          <span className="product-badge">Featured</span>
+        ) : null}
       </div>
       <div className="product-card-body">
         <span className="product-category">{product.category}</span>
