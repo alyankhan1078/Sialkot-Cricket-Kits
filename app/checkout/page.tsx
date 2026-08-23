@@ -73,6 +73,7 @@ export default function CheckoutPage() {
     notes: "",
   });
 
+  const [depositPercent, setDepositPercent] = useState<50 | 100 | 30>(50);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -86,6 +87,8 @@ export default function CheckoutPage() {
   const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
   const shippingCalculation = calculateShippingFee(formData.country, totalItemCount);
   const grandTotal = subtotal + shippingCalculation.shippingFee;
+  const depositDueNow = Math.round((grandTotal * (depositPercent / 100)) * 100) / 100;
+  const balanceRemaining = Math.round((grandTotal - depositDueNow) * 100) / 100;
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -138,6 +141,10 @@ export default function CheckoutPage() {
             customerPhone: formData.phone,
             country: formData.country,
             shippingFee: shippingCalculation.shippingFee,
+            totalAmount: grandTotal,
+            depositPercent: depositPercent,
+            depositDueNow: depositDueNow,
+            balanceRemaining: balanceRemaining,
             notes: formData.notes,
           }),
         });
@@ -176,6 +183,9 @@ export default function CheckoutPage() {
           subtotal: subtotal,
           shippingFee: shippingCalculation.shippingFee,
           totalAmount: grandTotal,
+          depositPercentage: depositPercent,
+          amountPaidNow: depositDueNow,
+          balanceRemaining: balanceRemaining,
           paymentMethod: getMethodTitle(formData.paymentMethod),
           transactionRef: formData.transactionRef,
           notes: formData.notes,
@@ -363,14 +373,137 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 3. Direct Payment Method Selection */}
+            {/* 3. Order Confirmation & Advance Payment Plan */}
+            <div style={{ background: "var(--card-bg, #181c24)", border: "1px solid var(--border-color, #2a313d)", borderRadius: 16, padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ fontSize: "1.2rem", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--accent, #f59e0b)", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700 }}>3</span>
+                  <span>Order Confirmation &amp; Payment Plan</span>
+                </h2>
+                <span style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80", padding: "3px 8px", borderRadius: 6, fontSize: "0.75rem", fontWeight: 600 }}>
+                  Min. 30% Required
+                </span>
+              </div>
+              <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: "0 0 16px" }}>
+                Choose your confirmation deposit amount. Handcrafted custom bats begin crafting upon deposit confirmation. Full video demonstration provided before final dispatch.
+              </p>
+
+              {/* 3 Deposit Option Cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                
+                {/* Option 1: 50% Half Advance (Recommended) */}
+                <label style={{
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: depositPercent === 50 ? "2px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                  background: depositPercent === 50 ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}>
+                  <input
+                    type="radio"
+                    name="depositPlan"
+                    value={50}
+                    checked={depositPercent === 50}
+                    onChange={() => setDepositPercent(50)}
+                    style={{ accentColor: "var(--accent, #f59e0b)", marginTop: 3 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <strong style={{ color: "#fff", fontSize: "0.95rem" }}>
+                        50% Half Advance Payment <span style={{ color: "var(--accent, #f59e0b)", fontSize: "0.8rem", marginLeft: 6 }}>★ Recommended</span>
+                      </strong>
+                      <span style={{ color: "var(--accent, #f59e0b)", fontWeight: 700, fontSize: "1rem" }}>
+                        Pay {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} Today
+                      </span>
+                    </div>
+                    <p style={{ color: "#cbd5e1", fontSize: "0.8rem", margin: 0, lineHeight: 1.4 }}>
+                      Pay 50% now to confirm order &amp; start custom crafting. Remaining 50% ({formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}) payable upon live ping video approval before courier dispatch.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 2: 100% Full Payment Upfront */}
+                <label style={{
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: depositPercent === 100 ? "2px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                  background: depositPercent === 100 ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}>
+                  <input
+                    type="radio"
+                    name="depositPlan"
+                    value={100}
+                    checked={depositPercent === 100}
+                    onChange={() => setDepositPercent(100)}
+                    style={{ accentColor: "var(--accent, #f59e0b)", marginTop: 3 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <strong style={{ color: "#fff", fontSize: "0.95rem" }}>
+                        100% Full Payment Upfront
+                      </strong>
+                      <span style={{ color: "var(--accent, #f59e0b)", fontWeight: 700, fontSize: "1rem" }}>
+                        Pay {formatPrice(grandTotal)} Total
+                      </span>
+                    </div>
+                    <p style={{ color: "#cbd5e1", fontSize: "0.8rem", margin: 0, lineHeight: 1.4 }}>
+                      Pay full order amount upfront for priority workshop queuing and expedited express DHL courier dispatch.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 3: 30% Minimum Booking Deposit */}
+                <label style={{
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: depositPercent === 30 ? "2px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                  background: depositPercent === 30 ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}>
+                  <input
+                    type="radio"
+                    name="depositPlan"
+                    value={30}
+                    checked={depositPercent === 30}
+                    onChange={() => setDepositPercent(30)}
+                    style={{ accentColor: "var(--accent, #f59e0b)", marginTop: 3 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <strong style={{ color: "#fff", fontSize: "0.95rem" }}>
+                        30% Minimum Booking Deposit
+                      </strong>
+                      <span style={{ color: "var(--accent, #f59e0b)", fontWeight: 700, fontSize: "1rem" }}>
+                        Pay {formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)} Today
+                      </span>
+                    </div>
+                    <p style={{ color: "#cbd5e1", fontSize: "0.8rem", margin: 0, lineHeight: 1.4 }}>
+                      Minimum allowable deposit (30%) to secure premium willow clef and queue slot. Remaining 70% ({formatPrice(Math.round(grandTotal * 0.7 * 100) / 100)}) payable before courier dispatch.
+                    </p>
+                  </div>
+                </label>
+
+              </div>
+            </div>
+
+            {/* 4. Direct Payment Method Selection */}
             <div style={{ background: "var(--card-bg, #181c24)", border: "1px solid var(--border-color, #2a313d)", borderRadius: 16, padding: 24 }}>
               <h2 style={{ fontSize: "1.2rem", color: "#fff", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--accent, #f59e0b)", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700 }}>3</span>
-                <span>Choose Direct Payment Method</span>
+                <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--accent, #f59e0b)", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700 }}>4</span>
+                <span>Choose Payment Channel</span>
               </h2>
               <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: "0 0 16px" }}>
-                Select how you wish to complete payment for your order.
+                Select how you wish to pay your {depositPercent === 100 ? "full order" : `${depositPercent}% advance deposit`}.
               </p>
 
               {/* Payment Methods Grid */}
@@ -401,32 +534,7 @@ export default function CheckoutPage() {
                   </div>
                 </label>
 
-                {/* Method 2: UBL Bank Wire */}
-                <label style={{
-                  padding: "14px 16px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "bank" ? "2px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                  background: formData.paymentMethod === "bank" ? "rgba(245, 158, 11, 0.1)" : "rgba(30, 41, 59, 0.4)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="bank"
-                    checked={formData.paymentMethod === "bank"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "bank" })}
-                    style={{ accentColor: "var(--accent, #f59e0b)" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>UBL Bank Wire Transfer</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Direct IBAN & SWIFT Transfer</span>
-                  </div>
-                </label>
-
-                {/* Method 3: Payoneer */}
+                {/* Method 2: Payoneer */}
                 <label style={{
                   padding: "14px 16px",
                   borderRadius: 10,
@@ -446,12 +554,12 @@ export default function CheckoutPage() {
                     style={{ accentColor: "var(--accent, #f59e0b)" }}
                   />
                   <div>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>Payoneer Direct</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>GBP, USD & EUR Receiving Accounts</span>
+                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>Payoneer Transfer</strong>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>B2B &amp; Direct Receiving (GBP/USD/EUR)</span>
                   </div>
                 </label>
 
-                {/* Method 4: Wise */}
+                {/* Method 3: Wise */}
                 <label style={{
                   padding: "14px 16px",
                   borderRadius: 10,
@@ -472,11 +580,36 @@ export default function CheckoutPage() {
                   />
                   <div>
                     <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>Wise Transfer</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Instant low-fee international transfer</span>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Fast international UK/USA/AU bank transfer</span>
                   </div>
                 </label>
 
-                {/* Method 5: Pakistan Domestic */}
+                {/* Method 4: Direct Bank Wire (UBL) */}
+                <label style={{
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: formData.paymentMethod === "bank" ? "2px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                  background: formData.paymentMethod === "bank" ? "rgba(245, 158, 11, 0.1)" : "rgba(30, 41, 59, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="bank"
+                    checked={formData.paymentMethod === "bank"}
+                    onChange={() => setFormData({ ...formData, paymentMethod: "bank" })}
+                    style={{ accentColor: "var(--accent, #f59e0b)" }}
+                  />
+                  <div>
+                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>UBL Bank Wire</strong>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Direct IBAN &amp; SWIFT International Wire</span>
+                  </div>
+                </label>
+
+                {/* Method 5: Pakistan Local Wallets */}
                 <label style={{
                   padding: "14px 16px",
                   borderRadius: 10,
@@ -496,12 +629,12 @@ export default function CheckoutPage() {
                     style={{ accentColor: "var(--accent, #f59e0b)" }}
                   />
                   <div>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>🇵🇰 JazzCash / SadaPay / Nayapay / EasyPaisa</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Instant zero-fee local Pakistan transfer</span>
+                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>🇵🇰 Pakistan Wallets</strong>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>JazzCash, Nayapay, SadaPay, Raast, EasyPaisa</span>
                   </div>
                 </label>
 
-                {/* Method 6: Remitly / WU */}
+                {/* Method 6: Remitly / WU / MoneyGram */}
                 <label style={{
                   padding: "14px 16px",
                   borderRadius: 10,
@@ -522,129 +655,126 @@ export default function CheckoutPage() {
                   />
                   <div>
                     <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>Remitly / Western Union</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>TapTap Send, MoneyGram & WorldRemit</span>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>MoneyGram, TapTap Send &amp; IMT Express</span>
                   </div>
                 </label>
+
               </div>
 
               {/* Dynamic Account Details Box */}
               {formData.paymentMethod === "card" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#4ade80", fontWeight: 600, marginBottom: 4 }}>
-                    <ShieldCheck size={18} /> 256-Bit SSL Encrypted Card Processing
-                  </div>
+                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: 16, borderRadius: 10 }}>
+                  <strong style={{ color: "#4ade80", display: "block", marginBottom: 4 }}>💳 Instant Card Processing (Stripe)</strong>
                   <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0 }}>
-                    Clicking &quot;Complete Order &amp; Pay Now&quot; will securely process your transaction with instant payment verification.
+                    You will be directed to complete secure card payment for {depositPercent === 100 ? `full order amount (${formatPrice(grandTotal)})` : `${depositPercent}% advance deposit (${formatPrice(depositDueNow)})`}.
                   </p>
                 </div>
               )}
 
-              {formData.paymentMethod === "bank" && (
-                <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🏦 United Bank Limited (UBL)</strong>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("PK93UNIL0109000304929964", "ubl")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
-                    >
-                      {copiedKey === "ubl" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "ubl" ? "IBAN Copied!" : "Copy IBAN"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.82rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                    <div>Account Title: <strong>ALYAN WAZIR</strong></div>
-                    <div>Account Number: <strong>0881304929964</strong></div>
-                    <div>IBAN: <strong>PK93UNIL0109000304929964</strong></div>
-                    <div>SWIFT / BIC Code: <strong>UNILPKKA</strong> · Branch: <strong>0881-Wana</strong></div>
-                  </div>
-                </div>
-              )}
-
               {formData.paymentMethod === "payoneer" && (
-                <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
+                <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: 16, borderRadius: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🌐 Payoneer Global Receiving Account</strong>
+                    <strong style={{ color: "#fb923c" }}>Payoneer Account Details</strong>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer_email")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
                     >
-                      {copiedKey === "payoneer" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer" ? "Copied!" : "Copy Payoneer Email"}
+                      {copiedKey === "payoneer_email" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer_email" ? "Copied" : "Copy Email"}
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                    <div>Payoneer Recipient Email: <strong>alyankhan1078@gmail.com</strong></div>
-                    <div>Account Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong></div>
-                    <div>Connected Bank: <strong>United Bank Limited (UBL - 0881304929964)</strong></div>
-                    <div>Accepted Receiving Currencies: <strong>GBP (£), USD ($), EUR (€)</strong></div>
+                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
+                    <div>Email / Payoneer ID: <strong>alyankhan1078@gmail.com</strong></div>
+                    <div>Account Title: <strong>Alyan Wazir</strong></div>
+                    <div>Customer ID: <strong>99767685</strong></div>
+                    <div>Connected Bank: <strong>United Bank Limited (UBL)</strong></div>
                   </div>
                 </div>
               )}
 
               {formData.paymentMethod === "wise" && (
-                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
+                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 16, borderRadius: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>✈️ Wise International Transfer</strong>
+                    <strong style={{ color: "#60a5fa" }}>Wise Transfer Details</strong>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise_email")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
                     >
-                      {copiedKey === "wise" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise" ? "Copied!" : "Copy Wise Tag"}
+                      {copiedKey === "wise_email" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise_email" ? "Copied" : "Copy Email"}
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                    <div>Wise Recipient: <strong>sialkotcricketkits@gmail.com</strong></div>
+                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
+                    <div>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></div>
                     <div>Account Title: <strong>ALYAN WAZIR</strong></div>
+                    <div style={{ color: "#94a3b8", fontSize: "0.8rem" }}>Fastest with lowest fees for UK, Europe, USA, Canada &amp; Australia buyers.</div>
+                  </div>
+                </div>
+              )}
+
+              {formData.paymentMethod === "bank" && (
+                <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)", padding: 16, borderRadius: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <strong style={{ color: "#c084fc" }}>UBL Bank Account (Direct Wire)</strong>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
+                    >
+                      {copiedKey === "iban" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "iban" ? "Copied" : "Copy IBAN"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
+                    <div>Account Title: <strong>ALYAN WAZIR</strong></div>
+                    <div>Account Number: <strong>0881304929964</strong></div>
+                    <div>IBAN: <strong>PK93UNIL0109000304929964</strong></div>
+                    <div>SWIFT / BIC: <strong>UNILPKKA</strong></div>
+                    <div>Bank Name: <strong>United Bank Limited (UBL)</strong> · Branch: <strong>0881-Wana</strong></div>
                   </div>
                 </div>
               )}
 
               {formData.paymentMethod === "pakistan" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🇵🇰 Pakistan Wallets &amp; Microfinance Accounts</strong>
-                  </div>
-                  
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "10px 14px", borderRadius: 8 }}>
-                      <div>
-                        <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>JazzCash · Nayapay · SadaPay · Raast ID</span>
-                        <strong style={{ color: "#fff", fontSize: "0.95rem" }}>0327 5756188</strong>
-                      </div>
+                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: 16, borderRadius: 10 }}>
+                  <strong style={{ color: "#4ade80", display: "block", marginBottom: 8 }}>🇵🇰 Pakistan Local Wallets &amp; Raast</strong>
+                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>JazzCash / Nayapay / SadaPay / Raast ID: <strong>03275756188</strong></span>
                       <button
                         type="button"
-                        onClick={() => copyToClipboard("03275756188", "raast")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                        onClick={() => copyToClipboard("03275756188", "pk_wallets")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem" }}
                       >
-                        {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied!" : "Copy Number"}
+                        {copiedKey === "pk_wallets" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "pk_wallets" ? "Copied" : "Copy"}
                       </button>
                     </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "10px 14px", borderRadius: 8 }}>
-                      <div>
-                        <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>EasyPaisa Account</span>
-                        <strong style={{ color: "#4ade80", fontSize: "0.95rem" }}>0349 9585519</strong>
-                      </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 4 }}>
+                      <span>EasyPaisa Account: <strong>03499585519</strong></span>
                       <button
                         type="button"
-                        onClick={() => copyToClipboard("03499585519", "easypaisa")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                        onClick={() => copyToClipboard("03499585519", "easypaisa_num")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem" }}
                       >
-                        {copiedKey === "easypaisa" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa" ? "Copied!" : "Copy Number"}
+                        {copiedKey === "easypaisa_num" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa_num" ? "Copied" : "Copy"}
                       </button>
                     </div>
-
-                    <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 2 }}>
-                      Account Title: <strong style={{ color: "#fff" }}>ALYAN WAZIR</strong>
-                    </div>
+                    <div>Account Title: <strong>ALYAN WAZIR</strong></div>
                   </div>
                 </div>
               )}
 
-              {/* Transaction ID / Reference (Optional if paying via wire/wallet) */}
+              {formData.paymentMethod === "remitly" && (
+                <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.2)", padding: 16, borderRadius: 10 }}>
+                  <strong style={{ color: "#facc15", display: "block", marginBottom: 6 }}>International Money Transfer (Remitly / Western Union / TapTap)</strong>
+                  <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
+                    Send direct bank deposit to <strong>UBL Account #0881304929964 (IBAN: PK93UNIL0109000304929964)</strong> under name <strong>ALYAN WAZIR</strong>.
+                  </p>
+                </div>
+              )}
+
+              {/* Transaction Ref Input for Non-Card */}
               {formData.paymentMethod !== "card" && (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 16 }}>
                   <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 6, fontWeight: 500 }}>
                     Transaction ID / Reference Number (Optional)
                   </label>
@@ -662,10 +792,10 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* 4. Bat Customization & Order Notes */}
+            {/* 5. Bat Customization & Order Notes */}
             <div style={{ background: "var(--card-bg, #181c24)", border: "1px solid var(--border-color, #2a313d)", borderRadius: 16, padding: 24 }}>
               <label style={{ display: "block", color: "#fff", fontSize: "1rem", fontWeight: 600, marginBottom: 8 }}>
-                Customization Specs & Order Notes (Optional)
+                Customization Specs &amp; Order Notes (Optional)
               </label>
               <textarea
                 rows={3}
@@ -727,20 +857,34 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", paddingTop: 4 }}>
+                  <span>Total Order Value</span>
+                  <strong style={{ color: "#fff" }}>{formatPrice(grandTotal)}</strong>
+                </div>
+
                 <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 2 }}>
                   {shippingCalculation.destination.estimatedDelivery}
                 </div>
               </div>
 
-              {/* Grand Total */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 0 20px" }}>
-                <div>
-                  <strong style={{ color: "#fff", fontSize: "1.1rem", display: "block" }}>Total Payable</strong>
-                  <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>GBP (£) All Taxes &amp; Shipping Included</span>
+              {/* Confirmation Deposit Breakdown */}
+              <div style={{ margin: "14px 0 16px", background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.25)", padding: 12, borderRadius: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <div>
+                    <strong style={{ color: "#fff", fontSize: "1.05rem", display: "block" }}>Due Today ({depositPercent}% Deposit)</strong>
+                    <span style={{ color: "#fde68a", fontSize: "0.75rem" }}>Required for Order Confirmation</span>
+                  </div>
+                  <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>
+                    {formatPrice(depositDueNow)}
+                  </span>
                 </div>
-                <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--accent, #f59e0b)" }}>
-                  {formatPrice(grandTotal)}
-                </span>
+
+                {depositPercent < 100 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6, marginTop: 6, fontSize: "0.78rem", color: "#94a3b8" }}>
+                    <span>Balance Due on Dispatch:</span>
+                    <strong style={{ color: "#cbd5e1" }}>{formatPrice(balanceRemaining)}</strong>
+                  </div>
+                )}
               </div>
 
               {errorMessage && (
@@ -756,8 +900,8 @@ export default function CheckoutPage() {
                 className="button primary wide"
                 style={{
                   padding: "14px 20px",
-                  fontSize: "1.05rem",
-                  fontWeight: 600,
+                  fontSize: "1.02rem",
+                  fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -771,7 +915,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <Lock size={18} /> Complete Order &amp; Pay ({formatPrice(grandTotal)})
+                    <Lock size={18} /> Complete Order &amp; Pay ({formatPrice(depositDueNow)})
                   </>
                 )}
               </button>

@@ -166,6 +166,7 @@ function CartDrawer() {
   const { cart, isCartOpen, setCartOpen, updateQuantity, removeFromCart, clearCart } = useStore();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>("card");
   const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
+  const [depositPercent, setDepositPercent] = useState<50 | 100 | 30>(50);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isStripeLoading, setStripeLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -179,6 +180,8 @@ function CartDrawer() {
   const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
   const shippingCalculation = calculateShippingFee(selectedCountry, totalItemCount);
   const grandTotal = subtotal + shippingCalculation.shippingFee;
+  const depositDueNow = Math.round((grandTotal * (depositPercent / 100)) * 100) / 100;
+  const balanceRemaining = Math.round((grandTotal - depositDueNow) * 100) / 100;
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -208,9 +211,11 @@ function CartDrawer() {
     subtotal
   )}\nDelivery Destination: ${selectedCountry}\nTracked Courier Shipping: ${formatPrice(
     shippingCalculation.shippingFee
-  )}${shippingCalculation.totalSaved > 0 ? ` (Bulk Shipping Discount: Saved ${formatPrice(shippingCalculation.totalSaved)}!)` : ""}\nGrand Total: ${formatPrice(
+  )}${shippingCalculation.totalSaved > 0 ? ` (Bulk Shipping Discount: Saved ${formatPrice(shippingCalculation.totalSaved)}!)` : ""}\nTotal Order Value: ${formatPrice(
     grandTotal
-  )}\nPreferred Payment Method: ${getPaymentMethodLabel(selectedMethod)}\n\nPlease confirm order details and share live bat preparation video. Thank you!`;
+  )}\n\nOrder Confirmation Plan: ${depositPercent === 100 ? "100% Full Payment Upfront" : `${depositPercent}% Advance Deposit (${depositPercent === 50 ? "Standard Half Payment" : "Minimum 30% Booking"})`}\nAmount Due Now for Confirmation: ${formatPrice(
+    depositDueNow
+  )}\nBalance Due Before Courier Dispatch (upon Video Approval): ${depositPercent < 100 ? formatPrice(balanceRemaining) : "None (Fully Paid)"}\nPreferred Payment Method: ${getPaymentMethodLabel(selectedMethod)}\n\nPlease confirm my order details and share live bat preparation video. Thank you!`;
 
   const handleStripeCheckout = async () => {
     try {
@@ -231,6 +236,10 @@ function CartDrawer() {
           })),
           country: selectedCountry,
           shippingFee: shippingCalculation.shippingFee,
+          totalAmount: grandTotal,
+          depositPercent: depositPercent,
+          depositDueNow: depositDueNow,
+          balanceRemaining: balanceRemaining,
         }),
       });
 
@@ -241,7 +250,7 @@ function CartDrawer() {
       } else {
         if (data.notConfigured) {
           // Open WhatsApp with card request note
-          window.open(whatsappUrl(checkoutMessage + `\n(I would like to pay by Credit/Debit Card online)`), "_blank");
+          window.open(whatsappUrl(checkoutMessage + `\n(I would like to pay ${depositPercent}% deposit by Credit/Debit Card online)`), "_blank");
         } else {
           setCardError(data.error || "Card checkout could not be started.");
         }
@@ -341,6 +350,80 @@ function CartDrawer() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Advance Confirmation Deposit Plan */}
+              <div style={{
+                padding: "12px",
+                background: "rgba(245, 158, 11, 0.06)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: "10px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent, #f59e0b)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Order Confirmation Plan
+                  </span>
+                  <span style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: 600 }}>Min. 30% Required</span>
+                </div>
+                <p style={{ fontSize: "0.73rem", color: "#94a3b8", margin: "0 0 8px" }}>
+                  Pay advance to start custom crafting. Balance payable upon live ping video demo before dispatch.
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setDepositPercent(50)}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: depositPercent === 50 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: depositPercent === 50 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                      color: depositPercent === 50 ? "#fff" : "#cbd5e1",
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 50 ? "var(--accent, #f59e0b)" : "#fff" }}>50% Half</strong>
+                    <span style={{ fontSize: "0.68rem", color: depositPercent === 50 ? "#fde68a" : "#94a3b8", display: "block" }}>Recommended</span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDepositPercent(100)}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: depositPercent === 100 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: depositPercent === 100 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                      color: depositPercent === 100 ? "#fff" : "#cbd5e1",
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 100 ? "var(--accent, #f59e0b)" : "#fff" }}>100% Full</strong>
+                    <span style={{ fontSize: "0.68rem", color: depositPercent === 100 ? "#fde68a" : "#94a3b8", display: "block" }}>Full Upfront</span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(grandTotal)}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDepositPercent(30)}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: depositPercent === 30 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                      background: depositPercent === 30 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                      color: depositPercent === 30 ? "#fff" : "#cbd5e1",
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 30 ? "var(--accent, #f59e0b)" : "#fff" }}>30% Min</strong>
+                    <span style={{ fontSize: "0.68rem", color: depositPercent === 30 ? "#fde68a" : "#94a3b8", display: "block" }}>Booking Lock</span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Payment Method Selector (Clean 6 Options) */}
@@ -587,27 +670,29 @@ function CartDrawer() {
             <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid var(--line, #2a313d)", padding: "12px 16px", background: "var(--card-bg, #181c24)" }}>
               {/* Breakdown Lines */}
               <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
-                <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
-                <strong>{formatPrice(subtotal)}</strong>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
-                <span>Shipping ({selectedCountry})</span>
-                <strong style={{ color: "var(--accent, #f59e0b)" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+                <span>Total Order Value ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
+                <strong>{formatPrice(grandTotal)}</strong>
               </div>
 
               {shippingCalculation.totalSaved > 0 && (
-                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "4px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span>🎉 Multi-Bat Savings:</span>
+                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "3px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span>🎉 Combined Shipping:</span>
                   <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
                 </div>
               )}
 
-              {/* Grand Total */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 8 }}>
-                <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#fff" }}>Grand Total</span>
-                <strong style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(grandTotal)}</strong>
+              {/* Due Now vs Balance */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 2 }}>
+                <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#fff" }}>Due Today ({depositPercent}% Deposit):</span>
+                <strong style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(depositDueNow)}</strong>
               </div>
+
+              {depositPercent < 100 && (
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.74rem", marginBottom: 6 }}>
+                  <span>Balance Due on Dispatch:</span>
+                  <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{formatPrice(balanceRemaining)}</span>
+                </div>
+              )}
 
               {cardError && (
                 <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "6px 10px", borderRadius: 6, fontSize: "0.75rem", marginBottom: 6 }}>
@@ -626,13 +711,13 @@ function CartDrawer() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  fontSize: "0.95rem",
+                  fontSize: "0.92rem",
                   padding: "10px 14px",
                   fontWeight: 700,
                   borderRadius: 8,
                 }}
               >
-                <Lock size={16} /> Proceed to Checkout ({formatPrice(grandTotal)})
+                <Lock size={16} /> Proceed to Checkout ({formatPrice(depositDueNow)})
               </Link>
 
               {selectedMethod === "card" && (

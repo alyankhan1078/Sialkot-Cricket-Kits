@@ -33,10 +33,17 @@ export async function POST(request: Request) {
     const shippingFee = Number(body.shippingFee) || 0;
     const finalTotal = body.totalAmount ? Number(body.totalAmount) : itemsSubtotal + shippingFee;
 
+    const depositPercentage = body.depositPercentage ? Number(body.depositPercentage) : 50;
+    const amountPaidNow = body.amountPaidNow ? Number(body.amountPaidNow) : Math.round(finalTotal * (depositPercentage / 100) * 100) / 100;
+    const balanceRemaining = body.balanceRemaining !== undefined ? Number(body.balanceRemaining) : Math.round((finalTotal - amountPaidNow) * 100) / 100;
+
     const fullNotes = [
+      depositPercentage < 100
+        ? `Order Confirmation Plan: ${depositPercentage}% Advance Deposit (Due/Paid Today: £${amountPaidNow} | Balance Due Before Dispatch: £${balanceRemaining})`
+        : "Order Confirmation Plan: 100% Full Payment Upfront (Fully Paid)",
       notes ? `Customer Notes: ${notes}` : "",
       address ? `Shipping Address: ${address}, ${city || ""}, ${state || ""} ${postalCode || ""}, ${country || ""}` : "",
-      shippingFee > 0 ? `Tracked Shipping Fee: £${shippingFee}` : "",
+      shippingFee > 0 ? `Tracked Courier Shipping Fee: £${shippingFee}` : "",
       transactionRef ? `Payment Ref / Transaction ID: ${transactionRef}` : "",
     ]
       .filter(Boolean)
