@@ -329,6 +329,8 @@ h1, h2, h3, p { margin-top: 0; }
   .hero-visual { min-height: 560px; }
   .section-intro, .section-intro.compact { grid-template-columns: 1fr; gap: 1rem; }
   .custom-cta, .catalogue-cta { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+  .shop-layout { grid-template-columns: 1fr !important; }
+  .shop-sidebar { position: static !important; max-height: none !important; }
   .shop-controls { position: static; grid-template-columns: 1fr 1fr; }
   .search-field { grid-column: 1 / -1; }
   .shop-controls label:last-child { grid-column: auto; }
