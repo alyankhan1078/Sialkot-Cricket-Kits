@@ -1,12 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Lock, Globe, CheckCircle2 } from "lucide-react";
+import {
+  Save,
+  Lock,
+  Globe,
+  CheckCircle2,
+  CreditCard,
+  Building2,
+  Wallet,
+  Send,
+  Sparkles,
+  ShieldCheck,
+} from "lucide-react";
 import type { DBSettings } from "@/src/lib/data-service";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 
 export default function AdminSettingsPage() {
   const { showToast } = useAdminFeedback();
+  const [activeTab, setActiveTab] = useState<"general" | "payments" | "security">("general");
+
   const [settings, setSettings] = useState<DBSettings>({
     whatsappNumber: "+92 323 1438214",
     contactEmail: "sialkotcricketkits@gmail.com",
@@ -15,6 +28,44 @@ export default function AdminSettingsPage() {
     businessName: "Sialkot Cricket Kits",
     announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
     catalogueUrl: "/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf",
+
+    // Bank details
+    bankName: "Meezan Bank Limited",
+    accountTitle: "Sialkot Cricket Kits",
+    accountNumber: "01080105891234",
+    iban: "PK36MEZN0001080105891234",
+    swiftBic: "MEZNPKKA",
+    bankBranch: "Model Town Branch, Sialkot",
+    bankEnabled: true,
+
+    // Pakistani Wallets & Raast
+    raastId: "+92 323 1438214",
+    raastTitle: "Sialkot Cricket Kits",
+    raastEnabled: true,
+    jazzcashNumber: "+92 323 1438214",
+    jazzcashTitle: "Sialkot Cricket Kits",
+    jazzcashEnabled: true,
+    easypaisaNumber: "+92 323 1438214",
+    easypaisaTitle: "Sialkot Cricket Kits",
+    easypaisaEnabled: true,
+
+    // International Remittance & Digital
+    wiseEmail: "sialkotcricketkits@gmail.com",
+    wiseTag: "@sialkotcricket",
+    wiseEnabled: true,
+    paypalEmail: "sialkotcricketkits@gmail.com",
+    paypalLink: "https://paypal.me/sialkotcricket",
+    paypalEnabled: true,
+    remitlyEnabled: true,
+    westernUnionEnabled: true,
+    moneygramEnabled: true,
+    worldRemitEnabled: true,
+    taptapSendEnabled: true,
+
+    // Stripe Card Processing
+    stripePublishableKey: "",
+    stripeSecretKey: "",
+    stripeEnabled: true,
   });
 
   const [loading, setLoading] = useState(true);
@@ -31,7 +82,7 @@ export default function AdminSettingsPage() {
       .then((res) => res.json())
       .then((res) => {
         if (res.success && res.data) {
-          setSettings(res.data);
+          setSettings((prev) => ({ ...prev, ...res.data }));
         }
       })
       .finally(() => setLoading(false));
@@ -51,7 +102,7 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (data.success) {
         setSettingsSaved(true);
-        showToast("Store settings saved successfully!", "success");
+        showToast("Settings & payment details saved successfully!", "success");
         setTimeout(() => setSettingsSaved(false), 3000);
       } else {
         showToast(data.error || "Failed to save settings", "error");
@@ -108,86 +159,150 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div style={{ maxWidth: "900px" }}>
+    <div style={{ maxWidth: "1000px" }}>
       <div className="admin-header">
         <div>
-          <h1>Site & Contact Settings</h1>
-          <p>Manage WhatsApp contact details, business information, announcement banner, and admin credentials.</p>
+          <h1>Settings & Payment Gateways</h1>
+          <p>Configure storefront contact information, accepted payment channels, bank accounts, and admin security.</p>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
-        {/* General Site Settings */}
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: "8px", borderBottom: "1px solid var(--adm-border)", marginBottom: "1.5rem" }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("general")}
+          style={{
+            padding: "10px 16px",
+            background: "none",
+            border: "none",
+            borderBottom: activeTab === "general" ? "2px solid var(--adm-primary)" : "2px solid transparent",
+            color: activeTab === "general" ? "#fff" : "var(--adm-muted)",
+            fontWeight: activeTab === "general" ? 600 : 400,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "0.95rem",
+          }}
+        >
+          <Globe size={18} /> Store & Contact Info
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("payments")}
+          style={{
+            padding: "10px 16px",
+            background: "none",
+            border: "none",
+            borderBottom: activeTab === "payments" ? "2px solid var(--adm-primary)" : "2px solid transparent",
+            color: activeTab === "payments" ? "#fff" : "var(--adm-muted)",
+            fontWeight: activeTab === "payments" ? 600 : 400,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "0.95rem",
+          }}
+        >
+          <CreditCard size={18} /> Payment Methods & Bank Accounts
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("security")}
+          style={{
+            padding: "10px 16px",
+            background: "none",
+            border: "none",
+            borderBottom: activeTab === "security" ? "2px solid var(--adm-primary)" : "2px solid transparent",
+            color: activeTab === "security" ? "#fff" : "var(--adm-muted)",
+            fontWeight: activeTab === "security" ? 600 : 400,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "0.95rem",
+          }}
+        >
+          <Lock size={18} /> Admin Security
+        </button>
+      </div>
+
+      {settingsSaved && (
+        <div
+          style={{
+            background: "rgba(16, 185, 129, 0.15)",
+            color: "#34d399",
+            padding: "0.75rem 1rem",
+            borderRadius: "8px",
+            marginBottom: "1.25rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <CheckCircle2 size={18} />
+          <span>Settings updated and saved successfully!</span>
+        </div>
+      )}
+
+      {/* Tab 1: General Store Settings */}
+      {activeTab === "general" && (
         <form onSubmit={handleSaveSettings} className="admin-card">
           <h2 style={{ fontSize: "1.2rem", margin: "0 0 1.25rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Globe size={20} color="var(--adm-primary)" />
             <span>Storefront Contact Information</span>
           </h2>
 
-          {settingsSaved && (
-            <div
-              style={{
-                background: "rgba(16, 185, 129, 0.15)",
-                color: "#34d399",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                marginBottom: "1.25rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <CheckCircle2 size={16} />
-              <span>Settings updated successfully!</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div className="admin-form-group">
+              <label>Business Name</label>
+              <input
+                className="admin-input"
+                value={settings.businessName}
+                onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
+                required
+              />
             </div>
-          )}
 
-          <div className="admin-form-group">
-            <label>Business Name</label>
-            <input
-              className="admin-input"
-              value={settings.businessName}
-              onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
-              required
-            />
+            <div className="admin-form-group">
+              <label>WhatsApp Number (Primary Checkout)</label>
+              <input
+                className="admin-input"
+                placeholder="+92 323 1438214"
+                value={settings.whatsappNumber}
+                onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div className="admin-form-group">
+              <label>Contact Email</label>
+              <input
+                type="email"
+                className="admin-input"
+                value={settings.contactEmail}
+                onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label>Contact Phone</label>
+              <input
+                className="admin-input"
+                value={settings.contactPhone}
+                onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="admin-form-group">
-            <label>WhatsApp Number (Used for all checkout & enquiries)</label>
-            <input
-              className="admin-input"
-              placeholder="+92 323 1438214"
-              value={settings.whatsappNumber}
-              onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
-              required
-            />
-            <small style={{ color: "var(--adm-muted)", display: "block", marginTop: "0.25rem" }}>
-              Include international code e.g. +92 323 1438214
-            </small>
-          </div>
-
-          <div className="admin-form-group">
-            <label>Contact Email</label>
-            <input
-              type="email"
-              className="admin-input"
-              value={settings.contactEmail}
-              onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="admin-form-group">
-            <label>Contact Phone</label>
-            <input
-              className="admin-input"
-              value={settings.contactPhone}
-              onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
-            />
-          </div>
-
-          <div className="admin-form-group">
-            <label>Factory / Office Address</label>
+            <label>Factory / Workshop Address</label>
             <textarea
               className="admin-textarea"
               rows={2}
@@ -224,12 +339,195 @@ export default function AdminSettingsPage() {
             <span>{savingSettings ? "Saving..." : "Save Store Settings"}</span>
           </button>
         </form>
+      )}
 
-        {/* Change Admin Password */}
-        <form onSubmit={handleUpdatePassword} className="admin-card" style={{ height: "fit-content" }}>
+      {/* Tab 2: Payment Methods & Bank Accounts */}
+      {activeTab === "payments" && (
+        <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* Card Processing / Stripe */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <CreditCard size={20} color="#3b82f6" />
+              <span>Credit / Debit Card Processing (Stripe / Apple Pay / Google Pay)</span>
+            </h2>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>
+              Enable direct card payments during cart checkout. If left empty, card checkout defaults to WhatsApp payment verification.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Stripe Publishable Key</label>
+                <input
+                  className="admin-input"
+                  placeholder="pk_live_... or pk_test_..."
+                  value={settings.stripePublishableKey || ""}
+                  onChange={(e) => setSettings({ ...settings, stripePublishableKey: e.target.value })}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Stripe Secret Key</label>
+                <input
+                  type="password"
+                  className="admin-input"
+                  placeholder="sk_live_... or sk_test_..."
+                  value={settings.stripeSecretKey || ""}
+                  onChange={(e) => setSettings({ ...settings, stripeSecretKey: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Direct Bank Wire / IBAN */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Building2 size={20} color="#a855f7" />
+              <span>Official Bank Account (IBAN & SWIFT)</span>
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Bank Name</label>
+                <input
+                  className="admin-input"
+                  value={settings.bankName || ""}
+                  onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
+                  placeholder="Meezan Bank / HBL / UBL"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Account Title</label>
+                <input
+                  className="admin-input"
+                  value={settings.accountTitle || ""}
+                  onChange={(e) => setSettings({ ...settings, accountTitle: e.target.value })}
+                  placeholder="Sialkot Cricket Kits"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Account Number</label>
+                <input
+                  className="admin-input"
+                  value={settings.accountNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, accountNumber: e.target.value })}
+                  placeholder="01080105891234"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>IBAN Number</label>
+                <input
+                  className="admin-input"
+                  value={settings.iban || ""}
+                  onChange={(e) => setSettings({ ...settings, iban: e.target.value })}
+                  placeholder="PK36MEZN0001080105891234"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>SWIFT / BIC Code</label>
+                <input
+                  className="admin-input"
+                  value={settings.swiftBic || ""}
+                  onChange={(e) => setSettings({ ...settings, swiftBic: e.target.value })}
+                  placeholder="MEZNPKKA"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pakistan Mobile Wallets & Raast */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Wallet size={20} color="#22c55e" />
+              <span>Pakistan Domestic Wallets & Raast ID</span>
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Raast ID (Instant Transfer)</label>
+                <input
+                  className="admin-input"
+                  value={settings.raastId || ""}
+                  onChange={(e) => setSettings({ ...settings, raastId: e.target.value })}
+                  placeholder="+92 323 1438214"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>JazzCash Number & Title</label>
+                <input
+                  className="admin-input"
+                  value={settings.jazzcashNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, jazzcashNumber: e.target.value })}
+                  placeholder="+92 323 1438214 (Alyan Khan)"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>EasyPaisa Number & Title</label>
+                <input
+                  className="admin-input"
+                  value={settings.easypaisaNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, easypaisaNumber: e.target.value })}
+                  placeholder="+92 323 1438214 (Alyan Khan)"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* International Remittance (Wise / PayPal / Remitly / WU) */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Send size={20} color="#f59e0b" />
+              <span>International Remittance (Wise & PayPal)</span>
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Wise Email or Tag</label>
+                <input
+                  className="admin-input"
+                  value={settings.wiseEmail || ""}
+                  onChange={(e) => setSettings({ ...settings, wiseEmail: e.target.value })}
+                  placeholder="sialkotcricketkits@gmail.com"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>PayPal Email or PayPal.Me Link</label>
+                <input
+                  className="admin-input"
+                  value={settings.paypalEmail || ""}
+                  onChange={(e) => setSettings({ ...settings, paypalEmail: e.target.value })}
+                  placeholder="sialkotcricketkits@gmail.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="admin-btn admin-btn-primary"
+            style={{ width: "fit-content", padding: "12px 28px", fontSize: "1rem" }}
+            disabled={savingSettings}
+          >
+            <Save size={18} />
+            <span>{savingSettings ? "Saving Changes..." : "Save Payment Settings"}</span>
+          </button>
+        </form>
+      )}
+
+      {/* Tab 3: Security */}
+      {activeTab === "security" && (
+        <form onSubmit={handleUpdatePassword} className="admin-card" style={{ maxWidth: 500 }}>
           <h2 style={{ fontSize: "1.2rem", margin: "0 0 1.25rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Lock size={20} color="#f59e0b" />
-            <span>Admin Security</span>
+            <span>Change Admin Password</span>
           </h2>
 
           {passwordMsg && (
@@ -273,14 +571,14 @@ export default function AdminSettingsPage() {
 
           <button
             type="submit"
-            className="admin-btn admin-btn-secondary"
+            className="admin-btn admin-btn-primary"
             style={{ width: "100%", justifyContent: "center" }}
             disabled={savingPassword}
           >
-            {savingPassword ? "Updating..." : "Change Password"}
+            {savingPassword ? "Updating..." : "Update Password"}
           </button>
         </form>
-      </div>
+      )}
     </div>
   );
 }

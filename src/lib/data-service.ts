@@ -45,7 +45,47 @@ export interface DBFaq {
   active: boolean;
 }
 
-export interface DBSettings {
+export interface DBPaymentSettings {
+  // Bank Account
+  bankName: string;
+  accountTitle: string;
+  accountNumber: string;
+  iban: string;
+  swiftBic: string;
+  bankBranch: string;
+  bankEnabled: boolean;
+
+  // Pakistani Wallets & Raast
+  raastId: string;
+  raastTitle: string;
+  raastEnabled: boolean;
+  jazzcashNumber: string;
+  jazzcashTitle: string;
+  jazzcashEnabled: boolean;
+  easypaisaNumber: string;
+  easypaisaTitle: string;
+  easypaisaEnabled: boolean;
+
+  // International Remittance & Digital
+  wiseEmail: string;
+  wiseTag: string;
+  wiseEnabled: boolean;
+  paypalEmail: string;
+  paypalLink: string;
+  paypalEnabled: boolean;
+  remitlyEnabled: boolean;
+  westernUnionEnabled: boolean;
+  moneygramEnabled: boolean;
+  worldRemitEnabled: boolean;
+  taptapSendEnabled: boolean;
+
+  // Stripe Card Processing
+  stripePublishableKey: string;
+  stripeSecretKey: string;
+  stripeEnabled: boolean;
+}
+
+export interface DBSettings extends DBPaymentSettings {
   whatsappNumber: string;
   contactEmail: string;
   contactPhone: string;
@@ -165,6 +205,44 @@ let memorySettings: DBSettings = {
   businessName: "Sialkot Cricket Kits",
   announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
   catalogueUrl: "/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf",
+
+  // Bank details
+  bankName: "Meezan Bank Limited",
+  accountTitle: "Sialkot Cricket Kits",
+  accountNumber: "01080105891234",
+  iban: "PK36MEZN0001080105891234",
+  swiftBic: "MEZNPKKA",
+  bankBranch: "Model Town Branch, Sialkot",
+  bankEnabled: true,
+
+  // Pakistani Wallets & Raast
+  raastId: "+92 323 1438214",
+  raastTitle: "Sialkot Cricket Kits",
+  raastEnabled: true,
+  jazzcashNumber: "+92 323 1438214",
+  jazzcashTitle: "Sialkot Cricket Kits",
+  jazzcashEnabled: true,
+  easypaisaNumber: "+92 323 1438214",
+  easypaisaTitle: "Sialkot Cricket Kits",
+  easypaisaEnabled: true,
+
+  // International Remittance & Digital
+  wiseEmail: "sialkotcricketkits@gmail.com",
+  wiseTag: "@sialkotcricket",
+  wiseEnabled: true,
+  paypalEmail: "sialkotcricketkits@gmail.com",
+  paypalLink: "https://paypal.me/sialkotcricket",
+  paypalEnabled: true,
+  remitlyEnabled: true,
+  westernUnionEnabled: true,
+  moneygramEnabled: true,
+  worldRemitEnabled: true,
+  taptapSendEnabled: true,
+
+  // Stripe Card Processing
+  stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
+  stripeEnabled: true,
 };
 
 const memoryEnquiries: DBEnquiry[] = [];
