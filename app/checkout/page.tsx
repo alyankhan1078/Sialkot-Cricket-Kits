@@ -31,8 +31,7 @@ type PaymentMethodType =
   | "payoneer"
   | "wise"
   | "pakistan"
-  | "remitly"
-  | "paypal";
+  | "remitly";
 
 const countries = [
   "United Kingdom",
@@ -96,9 +95,8 @@ export default function CheckoutPage() {
       case "bank": return "UBL Direct Bank Wire (IBAN / SWIFT)";
       case "payoneer": return "Payoneer (B2B & Global Receiving)";
       case "wise": return "Wise International Transfer";
-      case "pakistan": return "Pakistan Local (Raast / JazzCash / EasyPaisa / UBL)";
+      case "pakistan": return "Pakistan Local (JazzCash / Nayapay / SadaPay / Raast / EasyPaisa)";
       case "remitly": return "Remitly / Western Union / MoneyGram";
-      case "paypal": return "PayPal";
     }
   };
 
@@ -490,8 +488,8 @@ export default function CheckoutPage() {
                     style={{ accentColor: "var(--accent, #f59e0b)" }}
                   />
                   <div>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>🇵🇰 Raast / JazzCash / EasyPaisa</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Instant zero-fee local transfer</span>
+                    <strong style={{ color: "#fff", fontSize: "0.9rem", display: "block" }}>🇵🇰 JazzCash / SadaPay / Nayapay / EasyPaisa</strong>
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Instant zero-fee local Pakistan transfer</span>
                   </div>
                 </label>
 
@@ -596,19 +594,42 @@ export default function CheckoutPage() {
 
               {formData.paymentMethod === "pakistan" && (
                 <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: 16, borderRadius: 10, marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🇵🇰 Raast / JazzCash / EasyPaisa</strong>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("03275756188", "raast")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
-                    >
-                      {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied!" : "Copy Number"}
-                    </button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <strong style={{ color: "#fff", fontSize: "0.9rem" }}>🇵🇰 Pakistan Wallets &amp; Microfinance Accounts</strong>
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "#cbd5e1", lineHeight: 1.6 }}>
-                    <div>Mobile Number / Raast ID: <strong>0327 5756188</strong></div>
-                    <div>Account Title: <strong>ALYAN WAZIR</strong> (UBL / JazzCash / EasyPaisa)</div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "10px 14px", borderRadius: 8 }}>
+                      <div>
+                        <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>JazzCash · Nayapay · SadaPay · Raast ID</span>
+                        <strong style={{ color: "#fff", fontSize: "0.95rem" }}>0327 5756188</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("03275756188", "raast")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                      >
+                        {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied!" : "Copy Number"}
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "10px 14px", borderRadius: 8 }}>
+                      <div>
+                        <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>EasyPaisa Account</span>
+                        <strong style={{ color: "#4ade80", fontSize: "0.95rem" }}>0349 9585519</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard("03499585519", "easypaisa")}
+                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem", fontWeight: 600 }}
+                      >
+                        {copiedKey === "easypaisa" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa" ? "Copied!" : "Copy Number"}
+                      </button>
+                    </div>
+
+                    <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 2 }}>
+                      Account Title: <strong style={{ color: "#fff" }}>ALYAN WAZIR</strong>
+                    </div>
                   </div>
                 </div>
               )}

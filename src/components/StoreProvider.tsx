@@ -35,7 +35,7 @@ export type CartItem = {
   quantity: number;
 };
 
-type PaymentMethodType = "card" | "wise" | "bank" | "pakistan" | "payoneer" | "remitly" | "paypal";
+type PaymentMethodType = "card" | "payoneer" | "wise" | "bank" | "pakistan" | "remitly";
 
 type StoreContextValue = {
   cart: CartItem[];
@@ -183,12 +183,11 @@ function CartDrawer() {
   const getPaymentMethodLabel = (method: PaymentMethodType) => {
     switch (method) {
       case "card": return "Credit / Debit Card (Stripe)";
-      case "wise": return "Wise International Transfer";
-      case "bank": return "Direct Bank Wire (IBAN / SWIFT)";
-      case "pakistan": return "Pakistan Local (Raast / JazzCash / EasyPaisa / Bank)";
       case "payoneer": return "Payoneer (B2B & Global Receiving)";
+      case "wise": return "Wise International Transfer";
+      case "bank": return "UBL Bank Wire (IBAN / SWIFT)";
+      case "pakistan": return "Pakistan Local (JazzCash / Nayapay / SadaPay / Raast / EasyPaisa)";
       case "remitly": return "Remitly / Western Union / MoneyGram";
-      case "paypal": return "PayPal";
     }
   };
 
@@ -428,6 +427,72 @@ function CartDrawer() {
 
                 <button
                   type="button"
+                  onClick={() => setSelectedMethod("wise")}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: 8,
+                    border: selectedMethod === "wise" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                    background: selectedMethod === "wise" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                    color: selectedMethod === "wise" ? "#fff" : "#cbd5e1",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <Send size={16} color={selectedMethod === "wise" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                  <span>Wise Transfer</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedMethod("bank")}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: 8,
+                    border: selectedMethod === "bank" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                    background: selectedMethod === "bank" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                    color: selectedMethod === "bank" ? "#fff" : "#cbd5e1",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <Building2 size={16} color={selectedMethod === "bank" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                  <span>UBL Wire</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedMethod("pakistan")}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: 8,
+                    border: selectedMethod === "pakistan" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                    background: selectedMethod === "pakistan" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                    color: selectedMethod === "pakistan" ? "#fff" : "#cbd5e1",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <Wallet size={16} color={selectedMethod === "pakistan" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                  <span>🇵🇰 PK Wallets</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setSelectedMethod("remitly")}
                   style={{
                     padding: "8px 4px",
@@ -447,51 +512,13 @@ function CartDrawer() {
                   <ShieldCheck size={16} color={selectedMethod === "remitly" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
                   <span>Remitly / WU</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod("paypal")}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: selectedMethod === "paypal" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                    background: selectedMethod === "paypal" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                    color: selectedMethod === "paypal" ? "#fff" : "#cbd5e1",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <Sparkles size={16} color={selectedMethod === "paypal" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
-                  <span>PayPal</span>
-                </button>
               </div>
 
               {/* Dynamic Payment Instruction Badges */}
               {selectedMethod === "card" && (
                 <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
                   <strong style={{ color: "#4ade80", display: "block", marginBottom: 2 }}>💳 Visa, Mastercard, Apple Pay, Google Pay</strong>
-                  Instant online card processing with 256-bit encryption. Click the Card Checkout button below.
-                </div>
-              )}
-
-              {selectedMethod === "wise" && (
-                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
-                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                    >
-                      {copiedKey === "wise" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise" ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>Fastest & lowest-fee transfer for UK, Europe, USA, Canada & Australia.</span>
+                  Instant online card processing with 256-bit encryption. Click Direct Checkout below.
                 </div>
               )}
 
@@ -510,6 +537,22 @@ function CartDrawer() {
                   <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>
                     Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong> · Connected UBL Account
                   </div>
+                </div>
+              )}
+
+              {selectedMethod === "wise" && (
+                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
+                    >
+                      {copiedKey === "wise" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>Fastest & lowest-fee transfer for UK, Europe, USA, Canada & Australia.</span>
                 </div>
               )}
 
@@ -532,7 +575,7 @@ function CartDrawer() {
               {selectedMethod === "pakistan" && (
                 <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span>Raast / JazzCash / EasyPaisa: <strong>03275756188</strong></span>
+                    <span>JazzCash / Nayapay / SadaPay / Raast: <strong>03275756188</strong></span>
                     <button
                       type="button"
                       onClick={() => copyToClipboard("03275756188", "raast")}
@@ -541,19 +584,23 @@ function CartDrawer() {
                       {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Account Title: <strong>ALYAN WAZIR</strong> (United Bank Limited / Mobile Accounts)</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 4, marginTop: 4 }}>
+                    <span>EasyPaisa Account: <strong>03499585519</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("03499585519", "easypaisa")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
+                    >
+                      {copiedKey === "easypaisa" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>Account Title: <strong>ALYAN WAZIR</strong></div>
                 </div>
               )}
 
               {selectedMethod === "remitly" && (
                 <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <span>Instant international payout via <strong>Remitly, Western Union, MoneyGram & TapTap Send</strong>. Beneficiary details confirmed directly on WhatsApp.</span>
-                </div>
-              )}
-
-              {selectedMethod === "paypal" && (
-                <div style={{ background: "rgba(14, 165, 233, 0.08)", border: "1px solid rgba(14, 165, 233, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                  <span>PayPal recipient: <strong>sialkotcricketkits@gmail.com</strong>. Invoice or balance transfer option available.</span>
+                  <span>Instant international payout via <strong>Remitly, Western Union, MoneyGram & TapTap Send</strong> to UBL account (ALYAN WAZIR).</span>
                 </div>
               )}
             </div>

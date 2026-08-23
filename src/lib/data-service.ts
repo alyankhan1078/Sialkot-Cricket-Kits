@@ -55,13 +55,19 @@ export interface DBPaymentSettings {
   bankBranch: string;
   bankEnabled: boolean;
 
-  // Pakistani Wallets & Raast
+  // Pakistani Wallets, Microfinance & Raast
   raastId: string;
   raastTitle: string;
   raastEnabled: boolean;
   jazzcashNumber: string;
   jazzcashTitle: string;
   jazzcashEnabled: boolean;
+  nayapayNumber: string;
+  nayapayTitle: string;
+  nayapayEnabled: boolean;
+  sadapayNumber: string;
+  sadapayTitle: string;
+  sadapayEnabled: boolean;
   easypaisaNumber: string;
   easypaisaTitle: string;
   easypaisaEnabled: boolean;
@@ -72,9 +78,6 @@ export interface DBPaymentSettings {
   wiseEmail: string;
   wiseTag: string;
   wiseEnabled: boolean;
-  paypalEmail: string;
-  paypalLink: string;
-  paypalEnabled: boolean;
   remitlyEnabled: boolean;
   westernUnionEnabled: boolean;
   moneygramEnabled: boolean;
@@ -217,14 +220,20 @@ let memorySettings: DBSettings = {
   bankBranch: "0881-Wana",
   bankEnabled: true,
 
-  // Pakistani Wallets & Raast
-  raastId: "+923275756188",
+  // Pakistani Wallets, Microfinance & Raast
+  raastId: "03275756188",
   raastTitle: "ALYAN WAZIR",
   raastEnabled: true,
-  jazzcashNumber: "+923275756188",
+  jazzcashNumber: "03275756188",
   jazzcashTitle: "ALYAN WAZIR",
   jazzcashEnabled: true,
-  easypaisaNumber: "+923275756188",
+  nayapayNumber: "03275756188",
+  nayapayTitle: "ALYAN WAZIR",
+  nayapayEnabled: true,
+  sadapayNumber: "03275756188",
+  sadapayTitle: "ALYAN WAZIR",
+  sadapayEnabled: true,
+  easypaisaNumber: "03499585519",
   easypaisaTitle: "ALYAN WAZIR",
   easypaisaEnabled: true,
 
@@ -234,9 +243,6 @@ let memorySettings: DBSettings = {
   wiseEmail: "sialkotcricketkits@gmail.com",
   wiseTag: "@sialkotcricket",
   wiseEnabled: true,
-  paypalEmail: "sialkotcricketkits@gmail.com",
-  paypalLink: "https://paypal.me/sialkotcricket",
-  paypalEnabled: true,
   remitlyEnabled: true,
   westernUnionEnabled: true,
   moneygramEnabled: true,

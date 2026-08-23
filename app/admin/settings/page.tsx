@@ -39,13 +39,19 @@ export default function AdminSettingsPage() {
     bankEnabled: true,
 
     // Pakistani Wallets & Raast
-    raastId: "+923275756188",
+    raastId: "03275756188",
     raastTitle: "ALYAN WAZIR",
     raastEnabled: true,
-    jazzcashNumber: "+923275756188",
+    jazzcashNumber: "03275756188",
     jazzcashTitle: "ALYAN WAZIR",
     jazzcashEnabled: true,
-    easypaisaNumber: "+923275756188",
+    nayapayNumber: "03275756188",
+    nayapayTitle: "ALYAN WAZIR",
+    nayapayEnabled: true,
+    sadapayNumber: "03275756188",
+    sadapayTitle: "ALYAN WAZIR",
+    sadapayEnabled: true,
+    easypaisaNumber: "03499585519",
     easypaisaTitle: "ALYAN WAZIR",
     easypaisaEnabled: true,
 
@@ -55,9 +61,6 @@ export default function AdminSettingsPage() {
     wiseEmail: "sialkotcricketkits@gmail.com",
     wiseTag: "@sialkotcricket",
     wiseEnabled: true,
-    paypalEmail: "sialkotcricketkits@gmail.com",
-    paypalLink: "https://paypal.me/sialkotcricket",
-    paypalEnabled: true,
     remitlyEnabled: true,
     westernUnionEnabled: true,
     moneygramEnabled: true,
@@ -442,61 +445,91 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          {/* Pakistan Mobile Wallets & Raast */}
+          {/* Pakistan Mobile Wallets & Microfinance */}
           <div className="admin-card">
             <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Wallet size={20} color="#22c55e" />
-              <span>Pakistan Domestic Wallets & Raast ID</span>
+              <span>Pakistan Domestic Wallets, Microfinance & Raast ID</span>
             </h2>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
               <div className="admin-form-group">
                 <label>Raast ID (Instant Transfer)</label>
                 <input
                   className="admin-input"
                   value={settings.raastId || ""}
                   onChange={(e) => setSettings({ ...settings, raastId: e.target.value })}
-                  placeholder="+92 323 1438214"
+                  placeholder="03275756188"
                 />
               </div>
 
               <div className="admin-form-group">
-                <label>JazzCash Number & Title</label>
+                <label>JazzCash Number</label>
                 <input
                   className="admin-input"
                   value={settings.jazzcashNumber || ""}
                   onChange={(e) => setSettings({ ...settings, jazzcashNumber: e.target.value })}
-                  placeholder="+92 323 1438214 (Alyan Khan)"
+                  placeholder="03275756188"
                 />
               </div>
 
               <div className="admin-form-group">
-                <label>EasyPaisa Number & Title</label>
+                <label>Nayapay Number</label>
+                <input
+                  className="admin-input"
+                  value={settings.nayapayNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, nayapayNumber: e.target.value })}
+                  placeholder="03275756188"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>SadaPay Number</label>
+                <input
+                  className="admin-input"
+                  value={settings.sadapayNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, sadapayNumber: e.target.value })}
+                  placeholder="03275756188"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>EasyPaisa Number</label>
                 <input
                   className="admin-input"
                   value={settings.easypaisaNumber || ""}
                   onChange={(e) => setSettings({ ...settings, easypaisaNumber: e.target.value })}
-                  placeholder="+92 323 1438214 (Alyan Khan)"
+                  placeholder="03499585519"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Account Title</label>
+                <input
+                  className="admin-input"
+                  value={settings.jazzcashTitle || "ALYAN WAZIR"}
+                  onChange={(e) => setSettings({ ...settings, jazzcashTitle: e.target.value, easypaisaTitle: e.target.value, raastTitle: e.target.value, nayapayTitle: e.target.value, sadapayTitle: e.target.value })}
+                  placeholder="ALYAN WAZIR"
                 />
               </div>
             </div>
           </div>
 
-          {/* International Remittance (Payoneer / Wise / PayPal / Remitly / WU) */}
+          {/* International Remittance (Payoneer / Wise / Remitly / WU) */}
           <div className="admin-card">
             <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Send size={20} color="#f59e0b" />
-              <span>International Remittance (Payoneer, Wise & PayPal)</span>
+              <span>International Remittance (Payoneer, Wise & Remitly)</span>
             </h2>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div className="admin-form-group">
                 <label>Payoneer Email</label>
                 <input
                   className="admin-input"
                   value={settings.payoneerEmail || ""}
                   onChange={(e) => setSettings({ ...settings, payoneerEmail: e.target.value })}
-                  placeholder="sialkotcricketkits@gmail.com"
+                  placeholder="alyankhan1078@gmail.com"
                 />
               </div>
 
@@ -506,16 +539,6 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.wiseEmail || ""}
                   onChange={(e) => setSettings({ ...settings, wiseEmail: e.target.value })}
-                  placeholder="sialkotcricketkits@gmail.com"
-                />
-              </div>
-
-              <div className="admin-form-group">
-                <label>PayPal Email or PayPal.Me Link</label>
-                <input
-                  className="admin-input"
-                  value={settings.paypalEmail || ""}
-                  onChange={(e) => setSettings({ ...settings, paypalEmail: e.target.value })}
                   placeholder="sialkotcricketkits@gmail.com"
                 />
               </div>

@@ -16,20 +16,21 @@ import { whatsappUrl } from "@/src/lib/whatsapp";
 
 export const metadata: Metadata = {
   title: "Official Payment Methods & Bank Details | Sialkot Cricket Kits",
-  description: "Official accepted payment channels, verified UBL bank wire details, Payoneer account, and factory information for Sialkot Cricket Kits orders.",
+  description: "Official accepted payment channels, verified UBL bank wire details, Payoneer account, Pakistani mobile wallets (JazzCash, Nayapay, SadaPay, EasyPaisa), and factory information for Sialkot Cricket Kits orders.",
   robots: { index: false, follow: false },
 };
 
 const acceptedInternationalMethods = [
   "Payoneer (B2B & Global Receiving in GBP, USD, EUR)",
+  "JazzCash / Nayapay / SadaPay / Raast (0327 5756188)",
+  "EasyPaisa Account (0349 9585519)",
+  "Wise (TransferWise)",
   "TapTap Send",
   "Remitly",
   "MoneyGram",
-  "Wise (TransferWise)",
   "Western Union",
   "WorldRemit",
-  "(IMT) International Money Transfer through any exchange",
-  "(IMT) International Money Transfer through any bank",
+  "(IMT) International Money Transfer through any bank or exchange",
 ];
 
 export default function PaymentPage() {
@@ -41,7 +42,7 @@ export default function PaymentPage() {
           <span className="eyebrow">Verified Payment Information</span>
           <h1>Accepted Payment Methods.</h1>
           <p>
-            You may conveniently send your payment through any of our official banking, Payoneer, or international remittance options.
+            You may conveniently send your payment through any of our official banking, Payoneer, Pakistan digital wallets, or international remittance options.
           </p>
         </div>
       </section>
@@ -95,8 +96,9 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        {/* Bank, Payoneer & Factory Information Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 24, marginBottom: 32 }}>
+        {/* Bank, Payoneer, Pakistan Wallets & Factory Information Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 32 }}>
+          
           {/* Card 1: UBL Bank Details Card */}
           <div style={{
             background: "var(--card-bg, #181c24)",
@@ -129,13 +131,8 @@ export default function PaymentPage() {
                 marginBottom: 20,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Beneficiary / First Name:</span>
-                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>ALYAN</strong>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Last Name:</span>
-                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>WAZIR</strong>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Beneficiary:</span>
+                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>ALYAN WAZIR</strong>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
@@ -150,17 +147,12 @@ export default function PaymentPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>IBAN:</span>
-                  <strong style={{ color: "#4ade80", fontSize: "0.88rem", wordBreak: "break-all" }}>PK93UNIL0109000304929964</strong>
+                  <strong style={{ color: "#4ade80", fontSize: "0.85rem", wordBreak: "break-all" }}>PK93UNIL0109000304929964</strong>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Branch Name / Address:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>0881-Wana</span>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>SWIFT / BIC Code:</span>
-                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>UNILPKKA</strong>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Branch & SWIFT:</span>
+                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>0881-Wana · <strong>UNILPKKA</strong></span>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -229,11 +221,11 @@ export default function PaymentPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Connected Bank:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>UBL (United Bank Limited)</span>
+                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>UBL Bank (0881304929964)</span>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Accepted Currencies:</span>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Currencies:</span>
                   <strong style={{ color: "#fff", fontSize: "0.85rem" }}>GBP (£), USD ($), EUR (€)</strong>
                 </div>
               </div>
@@ -250,7 +242,66 @@ export default function PaymentPage() {
             </a>
           </div>
 
-          {/* Card 3: Factory & Workshop Details Card */}
+          {/* Card 3: Pakistan Wallets & Microfinance */}
+          <div style={{
+            background: "var(--card-bg, #181c24)",
+            border: "1px solid var(--border-color, #2a313d)",
+            borderRadius: 16,
+            padding: 28,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <div style={{ padding: 10, borderRadius: 10, background: "rgba(34, 197, 94, 0.15)", color: "#22c55e" }}>
+                  <Wallet size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "1.25rem", margin: 0, color: "#fff" }}>🇵🇰 Pakistan Wallets</h2>
+                  <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>JazzCash, Nayapay, SadaPay, EasyPaisa</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: "rgba(0,0,0,0.3)",
+                padding: "20px",
+                borderRadius: 12,
+                border: "1px solid #334155",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                marginBottom: 20,
+              }}>
+                <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>JazzCash / Nayapay / SadaPay / Raast ID:</span>
+                  <strong style={{ color: "#fff", fontSize: "1rem" }}>0327 5756188</strong>
+                </div>
+
+                <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>EasyPaisa Account:</span>
+                  <strong style={{ color: "#4ade80", fontSize: "1rem" }}>0349 9585519</strong>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Account Title:</span>
+                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>ALYAN WAZIR</strong>
+                </div>
+              </div>
+            </div>
+
+            <a
+              href={whatsappUrl("Hello Sialkot Cricket Kits, I would like to send my order payment via JazzCash / SadaPay / Nayapay / EasyPaisa.")}
+              target="_blank"
+              rel="noreferrer"
+              className="button whatsapp"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", borderRadius: 8 }}
+            >
+              <MessageCircle size={18} /> Confirm Mobile Wallet Payment
+            </a>
+          </div>
+
+          {/* Card 4: Factory & Workshop Details Card */}
           <div style={{
             background: "var(--card-bg, #181c24)",
             border: "1px solid var(--border-color, #2a313d)",
@@ -278,32 +329,27 @@ export default function PaymentPage() {
                 border: "1px solid #334155",
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: 8,
                 marginBottom: 20,
               }}>
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 6 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Factory Name:</span>
-                  <strong style={{ color: "#fff", fontSize: "0.9rem" }}>Superior Cricket Factory</strong>
+                  <strong style={{ color: "#fff", fontSize: "0.88rem" }}>Superior Cricket Factory</strong>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>House:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>No# 207</span>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 6 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Address:</span>
+                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>House No. 207, Gulshan Street</span>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Street:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>Gulshan Street</span>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 6 }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Town & City:</span>
+                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>Model Town, Sialkot</span>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Town:</span>
-                  <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>Model Town</span>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
-                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>City:</span>
-                  <strong style={{ color: "var(--accent, #f59e0b)", fontSize: "0.9rem" }}>Sialkot, Pakistan</strong>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Country:</span>
+                  <strong style={{ color: "#fff", fontSize: "0.88rem" }}>Pakistan</strong>
                 </div>
               </div>
             </div>
