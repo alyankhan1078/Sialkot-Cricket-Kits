@@ -50,6 +50,8 @@ export default function AdminSettingsPage() {
     easypaisaEnabled: true,
 
     // International Remittance & Digital
+    payoneerEmail: "sialkotcricketkits@gmail.com",
+    payoneerEnabled: true,
     wiseEmail: "sialkotcricketkits@gmail.com",
     wiseTag: "@sialkotcricket",
     wiseEnabled: true,
@@ -480,14 +482,24 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          {/* International Remittance (Wise / PayPal / Remitly / WU) */}
+          {/* International Remittance (Payoneer / Wise / PayPal / Remitly / WU) */}
           <div className="admin-card">
             <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Send size={20} color="#f59e0b" />
-              <span>International Remittance (Wise & PayPal)</span>
+              <span>International Remittance (Payoneer, Wise & PayPal)</span>
             </h2>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Payoneer Email</label>
+                <input
+                  className="admin-input"
+                  value={settings.payoneerEmail || ""}
+                  onChange={(e) => setSettings({ ...settings, payoneerEmail: e.target.value })}
+                  placeholder="sialkotcricketkits@gmail.com"
+                />
+              </div>
+
               <div className="admin-form-group">
                 <label>Wise Email or Tag</label>
                 <input

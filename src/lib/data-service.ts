@@ -66,7 +66,9 @@ export interface DBPaymentSettings {
   easypaisaTitle: string;
   easypaisaEnabled: boolean;
 
-  // International Remittance & Digital
+  // Payoneer & International Digital
+  payoneerEmail: string;
+  payoneerEnabled: boolean;
   wiseEmail: string;
   wiseTag: string;
   wiseEnabled: boolean;
@@ -226,7 +228,9 @@ let memorySettings: DBSettings = {
   easypaisaTitle: "ALYAN WAZIR",
   easypaisaEnabled: true,
 
-  // International Remittance & Digital
+  // Payoneer & International Digital
+  payoneerEmail: "sialkotcricketkits@gmail.com",
+  payoneerEnabled: true,
   wiseEmail: "sialkotcricketkits@gmail.com",
   wiseTag: "@sialkotcricket",
   wiseEnabled: true,

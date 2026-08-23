@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Loader2,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -32,7 +33,7 @@ export type CartItem = {
   quantity: number;
 };
 
-type PaymentMethodType = "card" | "wise" | "bank" | "pakistan" | "remitly" | "paypal";
+type PaymentMethodType = "card" | "wise" | "bank" | "pakistan" | "payoneer" | "remitly" | "paypal";
 
 type StoreContextValue = {
   cart: CartItem[];
@@ -183,6 +184,7 @@ function CartDrawer() {
       case "wise": return "Wise International Transfer";
       case "bank": return "Direct Bank Wire (IBAN / SWIFT)";
       case "pakistan": return "Pakistan Local (Raast / JazzCash / EasyPaisa / Bank)";
+      case "payoneer": return "Payoneer (B2B & Global Receiving)";
       case "remitly": return "Remitly / Western Union / MoneyGram";
       case "paypal": return "PayPal";
     }
@@ -402,6 +404,28 @@ function CartDrawer() {
 
                 <button
                   type="button"
+                  onClick={() => setSelectedMethod("payoneer")}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: 8,
+                    border: selectedMethod === "payoneer" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
+                    background: selectedMethod === "payoneer" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
+                    color: selectedMethod === "payoneer" ? "#fff" : "#cbd5e1",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <Globe size={16} color={selectedMethod === "payoneer" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                  <span>Payoneer</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setSelectedMethod("remitly")}
                   style={{
                     padding: "8px 4px",
@@ -466,6 +490,24 @@ function CartDrawer() {
                     </button>
                   </div>
                   <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>Fastest & lowest-fee transfer for UK, Europe, USA, Canada & Australia.</span>
+                </div>
+              )}
+
+              {selectedMethod === "payoneer" && (
+                <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Payoneer Email: <strong>sialkotcricketkits@gmail.com</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "payoneer")}
+                      style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
+                    >
+                      {copiedKey === "payoneer" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block", marginTop: 4 }}>
+                    Direct Payoneer account-to-account transfer and UK/US/EU receiving accounts supported.
+                  </span>
                 </div>
               )}
 

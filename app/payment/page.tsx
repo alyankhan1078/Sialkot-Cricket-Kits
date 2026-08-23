@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 };
 
 const acceptedInternationalMethods = [
+  "Payoneer (B2B & Global Receiving in GBP, USD, EUR)",
   "TapTap Send",
   "Remitly",
   "MoneyGram",
