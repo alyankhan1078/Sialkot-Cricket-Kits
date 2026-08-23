@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "start": "vinext start",
+    "build": "next build",
+    "build:vite": "vite build",
+    "start": "next start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:push:supabase": "node scripts/push-to-supabase.js",
