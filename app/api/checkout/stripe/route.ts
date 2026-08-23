@@ -5,7 +5,7 @@ import { getSettings } from "@/src/lib/data-service";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, customerName, customerEmail, customerPhone, country, notes } = body;
+    const { items, customerName, customerEmail, customerPhone, country, shippingFee, notes } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -47,6 +47,21 @@ export async function POST(request: Request) {
       },
       quantity: Number(item.quantity) || 1,
     }));
+
+    // Add shipping line item if shipping fee > 0
+    if (Number(shippingFee) > 0) {
+      line_items.push({
+        price_data: {
+          currency: "gbp",
+          product_data: {
+            name: `Tracked Express Courier Delivery (${country || "International"})`,
+            description: "Express worldwide tracked door-to-door courier dispatch from Sialkot",
+          },
+          unit_amount: Math.round(Number(shippingFee) * 100),
+        },
+        quantity: 1,
+      });
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

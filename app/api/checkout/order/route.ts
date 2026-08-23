@@ -26,15 +26,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate total
-    const totalAmount = items.reduce(
+    const itemsSubtotal = items.reduce(
       (sum: number, item: any) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
       0
     );
+    const shippingFee = Number(body.shippingFee) || 0;
+    const finalTotal = body.totalAmount ? Number(body.totalAmount) : itemsSubtotal + shippingFee;
 
     const fullNotes = [
       notes ? `Customer Notes: ${notes}` : "",
       address ? `Shipping Address: ${address}, ${city || ""}, ${state || ""} ${postalCode || ""}, ${country || ""}` : "",
+      shippingFee > 0 ? `Tracked Shipping Fee: £${shippingFee}` : "",
       transactionRef ? `Payment Ref / Transaction ID: ${transactionRef}` : "",
     ]
       .filter(Boolean)
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
         price: Number(i.price) || 0,
         quantity: Number(i.quantity) || 1,
       })),
-      totalAmount,
+      totalAmount: finalTotal,
       status: "pending" as const,
       paymentMethod: paymentMethod || "Direct Website Order",
       notes: fullNotes,

@@ -26,9 +26,11 @@ import {
   Sparkles,
   Globe,
   Lock,
+  Truck,
 } from "lucide-react";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { calculateShippingFee, SHIPPING_DESTINATIONS } from "@/src/lib/shipping";
 
 export type CartItem = {
   productId: string;
@@ -163,6 +165,7 @@ export function useStore() {
 function CartDrawer() {
   const { cart, isCartOpen, setCartOpen, updateQuantity, removeFromCart, clearCart } = useStore();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>("card");
+  const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isStripeLoading, setStripeLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -173,6 +176,9 @@ function CartDrawer() {
   });
 
   const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
+  const shippingCalculation = calculateShippingFee(selectedCountry, totalItemCount);
+  const grandTotal = subtotal + shippingCalculation.shippingFee;
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -198,9 +204,13 @@ function CartDrawer() {
           item.product.price
         )} each`
     )
-    .join("\n\n")}\n\nSubtotal: ${formatPrice(
+    .join("\n\n")}\n\nItems Subtotal: ${formatPrice(
     subtotal
-  )}\nPreferred Payment Method: ${getPaymentMethodLabel(selectedMethod)}\n\nPlease confirm shipping charges to my location and final payable amount. Thank you!`;
+  )}\nDelivery Destination: ${selectedCountry}\nTracked Courier Shipping: ${formatPrice(
+    shippingCalculation.shippingFee
+  )}${shippingCalculation.totalSaved > 0 ? ` (Bulk Shipping Discount: Saved ${formatPrice(shippingCalculation.totalSaved)}!)` : ""}\nGrand Total: ${formatPrice(
+    grandTotal
+  )}\nPreferred Payment Method: ${getPaymentMethodLabel(selectedMethod)}\n\nPlease confirm order details and share live bat preparation video. Thank you!`;
 
   const handleStripeCheckout = async () => {
     try {
@@ -219,6 +229,8 @@ function CartDrawer() {
             quantity: l.quantity,
             image: l.product.image,
           })),
+          country: selectedCountry,
+          shippingFee: shippingCalculation.shippingFee,
         }),
       });
 
@@ -235,7 +247,7 @@ function CartDrawer() {
         }
       }
     } catch (err: any) {
-      setCardError("Unable to connect to card processor. You can complete your order directly on WhatsApp.");
+      setCardError("Card checkout could not be started. Please confirm order on WhatsApp.");
     } finally {
       setStripeLoading(false);
     }
@@ -606,11 +618,61 @@ function CartDrawer() {
             </div>
 
             <div className="cart-summary">
-              <div>
-                <span>Subtotal</span>
+              {/* Country Destination Selector */}
+              <div style={{ marginBottom: 12, background: "rgba(0,0,0,0.3)", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <label style={{ fontSize: "0.8rem", color: "#cbd5e1", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Truck size={14} color="var(--accent, #f59e0b)" /> Destination Country:
+                  </label>
+                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{shippingCalculation.destination.estimatedDelivery.split("(")[0]}</span>
+                </div>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    background: "#0f172a",
+                    border: "1px solid #334155",
+                    color: "#fff",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  {Object.keys(SHIPPING_DESTINATIONS).map((c) => (
+                    <option key={c} value={c}>
+                      {c} ({formatPrice(SHIPPING_DESTINATIONS[c].baseGbp)} base)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Breakdown */}
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.88rem", marginBottom: 4 }}>
+                <span>Items Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
                 <strong>{formatPrice(subtotal)}</strong>
               </div>
-              <p style={{ margin: "4px 0 12px" }}>Tracked worldwide express delivery (DHL / FedEx) confirmed on checkout.</p>
+
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.88rem", marginBottom: 4 }}>
+                <span>Tracked Courier Shipping</span>
+                <strong style={{ color: "var(--accent, #f59e0b)" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+              </div>
+
+              {shippingCalculation.totalSaved > 0 && (
+                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "6px 10px", borderRadius: 6, fontSize: "0.75rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, marginTop: 4 }}>
+                  <span>🎉 Multi-Bat Shipping Savings:</span>
+                  <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                </div>
+              )}
+
+              {/* Grand Total */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: "1px solid var(--border-color, #2a313d)", marginTop: 6, marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#fff", display: "block" }}>Grand Total</span>
+                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Incl. Express Courier</span>
+                </div>
+                <strong style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(grandTotal)}</strong>
+              </div>
 
               {cardError && (
                 <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "8px 12px", borderRadius: 8, fontSize: "0.8rem", marginBottom: 10 }}>
@@ -635,7 +697,7 @@ function CartDrawer() {
                   borderRadius: 8,
                 }}
               >
-                <Lock size={18} /> Proceed to Direct Checkout ({formatPrice(subtotal)})
+                <Lock size={18} /> Proceed to Direct Checkout ({formatPrice(grandTotal)})
               </Link>
 
               {selectedMethod === "card" && (

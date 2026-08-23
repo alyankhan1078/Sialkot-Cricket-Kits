@@ -24,6 +24,7 @@ import {
 import { useStore } from "@/src/components/StoreProvider";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { calculateShippingFee, SHIPPING_DESTINATIONS } from "@/src/lib/shipping";
 
 type PaymentMethodType =
   | "card"
@@ -82,6 +83,9 @@ export default function CheckoutPage() {
   });
 
   const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
+  const shippingCalculation = calculateShippingFee(formData.country, totalItemCount);
+  const grandTotal = subtotal + shippingCalculation.shippingFee;
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -133,6 +137,7 @@ export default function CheckoutPage() {
             customerEmail: formData.email,
             customerPhone: formData.phone,
             country: formData.country,
+            shippingFee: shippingCalculation.shippingFee,
             notes: formData.notes,
           }),
         });
@@ -168,6 +173,9 @@ export default function CheckoutPage() {
             price: l.product.price,
             quantity: l.quantity,
           })),
+          subtotal: subtotal,
+          shippingFee: shippingCalculation.shippingFee,
+          totalAmount: grandTotal,
           paymentMethod: getMethodTitle(formData.paymentMethod),
           transactionRef: formData.transactionRef,
           notes: formData.notes,
@@ -700,15 +708,27 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Subtotal & Shipping */}
+              {/* Subtotal & Shipping Breakdown */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 16, borderBottom: "1px solid var(--border-color, #2a313d)", fontSize: "0.9rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                  <span>Subtotal</span>
+                  <span>Items Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
                   <strong>{formatPrice(subtotal)}</strong>
                 </div>
+                
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                  <span>Estimated Delivery</span>
-                  <span style={{ color: "#4ade80", fontWeight: 500 }}>Tracked Courier (DHL / FedEx)</span>
+                  <span>Delivery to {formData.country}</span>
+                  <strong style={{ color: "var(--accent, #f59e0b)" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+                </div>
+
+                {shippingCalculation.totalSaved > 0 && (
+                  <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "6px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+                    <span>🎉 Multi-Bat Shipping Savings:</span>
+                    <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                  </div>
+                )}
+                
+                <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 2 }}>
+                  {shippingCalculation.destination.estimatedDelivery}
                 </div>
               </div>
 
@@ -716,10 +736,10 @@ export default function CheckoutPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 0 20px" }}>
                 <div>
                   <strong style={{ color: "#fff", fontSize: "1.1rem", display: "block" }}>Total Payable</strong>
-                  <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>GBP (£) All Taxes Included</span>
+                  <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>GBP (£) All Taxes &amp; Shipping Included</span>
                 </div>
                 <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--accent, #f59e0b)" }}>
-                  {formatPrice(subtotal)}
+                  {formatPrice(grandTotal)}
                 </span>
               </div>
 
@@ -751,7 +771,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <Lock size={18} /> Complete Order &amp; Pay ({formatPrice(subtotal)})
+                    <Lock size={18} /> Complete Order &amp; Pay ({formatPrice(grandTotal)})
                   </>
                 )}
               </button>
