@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   createContext,
   useContext,
@@ -24,6 +25,7 @@ import {
   Loader2,
   Sparkles,
   Globe,
+  Lock,
 } from "lucide-react";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -570,10 +572,29 @@ function CartDrawer() {
               )}
 
               {/* Action Buttons */}
+              <Link
+                href="/checkout"
+                className="button primary wide"
+                onClick={() => setCartOpen(false)}
+                style={{
+                  marginBottom: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  fontSize: "1rem",
+                  padding: "12px 16px",
+                  fontWeight: 600,
+                  borderRadius: 8,
+                }}
+              >
+                <Lock size={18} /> Proceed to Direct Checkout ({formatPrice(subtotal)})
+              </Link>
+
               {selectedMethod === "card" && (
                 <button
                   type="button"
-                  className="button primary wide"
+                  className="button secondary wide"
                   onClick={handleStripeCheckout}
                   disabled={isStripeLoading}
                   style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
@@ -584,7 +605,7 @@ function CartDrawer() {
                     </>
                   ) : (
                     <>
-                      <CreditCard size={18} /> Pay by Card / Apple Pay ({formatPrice(subtotal)})
+                      <CreditCard size={18} /> Direct Card Payment
                     </>
                   )}
                 </button>
@@ -596,7 +617,7 @@ function CartDrawer() {
                 target="_blank"
                 rel="noreferrer"
               >
-                {selectedMethod === "card" ? "Or Confirm on WhatsApp" : `Confirm Order via ${getPaymentMethodLabel(selectedMethod).split("(")[0]}`}
+                {selectedMethod === "card" ? "Or Order on WhatsApp" : `Or Order via ${getPaymentMethodLabel(selectedMethod).split("(")[0]} on WhatsApp`}
               </a>
 
               <button className="text-button" onClick={clearCart} style={{ marginTop: 8 }}>
