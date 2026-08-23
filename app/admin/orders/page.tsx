@@ -13,10 +13,14 @@ import {
   Clock,
   Printer,
   ShoppingBag,
+  Mail,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import { formatPrice } from "@/src/data/products";
 import type { DBOrder } from "@/src/lib/data-service";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
+import { whatsappUrl, generateOrderConfirmationWhatsAppMessage } from "@/src/lib/whatsapp";
 
 export default function AdminOrdersPage() {
   const { showToast, confirmAction } = useAdminFeedback();
@@ -157,6 +161,29 @@ export default function AdminOrdersPage() {
     } catch {
       showToast("Failed to update order status", "error");
     }
+  };
+
+  const handleSendEmailConfirmation = async (order: DBOrder) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/email`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Confirmation email dispatched to ${order.customerEmail || "customer"}!`, "success");
+      } else {
+        showToast(data.error || "Failed to dispatch email", "error");
+      }
+    } catch {
+      showToast("Network error while sending confirmation email", "error");
+    }
+  };
+
+  const handleSendWhatsAppConfirmation = (order: DBOrder) => {
+    const msg = generateOrderConfirmationWhatsAppMessage(order);
+    const targetPhone = order.customerPhone || "";
+    const cleanPhone = targetPhone.replace(/[^0-9]/g, "");
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : whatsappUrl(msg);
+    window.open(url, "_blank");
+    showToast(`WhatsApp confirmation message opened for ${order.customerName}!`, "success");
   };
 
   const handleDeleteOrder = (id: string, customer: string) => {
@@ -323,7 +350,25 @@ export default function AdminOrdersPage() {
                       </select>
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: "0.5rem" }}>
+                      <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppConfirmation(order)}
+                          className="admin-btn"
+                          style={{ padding: "0.4rem 0.6rem", background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", border: "1px solid rgba(34, 197, 94, 0.4)" }}
+                          title="Send WhatsApp Confirmation Message"
+                        >
+                          <MessageCircle size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendEmailConfirmation(order)}
+                          className="admin-btn admin-btn-secondary"
+                          style={{ padding: "0.4rem 0.6rem" }}
+                          title="Send Confirmation Email"
+                        >
+                          <Mail size={14} />
+                        </button>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="admin-btn admin-btn-secondary"
@@ -411,30 +456,30 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              <h4 style={{ color: "#fff", margin: "0 0 0.75rem", fontSize: "0.95rem" }}>Items Breakdown</h4>
-              <div style={{ border: "1px solid var(--adm-card-border)", borderRadius: "8px", overflow: "hidden", marginBottom: "1.25rem" }}>
-                <table className="admin-table" style={{ fontSize: "0.85rem" }}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <h4 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>Ordered Items</h4>
+                <table className="admin-table" style={{ background: "#09101d" }}>
                   <thead>
                     <tr>
-                      <th>Item Description</th>
-                      <th>Qty</th>
-                      <th>Unit Price</th>
-                      <th style={{ textAlign: "right" }}>Subtotal</th>
+                      <th>Product</th>
+                      <th style={{ textAlign: "center" }}>Qty</th>
+                      <th style={{ textAlign: "right" }}>Unit Price</th>
+                      <th style={{ textAlign: "right" }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedOrder.items.map((item, idx) => (
+                    {selectedOrder.items.map((it, idx) => (
                       <tr key={idx}>
-                        <td><strong>{item.name}</strong></td>
-                        <td>{item.quantity}</td>
-                        <td>£ {item.price.toLocaleString("en-GB")}</td>
+                        <td style={{ fontWeight: 600 }}>{it.name}</td>
+                        <td style={{ textAlign: "center" }}>{it.quantity}</td>
+                        <td style={{ textAlign: "right" }}>£ {it.price.toLocaleString("en-GB")}</td>
                         <td style={{ textAlign: "right", color: "var(--adm-primary)", fontWeight: 700 }}>
-                          £ {(item.price * item.quantity).toLocaleString("en-GB")}
+                          £ {(it.price * it.quantity).toLocaleString("en-GB")}
                         </td>
                       </tr>
                     ))}
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: "right", fontWeight: 700, color: "#fff" }}>
+                    <tr style={{ background: "rgba(242, 169, 40, 0.05)" }}>
+                      <td colSpan={3} style={{ textAlign: "right", fontWeight: 700 }}>
                         Total Amount Paid:
                       </td>
                       <td style={{ textAlign: "right", fontWeight: 800, color: "var(--adm-primary)", fontSize: "1.1rem" }}>
@@ -448,12 +493,29 @@ export default function AdminOrdersPage() {
               {selectedOrder.notes && (
                 <div style={{ background: "#09101d", padding: "0.75rem 1rem", borderRadius: "8px", fontSize: "0.85rem" }}>
                   <small style={{ color: "var(--adm-muted)", display: "block", marginBottom: "0.25rem" }}>Order Notes / Shipping Info:</small>
-                  <span style={{ color: "#cbd5e1" }}>{selectedOrder.notes}</span>
+                  <span style={{ color: "#cbd5e1", whiteSpace: "pre-line" }}>{selectedOrder.notes}</span>
                 </div>
               )}
             </div>
 
-            <div className="admin-modal-actions">
+            <div className="admin-modal-actions" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={() => handleSendWhatsAppConfirmation(selectedOrder)}
+                className="admin-btn"
+                style={{ background: "#22c55e", color: "#fff" }}
+              >
+                <MessageCircle size={16} />
+                <span>Send WhatsApp Message</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendEmailConfirmation(selectedOrder)}
+                className="admin-btn admin-btn-secondary"
+              >
+                <Mail size={16} />
+                <span>Send Email Invoice</span>
+              </button>
               <button
                 onClick={() => window.print()}
                 className="admin-btn admin-btn-secondary"

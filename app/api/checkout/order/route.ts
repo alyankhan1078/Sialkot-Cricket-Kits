@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrder, getSettings } from "@/src/lib/data-service";
+import { sendOrderConfirmationEmail } from "@/src/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -68,6 +69,11 @@ export async function POST(request: Request) {
     };
 
     const createdOrder = await createOrder(orderData);
+
+    // Send confirmation email asynchronously (does not block order response if email takes time)
+    sendOrderConfirmationEmail(createdOrder).catch((err) => {
+      console.error("[Background Email Dispatch Error]:", err);
+    });
 
     return NextResponse.json({
       success: true,
