@@ -50,7 +50,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           <button className={`button favourite${favourite ? " active" : ""}`} onClick={() => toggleFavourite(product.id)}><Heart size={18} fill={favourite ? "currentColor" : "none"} /> {favourite ? "Saved" : "Save"}</button>
         </div>
         <a className="ping-link" href={whatsappUrl(`Hello Sialkot Cricket Kits, I would like original pictures or a live product video for ${product.name}. Please confirm availability.`)} target="_blank" rel="noreferrer"><Video size={18} /> Request original pictures or a live ping/product video</a>
-        <p className="detail-note">Shipping is confirmed separately according to destination and parcel size. Please confirm stock before payment.</p>
+        <p className="detail-note">Worldwide Express Tracked Courier (DHL / FedEx). Multi-item combined shipping discounts are calculated automatically in cart.</p>
       </div>
     </section>
   );

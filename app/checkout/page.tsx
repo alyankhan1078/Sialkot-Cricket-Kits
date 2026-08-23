@@ -324,13 +324,15 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              {/* Destination Country with Flag and Live Rate */}
-              <div style={{ marginBottom: 14, background: "rgba(255, 255, 255, 0.02)", padding: 14, borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+              {/* Destination Country with Flag and Combined Shipping Rate */}
+              <div style={{ marginBottom: 14, background: "rgba(255, 255, 255, 0.03)", padding: 14, borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label style={{ color: "#ffffff", fontSize: "0.84rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Truck size={16} color="#f2a928" /> Destination Country / Region *
+                    <Truck size={16} color="#f2a928" /> Destination Country (Combined Shipping) *
                   </label>
-                  <span style={{ fontSize: "0.75rem", color: "#f2a928", fontWeight: 600 }}>Express Tracked Delivery</span>
+                  <span style={{ fontSize: "0.75rem", color: "#4ade80", fontWeight: 600 }}>
+                    ⚡ {shippingCalculation.destination.estimatedDelivery}
+                  </span>
                 </div>
                 <select
                   value={formData.country}
@@ -342,21 +344,25 @@ export default function CheckoutPage() {
                     const dest = SHIPPING_DESTINATIONS[c];
                     return (
                       <option key={c} value={c}>
-                        {flag} {c} {dest ? `(${formatPrice(dest.baseGbp)} base tracked)` : ""}
+                        {flag} {c} {dest ? `— ${formatPrice(dest.baseGbp)} base (+${formatPrice(dest.additionalItemGbp)}/extra bat)` : ""}
                       </option>
                     );
                   })}
                 </select>
 
                 <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem", color: "#94a3b8" }}>
-                  <span>📦 {shippingCalculation.destination.estimatedDelivery}</span>
-                  <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+                  <span>📦 Tracked Express Courier:</span>
+                  <strong style={{ color: "#f2a928", fontSize: "0.9rem" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
                 </div>
 
-                {shippingCalculation.totalSaved > 0 && (
-                  <div style={{ marginTop: 6, background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "4px 8px", borderRadius: 6, fontSize: "0.74rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>✨ Multi-Bat Combined Shipping Savings:</span>
-                    <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                {shippingCalculation.totalSaved > 0 ? (
+                  <div style={{ marginTop: 8, background: "rgba(34, 197, 94, 0.14)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "6px 10px", borderRadius: 6, fontSize: "0.76rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>🎉 <strong>Combined Shipping Active:</strong> {totalItemCount} items packed in one parcel</span>
+                    <strong style={{ background: "#22c55e", color: "#000", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 6, fontSize: "0.74rem", color: "#94a3b8", display: "flex", justifyContent: "space-between" }}>
+                    <span>💡 Extra bats ship for only +{formatPrice(shippingCalculation.destination.additionalItemGbp)} each in combined parcel</span>
                   </div>
                 )}
               </div>

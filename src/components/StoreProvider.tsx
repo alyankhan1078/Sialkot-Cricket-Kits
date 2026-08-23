@@ -742,17 +742,18 @@ function CartDrawer() {
             {/* Sticky Bottom Cart Summary & Direct Checkout Button */}
             <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid rgba(255, 255, 255, 0.12)", padding: "14px 16px", background: "#141922" }}>
               {/* 🚚 Destination Country Selector (Always Visible in Summary Bar) */}
-              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+              {/* 🚚 Destination Country Selector with Combined Shipping */}
+              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.12)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label style={{ fontSize: "0.78rem", color: "#ffffff", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    <Truck size={14} color="#f2a928" /> Delivery Destination
+                    <Truck size={14} color="#f2a928" /> Destination Country (Combined Shipping)
                   </label>
                   <span style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: 600 }}>
                     ⚡ {shippingCalculation.destination.estimatedDelivery}
                   </span>
                 </div>
 
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative", marginBottom: 6 }}>
                   <select
                     value={selectedCountry}
                     onChange={(e) => setSelectedCountry(e.target.value)}
@@ -774,12 +775,25 @@ function CartDrawer() {
                       const flag = getCountryFlag(c);
                       return (
                         <option key={c} value={c}>
-                          {flag} {c} — ({formatPrice(dest.baseGbp)} base tracked)
+                          {flag} {c} — {formatPrice(dest.baseGbp)} base (+{formatPrice(dest.additionalItemGbp)}/extra bat)
                         </option>
                       );
                     })}
                   </select>
                 </div>
+
+                {/* Combined Shipping Savings or Opportunity Banner */}
+                {totalItemCount > 1 ? (
+                  <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.28)", padding: "5px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>🎉 Combined Shipping ({totalItemCount} items): <strong>{formatPrice(shippingCalculation.shippingFee)}</strong></span>
+                    <strong style={{ background: "#22c55e", color: "#000", padding: "2px 6px", borderRadius: 4, fontSize: "0.68rem", fontWeight: 800 }}>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "0.72rem", color: "#94a3b8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>📦 Single bat rate ({formatPrice(shippingCalculation.baseFee)})</span>
+                    <span style={{ color: "#f2a928", fontWeight: 600 }}>+{formatPrice(shippingCalculation.destination.additionalItemGbp)}/extra bat combined</span>
+                  </div>
+                )}
               </div>
 
               {/* Breakdown Lines */}
@@ -792,13 +806,6 @@ function CartDrawer() {
                 <span>Tracked Courier ({selectedCountry})</span>
                 <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
               </div>
-
-              {shippingCalculation.totalSaved > 0 && (
-                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "3px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span>🎉 Combined Shipping:</span>
-                  <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
-                </div>
-              )}
 
               {/* Total Order Value */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 2 }}>
