@@ -166,3 +166,21 @@ export function calculateShippingFee(countryName: string, totalItemCount: number
     destination,
   };
 }
+
+export function getCountryFlag(countryName: string): string {
+  switch (countryName) {
+    case "United Kingdom": return "🇬🇧";
+    case "United States": return "🇺🇸";
+    case "Canada": return "🇨🇦";
+    case "Australia": return "🇦🇺";
+    case "New Zealand": return "🇳🇿";
+    case "Pakistan": return "🇵🇰";
+    case "United Arab Emirates": return "🇦🇪";
+    case "Saudi Arabia": return "🇸🇦";
+    case "Ireland": return "🇮🇪";
+    case "Germany": return "🇩🇪";
+    case "Netherlands": return "🇳🇱";
+    case "South Africa": return "🇿🇦";
+    default: return "🌍";
+  }
+}

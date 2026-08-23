@@ -24,7 +24,7 @@ import {
 import { useStore } from "@/src/components/StoreProvider";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
-import { calculateShippingFee, SHIPPING_DESTINATIONS } from "@/src/lib/shipping";
+import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
 
 type PaymentMethodType =
   | "card"
@@ -302,18 +302,28 @@ export default function CheckoutPage() {
               </h2>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 6, fontWeight: 500 }}>
-                  Country / Destination *
+                <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 6, fontWeight: 600 }}>
+                  Destination Country / Region *
                 </label>
                 <select
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#0f172a", border: "1px solid #334155", color: "#fff", fontSize: "0.9rem" }}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#0f172a", border: "1.5px solid #334155", color: "#fff", fontSize: "0.92rem", fontWeight: 600 }}
                 >
-                  {countries.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  {countries.map((c) => {
+                    const flag = getCountryFlag(c);
+                    const dest = SHIPPING_DESTINATIONS[c];
+                    return (
+                      <option key={c} value={c}>
+                        {flag} {c} {dest ? `(${formatPrice(dest.baseGbp)} base tracked)` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
+                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem", color: "#94a3b8" }}>
+                  <span>📦 {shippingCalculation.destination.estimatedDelivery}</span>
+                  <strong style={{ color: "var(--accent, #f59e0b)" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+                </div>
               </div>
 
               <div style={{ marginBottom: 14 }}>

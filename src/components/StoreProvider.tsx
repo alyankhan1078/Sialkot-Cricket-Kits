@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { formatPrice, products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
-import { calculateShippingFee, SHIPPING_DESTINATIONS } from "@/src/lib/shipping";
+import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
 
 export type CartItem = {
   productId: string;
@@ -317,55 +317,86 @@ function CartDrawer() {
                       onClick={() => removeFromCart(product.id)}
                       aria-label={`Remove ${product.name}`}
                     >
-                      <Trash2 size={17} />
+                      <Trash2 size={16} />
                     </button>
                   </article>
                 ))}
               </div>
 
-              {/* Country Destination Selector */}
-              <div style={{ background: "rgba(0,0,0,0.3)", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <label style={{ fontSize: "0.8rem", color: "#cbd5e1", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Truck size={14} color="var(--accent, #f59e0b)" /> Destination Country:
-                  </label>
-                  <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{shippingCalculation.destination.estimatedDelivery.split("(")[0]}</span>
-                </div>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: 6,
-                    background: "#0f172a",
-                    border: "1px solid #334155",
-                    color: "#fff",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  {Object.keys(SHIPPING_DESTINATIONS).map((c) => (
-                    <option key={c} value={c}>
-                      {c} ({formatPrice(SHIPPING_DESTINATIONS[c].baseGbp)} base)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Advance Confirmation Deposit Plan */}
+              {/* 🌍 Step 1: Prominent Destination Country & Shipping Calculator */}
               <div style={{
-                padding: "12px",
-                background: "rgba(245, 158, 11, 0.06)",
-                border: "1px solid rgba(245, 158, 11, 0.25)",
-                borderRadius: "10px"
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "12px",
+                padding: "14px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent, #f59e0b)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Order Confirmation Plan
+                  <label style={{ fontSize: "0.82rem", color: "#ffffff", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <Truck size={15} color="#f2a928" /> Destination Country
+                  </label>
+                  <span style={{ fontSize: "0.72rem", color: "#f2a928", fontWeight: 600 }}>Worldwide Express</span>
+                </div>
+                <p style={{ fontSize: "0.74rem", color: "#94a3b8", margin: "0 0 10px", lineHeight: 1.4 }}>
+                  Select where your parcel should be delivered. Tracked courier rates are calculated live below:
+                </p>
+
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => setSelectedCountry(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      background: "#181f2b",
+                      border: "1.5px solid #2d3748",
+                      color: "#ffffff",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {Object.keys(SHIPPING_DESTINATIONS).map((c) => {
+                      const dest = SHIPPING_DESTINATIONS[c];
+                      const flag = getCountryFlag(c);
+                      return (
+                        <option key={c} value={c}>
+                          {flag} {c} — ({formatPrice(dest.baseGbp)} base tracked)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Delivery Estimation Info */}
+                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "#94a3b8" }}>
+                  <span>📦 {shippingCalculation.destination.estimatedDelivery}</span>
+                  <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
+                </div>
+
+                {/* Multi-bat savings badge */}
+                {shippingCalculation.totalSaved > 0 && (
+                  <div style={{ marginTop: 6, background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "5px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>✨ Combined Shipping Discount:</span>
+                    <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
+                  </div>
+                )}
+              </div>
+
+              {/* 🛡️ Step 2: Order Confirmation Plan */}
+              <div style={{
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "12px",
+                padding: "14px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Confirmation Deposit Plan
                   </span>
                   <span style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: 600 }}>Min. 30% Required</span>
                 </div>
-                <p style={{ fontSize: "0.73rem", color: "#94a3b8", margin: "0 0 8px" }}>
+                <p style={{ fontSize: "0.74rem", color: "#94a3b8", margin: "0 0 10px", lineHeight: 1.4 }}>
                   Pay advance to start custom crafting. Balance payable upon live ping video demo before dispatch.
                 </p>
 
@@ -376,16 +407,16 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: depositPercent === 50 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: depositPercent === 50 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                      color: depositPercent === 50 ? "#fff" : "#cbd5e1",
+                      border: depositPercent === 50 ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: depositPercent === 50 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: depositPercent === 50 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 50 ? "var(--accent, #f59e0b)" : "#fff" }}>50% Half</strong>
+                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 50 ? "#f2a928" : "#ffffff" }}>50% Half</strong>
                     <span style={{ fontSize: "0.68rem", color: depositPercent === 50 ? "#fde68a" : "#94a3b8", display: "block" }}>Recommended</span>
-                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}</span>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)}</span>
                   </button>
 
                   <button
@@ -394,16 +425,16 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: depositPercent === 100 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: depositPercent === 100 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                      color: depositPercent === 100 ? "#fff" : "#cbd5e1",
+                      border: depositPercent === 100 ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: depositPercent === 100 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: depositPercent === 100 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 100 ? "var(--accent, #f59e0b)" : "#fff" }}>100% Full</strong>
+                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 100 ? "#f2a928" : "#ffffff" }}>100% Full</strong>
                     <span style={{ fontSize: "0.68rem", color: depositPercent === 100 ? "#fde68a" : "#94a3b8", display: "block" }}>Full Upfront</span>
-                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(grandTotal)}</span>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(grandTotal)}</span>
                   </button>
 
                   <button
@@ -412,29 +443,29 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: depositPercent === 30 ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: depositPercent === 30 ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                      color: depositPercent === 30 ? "#fff" : "#cbd5e1",
+                      border: depositPercent === 30 ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: depositPercent === 30 ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: depositPercent === 30 ? "#ffffff" : "#cbd5e1",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
                   >
-                    <strong style={{ fontSize: "0.78rem", display: "block", color: depositPercent === 30 ? "var(--accent, #f59e0b)" : "#fff" }}>30% Min</strong>
+                    <strong style={{ fontSize: "0.8rem", display: "block", color: depositPercent === 30 ? "#f2a928" : "#ffffff" }}>30% Min</strong>
                     <span style={{ fontSize: "0.68rem", color: depositPercent === 30 ? "#fde68a" : "#94a3b8", display: "block" }}>Booking Lock</span>
-                    <span style={{ fontSize: "0.75rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)}</span>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "block", marginTop: 2 }}>{formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Payment Method Selector (Clean 6 Options) */}
+              {/* 💳 Step 3: Payment Channel Selector */}
               <div style={{
-                padding: "12px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid var(--border-color, #2a313d)",
-                borderRadius: "10px"
+                padding: "14px",
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "12px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--accent, #f59e0b)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Payment Channel
                   </span>
                   <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Worldwide &amp; Local</span>
@@ -447,9 +478,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "card" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "card" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "card" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "card" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "card" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "card" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -459,7 +490,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <CreditCard size={16} color={selectedMethod === "card" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <CreditCard size={15} color={selectedMethod === "card" ? "#f2a928" : "#94a3b8"} />
                     <span>Card / Pay</span>
                   </button>
 
@@ -469,9 +500,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "payoneer" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "payoneer" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "payoneer" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "payoneer" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "payoneer" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "payoneer" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -481,7 +512,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <Globe size={16} color={selectedMethod === "payoneer" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <Globe size={15} color={selectedMethod === "payoneer" ? "#f2a928" : "#94a3b8"} />
                     <span>Payoneer</span>
                   </button>
 
@@ -491,9 +522,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "wise" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "wise" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "wise" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "wise" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "wise" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "wise" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -503,7 +534,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <Send size={16} color={selectedMethod === "wise" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <Send size={15} color={selectedMethod === "wise" ? "#f2a928" : "#94a3b8"} />
                     <span>Wise</span>
                   </button>
 
@@ -513,9 +544,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "bank" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "bank" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "bank" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "bank" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "bank" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "bank" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -525,7 +556,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <Building2 size={16} color={selectedMethod === "bank" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <Building2 size={15} color={selectedMethod === "bank" ? "#f2a928" : "#94a3b8"} />
                     <span>UBL Wire</span>
                   </button>
 
@@ -535,9 +566,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "pakistan" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "pakistan" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "pakistan" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "pakistan" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "pakistan" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "pakistan" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -547,7 +578,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <Wallet size={16} color={selectedMethod === "pakistan" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <Wallet size={15} color={selectedMethod === "pakistan" ? "#f2a928" : "#94a3b8"} />
                     <span>🇵🇰 Wallets</span>
                   </button>
 
@@ -557,9 +588,9 @@ function CartDrawer() {
                     style={{
                       padding: "8px 4px",
                       borderRadius: 8,
-                      border: selectedMethod === "remitly" ? "1.5px solid var(--accent, #f59e0b)" : "1px solid #334155",
-                      background: selectedMethod === "remitly" ? "rgba(245, 158, 11, 0.12)" : "rgba(30, 41, 59, 0.5)",
-                      color: selectedMethod === "remitly" ? "#fff" : "#cbd5e1",
+                      border: selectedMethod === "remitly" ? "1.5px solid #f2a928" : "1px solid #2d3748",
+                      background: selectedMethod === "remitly" ? "rgba(242, 169, 40, 0.15)" : "#181f2b",
+                      color: selectedMethod === "remitly" ? "#ffffff" : "#cbd5e1",
                       fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -569,7 +600,7 @@ function CartDrawer() {
                       gap: 4
                     }}
                   >
-                    <ShieldCheck size={16} color={selectedMethod === "remitly" ? "var(--accent, #f59e0b)" : "#94a3b8"} />
+                    <ShieldCheck size={15} color={selectedMethod === "remitly" ? "#f2a928" : "#94a3b8"} />
                     <span>Remitly / WU</span>
                   </button>
                 </div>
@@ -583,13 +614,13 @@ function CartDrawer() {
                 )}
 
                 {selectedMethod === "payoneer" && (
-                  <div style={{ background: "rgba(249, 115, 22, 0.08)", border: "1px solid rgba(249, 115, 22, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                  <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>Payoneer: <strong>alyankhan1078@gmail.com</strong></span>
                       <button
                         type="button"
                         onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
                       >
                         {copiedKey === "payoneer" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "payoneer" ? "Copied" : "Copy"}
                       </button>
@@ -607,7 +638,7 @@ function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
                       >
                         {copiedKey === "wise" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "wise" ? "Copied" : "Copy"}
                       </button>
@@ -623,7 +654,7 @@ function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
                       >
                         {copiedKey === "iban" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "iban" ? "Copied" : "Copy"}
                       </button>
@@ -639,7 +670,7 @@ function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => copyToClipboard("03275756188", "raast")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
                       >
                         {copiedKey === "raast" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "raast" ? "Copied" : "Copy"}
                       </button>
@@ -649,7 +680,7 @@ function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => copyToClipboard("03499585519", "easypaisa")}
-                        style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
+                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}
                       >
                         {copiedKey === "easypaisa" ? <Check size={12} color="#4ade80" /> : <Copy size={12} />} {copiedKey === "easypaisa" ? "Copied" : "Copy"}
                       </button>
@@ -659,7 +690,7 @@ function CartDrawer() {
                 )}
 
                 {selectedMethod === "remitly" && (
-                  <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
+                  <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.2)", padding: "8px 10px", borderRadius: 6, fontSize: "0.78rem", color: "#cbd5e1" }}>
                     <span>Instant international payout via <strong>Remitly, Western Union, MoneyGram &amp; TapTap Send</strong> to UBL account (ALYAN WAZIR).</span>
                   </div>
                 )}
@@ -667,28 +698,39 @@ function CartDrawer() {
             </div>
 
             {/* Sticky Bottom Cart Summary & Direct Checkout Button */}
-            <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid var(--line, #2a313d)", padding: "12px 16px", background: "var(--card-bg, #181c24)" }}>
+            <div className="cart-summary" style={{ flexShrink: 0, borderTop: "1px solid rgba(255, 255, 255, 0.1)", padding: "14px 16px", background: "#141922" }}>
               {/* Breakdown Lines */}
               <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
-                <span>Total Order Value ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
-                <strong>{formatPrice(grandTotal)}</strong>
+                <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
+                <strong>{formatPrice(subtotal)}</strong>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: "0.85rem", marginBottom: 3 }}>
+                <span>Tracked Courier ({selectedCountry})</span>
+                <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
               </div>
 
               {shippingCalculation.totalSaved > 0 && (
-                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "3px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "3px 8px", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <span>🎉 Combined Shipping:</span>
                   <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
                 </div>
               )}
 
-              {/* Due Now vs Balance */}
+              {/* Total Order Value */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, marginBottom: 2 }}>
-                <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#fff" }}>Due Today ({depositPercent}% Deposit):</span>
-                <strong style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--accent, #f59e0b)" }}>{formatPrice(depositDueNow)}</strong>
+                <span style={{ fontSize: "0.85rem", color: "#94a3b8" }}>Total Order Value:</span>
+                <span style={{ color: "#ffffff", fontWeight: 700, fontSize: "0.95rem" }}>{formatPrice(grandTotal)}</span>
+              </div>
+
+              {/* Due Now vs Balance */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#ffffff" }}>Due Today ({depositPercent}% Deposit):</span>
+                <strong style={{ fontSize: "1.25rem", fontWeight: 800, color: "#f2a928" }}>{formatPrice(depositDueNow)}</strong>
               </div>
 
               {depositPercent < 100 && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.74rem", marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.74rem", marginBottom: 8 }}>
                   <span>Balance Due on Dispatch:</span>
                   <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{formatPrice(balanceRemaining)}</span>
                 </div>
@@ -711,46 +753,41 @@ function CartDrawer() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  fontSize: "0.92rem",
-                  padding: "10px 14px",
+                  fontSize: "0.95rem",
+                  padding: "11px 14px",
                   fontWeight: 700,
                   borderRadius: 8,
+                  background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
+                  color: "#000000",
+                  border: "none",
                 }}
               >
                 <Lock size={16} /> Proceed to Checkout ({formatPrice(depositDueNow)})
               </Link>
-
-              {selectedMethod === "card" && (
-                <button
-                  type="button"
-                  className="button secondary wide"
-                  onClick={handleStripeCheckout}
-                  disabled={isStripeLoading}
-                  style={{ marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 12px", fontSize: "0.82rem" }}
-                >
-                  {isStripeLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" /> Processing Card...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard size={16} /> Instant Card Checkout
-                    </>
-                  )}
-                </button>
-              )}
 
               <a
                 className="button whatsapp wide"
                 href={whatsappUrl(checkoutMessage)}
                 target="_blank"
                 rel="noreferrer"
-                style={{ padding: "8px 12px", fontSize: "0.82rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                style={{
+                  padding: "9px 12px",
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  background: "rgba(16, 185, 129, 0.15)",
+                  border: "1px solid rgba(16, 185, 129, 0.35)",
+                  color: "#34d399",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                }}
               >
-                {selectedMethod === "card" ? "Or Order on WhatsApp" : `Or Order via ${getPaymentMethodLabel(selectedMethod).split("(")[0]} on WhatsApp`}
+                💬 Order via WhatsApp
               </a>
 
-              <button className="text-button" onClick={clearCart} style={{ marginTop: 2, fontSize: "0.75rem", color: "#94a3b8" }}>
+              <button className="text-button" onClick={clearCart} style={{ marginTop: 4, fontSize: "0.75rem", color: "#94a3b8", background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "center" }}>
                 Clear cart
               </button>
             </div>
