@@ -23,30 +23,30 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<DBSettings>({
     whatsappNumber: "+92 323 1438214",
     contactEmail: "sialkotcricketkits@gmail.com",
-    contactPhone: "+92 323 1438214",
-    factoryAddress: "House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
+    contactPhone: "+92 327 5756188",
+    factoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
     businessName: "Sialkot Cricket Kits",
     announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
     catalogueUrl: "/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf",
 
-    // Bank details
-    bankName: "Meezan Bank Limited",
-    accountTitle: "Sialkot Cricket Kits",
-    accountNumber: "01080105891234",
-    iban: "PK36MEZN0001080105891234",
-    swiftBic: "MEZNPKKA",
-    bankBranch: "Model Town Branch, Sialkot",
+    // Bank details (UBL)
+    bankName: "United Bank Limited (UBL)",
+    accountTitle: "ALYAN WAZIR",
+    accountNumber: "0881304929964",
+    iban: "PK93UNIL0109000304929964",
+    swiftBic: "UNILPKKA",
+    bankBranch: "0881-Wana",
     bankEnabled: true,
 
     // Pakistani Wallets & Raast
-    raastId: "+92 323 1438214",
-    raastTitle: "Sialkot Cricket Kits",
+    raastId: "+923275756188",
+    raastTitle: "ALYAN WAZIR",
     raastEnabled: true,
-    jazzcashNumber: "+92 323 1438214",
-    jazzcashTitle: "Sialkot Cricket Kits",
+    jazzcashNumber: "+923275756188",
+    jazzcashTitle: "ALYAN WAZIR",
     jazzcashEnabled: true,
-    easypaisaNumber: "+92 323 1438214",
-    easypaisaTitle: "Sialkot Cricket Kits",
+    easypaisaNumber: "+923275756188",
+    easypaisaTitle: "ALYAN WAZIR",
     easypaisaEnabled: true,
 
     // International Remittance & Digital

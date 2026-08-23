@@ -472,32 +472,32 @@ function CartDrawer() {
               {selectedMethod === "bank" && (
                 <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span>IBAN: <strong>PK36MEZN0001080105891234</strong></span>
+                    <span>IBAN: <strong>PK93UNIL0109000304929964</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("PK36MEZN0001080105891234", "iban")}
+                      onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
                       style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
                     >
                       {copiedKey === "iban" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "iban" ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Meezan Bank · SWIFT: <strong>MEZNPKKA</strong> · Title: Sialkot Cricket Kits</div>
+                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>UBL Bank · SWIFT: <strong>UNILPKKA</strong> · Title: <strong>ALYAN WAZIR</strong> · Branch: 0881-Wana</div>
                 </div>
               )}
 
               {selectedMethod === "pakistan" && (
                 <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "10px 12px", borderRadius: 8, fontSize: "0.8rem", color: "#cbd5e1" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span>Raast / JazzCash: <strong>03231438214</strong></span>
+                    <span>Raast / JazzCash / EasyPaisa: <strong>03275756188</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard("03231438214", "raast")}
+                      onClick={() => copyToClipboard("03275756188", "raast")}
                       style={{ background: "none", border: "none", color: "var(--accent, #f59e0b)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
                     >
                       {copiedKey === "raast" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "raast" ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Account Title: <strong>Alyan Khan / Sialkot Cricket Kits</strong> (EasyPaisa / HBL / Meezan)</div>
+                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Account Title: <strong>ALYAN WAZIR</strong> (United Bank Limited / Mobile Accounts)</div>
                 </div>
               )}
 
