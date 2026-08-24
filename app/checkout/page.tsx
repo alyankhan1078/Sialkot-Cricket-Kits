@@ -243,20 +243,20 @@ export default function CheckoutPage() {
           </p>
 
           {/* 4-Step Progress Ribbon */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 24, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "6px 12px", borderRadius: 999, fontSize: "0.78rem", color: "#f2a928", fontWeight: 600 }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 18, flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#f2a928", fontWeight: 600 }}>
               <span>1. Delivery &amp; Contact</span>
             </div>
-            <span style={{ color: "#475569" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "6px 12px", borderRadius: 999, fontSize: "0.78rem", color: "#f2a928", fontWeight: 600 }}>
-              <span>2. Confirmation Plan (35% / 50% / Full)</span>
+            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#f2a928", fontWeight: 600 }}>
+              <span>2. Confirmation Plan</span>
             </div>
-            <span style={{ color: "#475569" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "6px 12px", borderRadius: 999, fontSize: "0.78rem", color: "#cbd5e1" }}>
+            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#cbd5e1" }}>
               <span>3. Payment Channel</span>
             </div>
-            <span style={{ color: "#475569" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "6px 12px", borderRadius: 999, fontSize: "0.78rem", color: "#cbd5e1" }}>
+            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#cbd5e1" }}>
               <span>4. Live Ping Demo</span>
             </div>
           </div>
@@ -264,11 +264,11 @@ export default function CheckoutPage() {
       </section>
 
       {/* Main Checkout Container */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "36px 20px" }}>
-        <form onSubmit={handleSubmitOrder} style={{ display: "grid", gridTemplateColumns: "1.25fr 0.75fr", gap: 28, alignItems: "start" }}>
+      <section className="checkout-page-container">
+        <form className="checkout-form-grid" onSubmit={handleSubmitOrder}>
           
           {/* Left Column: Form Cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", minWidth: 0 }}>
             
             {/* 1. Contact & Delivery Destination Card */}
             <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "24px" }}>
@@ -280,7 +280,7 @@ export default function CheckoutPage() {
                 <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Step 1 of 3</span>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div className="checkout-grid-2" style={{ marginBottom: 14 }}>
                 <div>
                   <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
                     Full Name *
@@ -382,7 +382,7 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 12 }}>
+              <div className="checkout-grid-3">
                 <div>
                   <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
                     City *
@@ -441,7 +441,7 @@ export default function CheckoutPage() {
               </p>
 
               {/* 4 Plan Options Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div className="checkout-plans-grid" style={{ marginBottom: 12 }}>
                 
                 {/* Option 1: 50% Half Payment (Recommended) */}
                 <label style={{
@@ -639,7 +639,7 @@ export default function CheckoutPage() {
               </p>
 
               {/* 6 Payment Method Channels Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+              <div className="checkout-methods-grid" style={{ marginBottom: 16 }}>
                 
                 {/* Method 1: Card */}
                 <label style={{
@@ -935,9 +935,9 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Right Column: Order Summary Sticky Sidebar */}
-          <div style={{ position: "sticky", top: 100, display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: 22 }}>
+          {/* Right Column: Order Summary Sticky Sidebar (Desktop) / Below (Mobile) */}
+          <div className="checkout-summary-sticky">
+            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: 22, width: "100%", boxSizing: "border-box" }}>
               <h2 style={{ fontSize: "1.15rem", color: "#fff", margin: "0 0 14px", paddingBottom: 10, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", fontWeight: 700 }}>
                 Order Summary ({lines.reduce((s, i) => s + i.quantity, 0)} Items)
               </h2>

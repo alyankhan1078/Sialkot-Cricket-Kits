@@ -152,15 +152,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           {new Date().getFullYear()} {settings.businessName}.
         </p>
       </footer>
-      <a
-        className="floating-whatsapp"
-        href={whatsappUrl("Hello Sialkot Cricket Kits, I would like information about your products.")}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Chat with Sialkot Cricket Kits on WhatsApp"
-      >
-        WhatsApp <span>{settings.whatsappNumber}</span>
-      </a>
+      {!pathname.startsWith("/checkout") && (
+        <a
+          className="floating-whatsapp"
+          href={whatsappUrl("Hello Sialkot Cricket Kits, I would like information about your products.")}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Chat with Sialkot Cricket Kits on WhatsApp"
+        >
+          WhatsApp <span>{settings.whatsappNumber}</span>
+        </a>
+      )}
     </>
   );
 }
