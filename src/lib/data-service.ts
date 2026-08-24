@@ -205,7 +205,7 @@ let memoryFaqs: DBFaq[] = initialFaqs.map(([question, answer], index) => ({
 let memorySettings: DBSettings = {
   whatsappNumber: "+92 323 1438214",
   contactEmail: "sialkotcricketkits@gmail.com",
-  contactPhone: "+92 327 5756188",
+  contactPhone: "+92 323 1438214",
   factoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
   businessName: "Sialkot Cricket Kits",
   announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",

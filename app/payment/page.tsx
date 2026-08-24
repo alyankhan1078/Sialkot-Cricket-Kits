@@ -381,7 +381,7 @@ export default function PaymentPage() {
           <div style={{ flex: 1, minWidth: 280 }}>
             <h3 style={{ fontSize: "1.2rem", margin: "0 0 8px", color: "#fff" }}>Official Payment Verification Guarantee</h3>
             <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.6 }}>
-              Always verify recipient details with official accounts: <strong>Alyan Wazir</strong> / <strong>Superior Cricket Factory</strong> via WhatsApp at <strong>+92 323 1438214</strong> / <strong>+92 327 5756188</strong> or <strong>alyankhan1078@gmail.com</strong>.
+              Always verify recipient details with official accounts: <strong>Alyan Wazir</strong> / <strong>Superior Cricket Factory</strong> via WhatsApp at <strong>+92 323 1438214</strong> or <strong>sialkotcricketkits@gmail.com</strong>.
               Upon receiving payment, our team provides an official invoice and live ping demonstration videos before worldwide courier dispatch.
             </p>
           </div>
