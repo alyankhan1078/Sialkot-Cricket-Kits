@@ -8,18 +8,16 @@ import {
   X,
   Sparkles,
   Flame,
-  Shield,
   Award,
   Download,
   MessageCircle,
-  CheckCircle2,
-  Filter,
-  ArrowUpDown,
-  Tag,
   ShoppingBag,
   Video,
   Truck,
   ShieldCheck,
+  ArrowUpDown,
+  ChevronRight,
+  LayoutGrid,
 } from "lucide-react";
 import { ProductCard } from "@/src/components/ProductCard";
 import { useStore } from "@/src/components/StoreProvider";
@@ -156,15 +154,15 @@ export function ShopClient() {
 
   const hasActiveFilters = query !== "" || category !== "All equipment" || priceFilter !== "all" || availability !== "all";
 
-  // Reusable Sidebar & Drawer Content
+  // Reusable Sidebar & Drawer Content — now with white/light theme
   const renderSidebarContent = (isDrawer = false) => (
     <>
       {/* Sidebar Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <SlidersHorizontal size={18} color="#f2a928" />
-          <h2 style={{ fontSize: "0.95rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#ffffff", margin: 0 }}>
-            Shop Catalogue
+          <LayoutGrid size={17} color="var(--gold)" />
+          <h2 style={{ fontSize: ".9rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--text-primary)", margin: 0 }}>
+            Categories
           </h2>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -172,31 +170,23 @@ export function ShopClient() {
             <button
               type="button"
               onClick={resetAllFilters}
-              style={{ background: "none", border: "none", color: "#f2a928", fontSize: "0.74rem", fontWeight: 700, cursor: "pointer", padding: 0 }}
+              style={{ background: "none", border: "none", color: "var(--orange)", fontSize: ".72rem", fontWeight: 700, cursor: "pointer", padding: 0 }}
             >
-              Reset All
+              Reset all
             </button>
           )}
           {isDrawer && (
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(false)}
-              aria-label="Close Filter Drawer"
+              aria-label="Close filter drawer"
               style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "none",
-                color: "#ffffff",
-                width: 36,
-                height: 36,
-                minWidth: 36,
-                minHeight: 36,
-                borderRadius: "50%",
-                display: "grid",
-                placeItems: "center",
-                cursor: "pointer",
+                background: "var(--surface-subtle)", border: "1px solid var(--border)",
+                color: "var(--text-primary)", width: 36, height: 36, minWidth: 36,
+                borderRadius: "50%", display: "grid", placeItems: "center", cursor: "pointer",
               }}
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
         </div>
@@ -204,148 +194,42 @@ export function ShopClient() {
 
       {/* 1. Featured Collections */}
       <div>
-        <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8", marginBottom: 8 }}>
-          Featured Collections
+        <span style={{ display: "block", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--text-muted)", marginBottom: 8 }}>
+          Featured collections
         </span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setCategory("All equipment");
-              if (isDrawer) setMobileDrawerOpen(false);
-              document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "9px 12px",
-              minHeight: 44,
-              borderRadius: 8,
-              background: category === "All equipment" ? "rgba(242, 169, 40, 0.16)" : "transparent",
-              border: category === "All equipment" ? "1px solid rgba(242, 169, 40, 0.4)" : "1px solid transparent",
-              color: category === "All equipment" ? "#f2a928" : "#cbd5e1",
-              fontWeight: category === "All equipment" ? 700 : 500,
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <ShoppingBag size={15} /> All Equipment
-            </span>
-            <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.08)", padding: "2px 6px", borderRadius: 4, color: "#94a3b8" }}>
-              {categoryCounts["All equipment"] || 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCategory("Best Sellers");
-              if (isDrawer) setMobileDrawerOpen(false);
-              document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "9px 12px",
-              minHeight: 44,
-              borderRadius: 8,
-              background: category === "Best Sellers" ? "linear-gradient(135deg, rgba(225, 29, 72, 0.22) 0%, rgba(245, 158, 11, 0.2) 100%)" : "transparent",
-              border: category === "Best Sellers" ? "1px solid rgba(245, 158, 11, 0.6)" : "1px solid transparent",
-              color: category === "Best Sellers" ? "#f59e0b" : "#cbd5e1",
-              fontWeight: category === "Best Sellers" ? 700 : 500,
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Flame size={15} color="#f59e0b" /> Best Selling Articles
-            </span>
-            <span style={{ fontSize: "0.72rem", background: "rgba(245, 158, 11, 0.18)", padding: "2px 6px", borderRadius: 4, color: "#f59e0b", fontWeight: 700 }}>
-              {categoryCounts["Best Sellers"] || 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCategory("Featured");
-              if (isDrawer) setMobileDrawerOpen(false);
-              document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "9px 12px",
-              minHeight: 44,
-              borderRadius: 8,
-              background: category === "Featured" ? "rgba(242, 169, 40, 0.16)" : "transparent",
-              border: category === "Featured" ? "1px solid rgba(242, 169, 40, 0.4)" : "1px solid transparent",
-              color: category === "Featured" ? "#f2a928" : "#cbd5e1",
-              fontWeight: category === "Featured" ? 700 : 500,
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Sparkles size={15} color="#f2a928" /> Featured Masterpieces
-            </span>
-            <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.08)", padding: "2px 6px", borderRadius: 4, color: "#94a3b8" }}>
-              {categoryCounts["Featured"] || 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCategory("Sale");
-              if (isDrawer) setMobileDrawerOpen(false);
-              document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "9px 12px",
-              minHeight: 44,
-              borderRadius: 8,
-              background: category === "Sale" ? "rgba(239, 68, 68, 0.16)" : "transparent",
-              border: category === "Sale" ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid transparent",
-              color: category === "Sale" ? "#f87171" : "#cbd5e1",
-              fontWeight: category === "Sale" ? 700 : 500,
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Flame size={15} color="#ef4444" /> Clearance &amp; Value Deals
-            </span>
-            <span style={{ fontSize: "0.72rem", background: "rgba(255, 255, 255, 0.08)", padding: "2px 6px", borderRadius: 4, color: "#94a3b8" }}>
-              {categoryCounts["Sale"] || 0}
-            </span>
-          </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {[
+            { key: "All equipment", label: "All Equipment", icon: <ShoppingBag size={14} /> },
+            { key: "Best Sellers", label: "Best Selling Articles", icon: <Flame size={14} color="#f59e0b" /> },
+            { key: "Featured", label: "Featured Masterpieces", icon: <Sparkles size={14} color="var(--gold)" /> },
+            { key: "Sale", label: "Clearance & Value Deals", icon: <Award size={14} color="#ef4444" /> },
+          ].map(({ key, label, icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setCategory(key);
+                if (isDrawer) setMobileDrawerOpen(false);
+                document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className={`sidebar-cat-btn${category === key ? " active" : ""}`}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                {icon} {label}
+              </span>
+              <span className="sidebar-cat-count">{categoryCounts[key] || 0}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* 2. Article Categories */}
       <div>
-        <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8", marginBottom: 8 }}>
-          Articles By Category
+        <span style={{ display: "block", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--text-muted)", marginBottom: 8 }}>
+          Shop by category
         </span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: isDrawer ? "none" : 320, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: isDrawer ? "none" : 340, overflowY: "auto" }}>
           {categoriesList.map((item) => {
-            const isSelected = category === item;
             const count = categoryCounts[item] || 0;
             return (
               <button
@@ -356,29 +240,12 @@ export function ShopClient() {
                   if (isDrawer) setMobileDrawerOpen(false);
                   document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "8px 10px",
-                  minHeight: 44,
-                  borderRadius: 6,
-                  background: isSelected ? "rgba(242, 169, 40, 0.14)" : "transparent",
-                  border: isSelected ? "1px solid rgba(242, 169, 40, 0.35)" : "1px solid transparent",
-                  color: isSelected ? "#f2a928" : "#cbd5e1",
-                  fontWeight: isSelected ? 700 : 400,
-                  fontSize: "0.82rem",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
+                className={`sidebar-cat-btn${category === item ? " active" : ""}`}
               >
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {item}
                 </span>
-                <span style={{ fontSize: "0.7rem", background: "rgba(255, 255, 255, 0.06)", padding: "1px 5px", borderRadius: 4, color: "#94a3b8", marginLeft: 6 }}>
-                  {count}
-                </span>
+                <span className="sidebar-cat-count">{count}</span>
               </button>
             );
           })}
@@ -386,29 +253,24 @@ export function ShopClient() {
       </div>
 
       {/* 3. Price Filter */}
-      <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: 16 }}>
-        <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8", marginBottom: 8 }}>
-          Price Range (£ GBP)
+      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <span style={{ display: "block", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--text-muted)", marginBottom: 8 }}>
+          Price range (£ GBP)
         </span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {[
-            { id: "all", label: "All Prices" },
-            { id: "under-50", label: "Under £50 (Accessories & Grips)" },
-            { id: "50-150", label: "£50 – £150 (Club Bats & Gear)" },
-            { id: "150-250", label: "£150 – £250 (Pro Reserve Bats)" },
-            { id: "250-plus", label: "£250+ (Player Edition Grade 1+)" },
+            { id: "all", label: "All prices" },
+            { id: "under-50", label: "Under £50" },
+            { id: "50-150", label: "£50 – £150" },
+            { id: "150-250", label: "£150 – £250" },
+            { id: "250-plus", label: "£250+" },
           ].map((p) => (
             <label
               key={p.id}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.8rem",
-                color: priceFilter === p.id ? "#f2a928" : "#cbd5e1",
-                cursor: "pointer",
-                padding: "6px 0",
-                minHeight: 36,
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: ".82rem", color: priceFilter === p.id ? "var(--orange)" : "var(--text-secondary)",
+                cursor: "pointer", padding: "5px 4px", minHeight: 36,
               }}
             >
               <input
@@ -420,7 +282,7 @@ export function ShopClient() {
                   if (isDrawer) setMobileDrawerOpen(false);
                   document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                style={{ accentColor: "#f2a928" }}
+                style={{ accentColor: "var(--gold)" }}
               />
               <span>{p.label}</span>
             </label>
@@ -429,27 +291,22 @@ export function ShopClient() {
       </div>
 
       {/* 4. Availability Filter */}
-      <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: 16 }}>
-        <span style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94a3b8", marginBottom: 8 }}>
+      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <span style={{ display: "block", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--text-muted)", marginBottom: 8 }}>
           Availability
         </span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {[
-            { id: "all", label: "All Listings" },
-            { id: "in-stock", label: "Ready to Ship (In Stock)" },
-            { id: "favourites", label: `My Favourites (${favourites.length})` },
+            { id: "all", label: "All listings" },
+            { id: "in-stock", label: "Ready to ship" },
+            { id: "favourites", label: `My favourites (${favourites.length})` },
           ].map((a) => (
             <label
               key={a.id}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.8rem",
-                color: availability === a.id ? "#f2a928" : "#cbd5e1",
-                cursor: "pointer",
-                padding: "6px 0",
-                minHeight: 36,
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: ".82rem", color: availability === a.id ? "var(--orange)" : "var(--text-secondary)",
+                cursor: "pointer", padding: "5px 4px", minHeight: 36,
               }}
             >
               <input
@@ -461,7 +318,7 @@ export function ShopClient() {
                   if (isDrawer) setMobileDrawerOpen(false);
                   document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                style={{ accentColor: "#f2a928" }}
+                style={{ accentColor: "var(--gold)" }}
               />
               <span>{a.label}</span>
             </label>
@@ -469,56 +326,24 @@ export function ShopClient() {
         </div>
       </div>
 
-      {/* 5. Factory Direct Guarantee Sidebar Card */}
-      <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: 16 }}>
-        <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.25)", borderRadius: 10, padding: 12 }}>
-          <strong style={{ color: "#f2a928", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <Award size={15} /> Factory Direct Guarantee
+      {/* 5. Support card */}
+      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <div style={{ background: "var(--accent-light)", border: "1px solid rgba(242,169,40,.25)", borderRadius: 10, padding: 12 }}>
+          <strong style={{ color: "#7a4f00", fontSize: ".82rem", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Award size={14} /> Factory direct guarantee
           </strong>
-          <p style={{ fontSize: "0.74rem", color: "#cbd5e1", margin: "0 0 10px", lineHeight: 1.4 }}>
-            Every bat comes with a personalized live ping video demo sent via WhatsApp before courier dispatch.
+          <p style={{ fontSize: ".74rem", color: "var(--text-secondary)", margin: "0 0 10px", lineHeight: 1.4 }}>
+            Every bat includes a live ping video via WhatsApp before dispatch.
           </p>
           <a
-            href="/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf"
-            target="_blank"
-            download
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              padding: "8px 10px",
-              minHeight: 44,
-              background: "#181f2b",
-              border: "1px solid #2d3748",
-              borderRadius: 6,
-              color: "#ffffff",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              textDecoration: "none",
-              marginBottom: 6,
-            }}
-          >
-            <Download size={13} color="#f2a928" /> Download 2026 PDF
-          </a>
-          <a
-            href={whatsappUrl("Hello Sialkot Cricket Kits, I am viewing your shop catalogue and would like to ask about a custom bat.")}
+            href={whatsappUrl("Hello Sialkot Cricket Kits, I am viewing your shop and would like help choosing equipment.")}
             target="_blank"
             rel="noreferrer"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              padding: "8px 10px",
-              minHeight: 44,
-              background: "rgba(34, 197, 94, 0.18)",
-              border: "1px solid rgba(34, 197, 94, 0.35)",
-              borderRadius: 6,
-              color: "#4ade80",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              textDecoration: "none",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "8px 10px", minHeight: 42, background: "#168b52",
+              border: "none", borderRadius: 6, color: "#fff",
+              fontSize: ".75rem", fontWeight: 700, textDecoration: "none",
             }}
           >
             <MessageCircle size={13} /> Chat on WhatsApp
@@ -530,176 +355,77 @@ export function ShopClient() {
 
   return (
     <>
-      {/* 🌟 Executive Hero Cover Showcase with Interactive Filter Badges */}
+      {/* Shop Hero — compact, premium, light */}
       <section
         style={{
           position: "relative",
-          minHeight: "400px",
-          background: "linear-gradient(90deg, rgba(12,16,23,0.96) 0%, rgba(12,16,23,0.85) 45%, rgba(12,16,23,0.4) 100%), url('/images/shop-catalogue-cover.jpg') center/cover no-repeat",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          display: "flex",
-          alignItems: "center",
-          padding: "46px 20px",
-          width: "100%",
-          boxSizing: "border-box",
+          background: "linear-gradient(90deg, rgba(8,9,12,0.97) 0%, rgba(8,9,12,0.87) 50%, rgba(8,9,12,0.5) 100%), url('/images/shop-catalogue-cover.jpg') center/cover no-repeat",
+          borderBottom: "1px solid rgba(255,255,255,.06)",
+          padding: "3.5rem clamp(1.2rem, 6vw, 6rem)",
+          width: "100%", boxSizing: "border-box",
         }}
       >
-        <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", zIndex: 2 }}>
-          <div style={{ maxWidth: 760 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.4)", padding: "6px 14px", borderRadius: 999, marginBottom: 14 }}>
-              <Sparkles size={15} color="#f2a928" />
-              <span style={{ color: "#f2a928", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                Official 2026 Factory Catalogue
-              </span>
-            </div>
-
-            <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 3.2rem)", fontWeight: 800, margin: "0 0 12px", color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1.15, textTransform: "uppercase" }}>
-              Shop Cricket Equipment.
-            </h1>
-
-            <p style={{ color: "#cbd5e1", fontSize: "1rem", lineHeight: 1.6, margin: "0 0 20px", maxWidth: 640 }}>
-              Search 100+ championship match-grade articles handcrafted directly in Sialkot, Pakistan. Direct express tracked courier dispatch to UK, USA, Australia, New Zealand, Europe &amp; Pakistan.
-            </p>
-
-            {/* 4 Interactive Feature Badges (Clickable filters) */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ maxWidth: 820 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(242,169,40,.14)", border: "1px solid rgba(242,169,40,.35)", padding: "5px 12px", borderRadius: 999, marginBottom: 14 }}>
+            <Sparkles size={13} color="#f2a928" />
+            <span style={{ color: "#f2a928", fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em" }}>
+              Official 2026 Factory Catalogue
+            </span>
+          </div>
+          <h1 style={{ fontSize: "clamp(1.7rem, 3.5vw, 3rem)", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-.03em", lineHeight: 1.15, textTransform: "uppercase" }}>
+            Shop Cricket Equipment.
+          </h1>
+          <p style={{ color: "#cbd5e1", fontSize: ".95rem", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 600 }}>
+            100+ championship match-grade articles handcrafted in Sialkot. Express tracked courier to UK, USA, Australia, New Zealand, Europe &amp; Pakistan.
+          </p>
+          {/* Compact filter badges — on desktop hero */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }} className="shop-hero-badges">
+            {[
+              { label: "Grade 1+ English Willow", cat: "Grade 1+ English Willow", icon: <Award size={14} color="#f2a928" /> },
+              { label: "Tracked Express Courier", cat: null, icon: <Truck size={14} color="#60a5fa" /> },
+              { label: "Live Video Ping Demo", cat: "Bonafide Bats", icon: <Video size={14} color="#4ade80" /> },
+              { label: "Flexible Deposit", cat: null, icon: <ShieldCheck size={14} color="#f2a928" /> },
+            ].map(({ label, cat, icon }) => (
               <button
+                key={label}
                 type="button"
                 onClick={() => {
-                  setCategory("Grade 1+ English Willow");
-                  setQuery("");
+                  if (cat) { setCategory(cat); setQuery(""); }
                   document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
                 }}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  minHeight: 44,
-                  background:
-                    category === "Grade 1+ English Willow" ||
-                    category === "English Willow A+ Quality" ||
-                    category === "Beauty Processed Bats" ||
-                    category === "Bonafide Bats"
-                      ? "rgba(242, 169, 40, 0.25)"
-                      : "rgba(255, 255, 255, 0.06)",
-                  border:
-                    category === "Grade 1+ English Willow" ||
-                    category === "English Willow A+ Quality" ||
-                    category === "Beauty Processed Bats" ||
-                    category === "Bonafide Bats"
-                      ? "1.5px solid #f2a928"
-                      : "1px solid rgba(255, 255, 255, 0.15)",
-                  backdropFilter: "blur(8px)",
-                  padding: "9px 14px",
-                  borderRadius: 10,
-                  fontSize: "0.82rem",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
+                  display: "flex", alignItems: "center", gap: 7,
+                  minHeight: 40, background: "rgba(255,255,255,.07)",
+                  border: "1px solid rgba(255,255,255,.15)",
+                  backdropFilter: "blur(8px)", padding: "7px 13px",
+                  borderRadius: 8, fontSize: ".78rem", color: "#ffffff",
+                  cursor: "pointer", transition: "all .2s ease", fontWeight: 600,
                 }}
               >
-                <Award size={16} color="#f2a928" />
-                <span style={{ fontWeight: 600 }}>Grade 1+ English Willow</span>
+                {icon} {label}
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory("Bonafide Bats");
-                  setQuery("");
-                  document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  minHeight: 44,
-                  background: category === "Bonafide Bats" ? "rgba(74, 222, 128, 0.22)" : "rgba(255, 255, 255, 0.06)",
-                  border: category === "Bonafide Bats" ? "1.5px solid #4ade80" : "1px solid rgba(255, 255, 255, 0.15)",
-                  backdropFilter: "blur(8px)",
-                  padding: "9px 14px",
-                  borderRadius: 10,
-                  fontSize: "0.82rem",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <Video size={16} color="#4ade80" />
-                <span style={{ fontWeight: 600 }}>Live Video Ping Demo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  minHeight: 44,
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  backdropFilter: "blur(8px)",
-                  padding: "9px 14px",
-                  borderRadius: 10,
-                  fontSize: "0.82rem",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <Truck size={16} color="#60a5fa" />
-                <span style={{ fontWeight: 600 }}>Tracked Express Courier</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  minHeight: 44,
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  backdropFilter: "blur(8px)",
-                  padding: "9px 14px",
-                  borderRadius: 10,
-                  fontSize: "0.82rem",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <ShieldCheck size={16} color="#f2a928" />
-                <span style={{ fontWeight: 600 }}>Flexible 35% / 50% Deposit</span>
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* 🛍️ Main Catalogue Container */}
-      <div id="catalogue-products" style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 16px 60px", width: "100%", boxSizing: "border-box" }}>
-        
-        {/* Mobile Left Drawer Modal */}
+      {/* Main Catalogue Container */}
+      <div id="catalogue-products" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 16px 60px", width: "100%", boxSizing: "border-box" }}>
+
+        {/* Mobile Categories Drawer */}
         {isMobileDrawerOpen && (
           <div
             className="shop-mobile-drawer-layer"
             role="dialog"
             aria-modal="true"
-            aria-label="Shop Catalogue Drawer"
+            aria-label="Categories and filters"
             id="mobile-catalogue-drawer"
           >
             <button
               type="button"
               className="shop-mobile-drawer-backdrop"
               onClick={() => setMobileDrawerOpen(false)}
-              aria-label="Close Filter Drawer"
+              aria-label="Close categories"
             />
             <div className="shop-mobile-drawer-content" role="document">
               {renderSidebarContent(true)}
@@ -708,42 +434,31 @@ export function ShopClient() {
         )}
 
         <div className="shop-layout-container">
-          
-          {/* 🏛️ LEFT SIDEBAR (Desktop Permanent Sticky) */}
-          <aside className="shop-sidebar-desktop" aria-label="Desktop Catalogue Navigation">
+
+          {/* LEFT SIDEBAR (Desktop only) */}
+          <aside className="shop-sidebar-desktop" aria-label="Categories and filters">
             {renderSidebarContent(false)}
           </aside>
 
-          {/* 🛍️ MAIN CATALOGUE AREA (Products appear FIRST on mobile!) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", minWidth: 0 }}>
-            
-            {/* Mobile Filter & Catalogue Bar (Visible only on mobile / tablet) */}
+          {/* MAIN CATALOGUE AREA */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", minWidth: 0 }}>
+
+            {/* Mobile — Categories button + Reset (only on mobile) */}
             <div className="mobile-catalogue-bar">
               <button
                 type="button"
+                className="mobile-cat-trigger"
                 onClick={() => setMobileDrawerOpen(true)}
                 aria-expanded={isMobileDrawerOpen}
                 aria-controls="mobile-catalogue-drawer"
-                aria-label="Open Catalogue and Filter Navigation"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 16px",
-                  minHeight: 44,
-                  background: hasActiveFilters ? "rgba(242, 169, 40, 0.18)" : "#141922",
-                  border: hasActiveFilters ? "1.5px solid #f2a928" : "1px solid rgba(255, 255, 255, 0.15)",
-                  borderRadius: 8,
-                  color: hasActiveFilters ? "#f2a928" : "#ffffff",
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  flex: 1,
-                  justifyContent: "center",
-                }}
+                aria-label="Open categories and filters"
+                style={{ flex: 1, justifyContent: "center" }}
               >
-                <SlidersHorizontal size={16} />
-                <span>☰ Filter &amp; Categories {category !== "All equipment" ? `(${category})` : `(${filtered.length})`}</span>
+                <LayoutGrid size={16} className="mobile-cat-trigger-icon" style={{ color: "var(--gold)" }} />
+                <span>
+                  {category !== "All equipment" ? `Showing: ${category}` : "☷ Categories"}
+                </span>
+                <ChevronRight size={14} style={{ marginLeft: "auto", opacity: .5 }} />
               </button>
 
               {hasActiveFilters && (
@@ -751,42 +466,39 @@ export function ShopClient() {
                   type="button"
                   onClick={resetAllFilters}
                   style={{
-                    padding: "10px 14px",
-                    minHeight: 44,
-                    background: "rgba(255, 255, 255, 0.06)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    borderRadius: 8,
-                    color: "#94a3b8",
-                    fontSize: "0.78rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
+                    padding: "10px 12px", minHeight: 44,
+                    background: "var(--surface)", border: "1px solid var(--border-strong)",
+                    borderRadius: 8, color: "var(--text-secondary)",
+                    fontSize: ".78rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
-                  Reset
+                  Clear
                 </button>
               )}
             </div>
 
-            {/* Top Search & Sort Filter Bar */}
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 14, padding: "14px 16px", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center", width: "100%", boxSizing: "border-box" }}>
-              
-              {/* Search Input Box */}
-              <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-                <Search size={17} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+            {/* Search & Sort bar */}
+            <div style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 12, padding: "12px 14px",
+              display: "flex", flexWrap: "wrap", gap: 10,
+              justifyContent: "space-between", alignItems: "center",
+              width: "100%", boxSizing: "border-box",
+              boxShadow: "var(--shadow-sm)",
+            }}>
+              {/* Search */}
+              <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+                <Search size={16} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   ref={searchRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search bats, gloves, pads, bags, helmets..."
+                  placeholder="Search bats, gloves, pads, bags…"
                   style={{
-                    width: "100%",
-                    padding: "10px 36px",
-                    borderRadius: 8,
-                    background: "#181f2b",
-                    border: "1px solid #2d3748",
-                    color: "#fff",
-                    fontSize: "0.88rem",
+                    width: "100%", padding: "9px 32px",
+                    borderRadius: 7, background: "var(--surface-alt)",
+                    border: "1px solid var(--border-strong)",
+                    color: "var(--text-primary)", fontSize: ".86rem",
                     boxSizing: "border-box",
                   }}
                 />
@@ -794,90 +506,74 @@ export function ShopClient() {
                   <button
                     type="button"
                     onClick={() => setQuery("")}
-                    style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: 4 }}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 3 }}
                   >
-                    <X size={15} />
+                    <X size={14} />
                   </button>
                 )}
               </div>
 
-              {/* Sort Dropdown */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <ArrowUpDown size={15} color="#f2a928" />
-                <span style={{ fontSize: "0.82rem", color: "#94a3b8", fontWeight: 600 }}>Sort:</span>
+              {/* Sort */}
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <ArrowUpDown size={14} color="var(--gold)" />
+                <span style={{ fontSize: ".78rem", color: "var(--text-muted)", fontWeight: 600 }}>Sort:</span>
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortOption)}
                   style={{
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    background: "#181f2b",
-                    border: "1px solid #2d3748",
-                    color: "#fff",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
+                    padding: "8px 10px", borderRadius: 7,
+                    background: "var(--surface-alt)", border: "1px solid var(--border-strong)",
+                    color: "var(--text-primary)", fontSize: ".82rem",
+                    fontWeight: 600, cursor: "pointer",
                   }}
                 >
-                  <option value="featured">Featured First</option>
+                  <option value="featured">Featured first</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
                   <option value="name">Alphabetical (A–Z)</option>
                 </select>
               </div>
-
             </div>
 
-            {/* Active Filters Bar & Count */}
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "0 4px" }}>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: "0.88rem", color: "#cbd5e1", fontWeight: 600 }}>
-                  <strong style={{ color: "#f2a928" }}>{filtered.length}</strong> {filtered.length === 1 ? "article" : "articles"} found
-                </span>
-
-                {/* Active Category Chip */}
-                {category !== "All equipment" && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", color: "#f2a928" }}>
-                    <span>{category}</span>
-                    <button type="button" onClick={() => setCategory("All equipment")} style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", padding: 0 }}>
-                      <X size={13} />
-                    </button>
+            {/* Active category / filter status */}
+            {hasActiveFilters && (
+              <div className="active-category-bar">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {category !== "All equipment" && (
+                    <span style={{ fontWeight: 700 }}>
+                      Showing: {category}
+                    </span>
+                  )}
+                  {query && (
+                    <span style={{ fontSize: ".78rem", color: "var(--text-secondary)" }}>
+                      Search: &ldquo;{query}&rdquo;
+                    </span>
+                  )}
+                  {priceFilter !== "all" && (
+                    <span style={{ fontSize: ".78rem", color: "var(--text-secondary)" }}>
+                      Price: {priceFilter}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: ".76rem", color: "var(--text-muted)" }}>
+                    {filtered.length} {filtered.length === 1 ? "result" : "results"}
                   </span>
-                )}
-
-                {/* Active Price Chip */}
-                {priceFilter !== "all" && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", color: "#f2a928" }}>
-                    <span>Price: {priceFilter}</span>
-                    <button type="button" onClick={() => setPriceFilter("all")} style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", padding: 0 }}>
-                      <X size={13} />
-                    </button>
-                  </span>
-                )}
-
-                {/* Active Search Query Chip */}
-                {query && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "3px 10px", borderRadius: 999, fontSize: "0.78rem", color: "#f2a928" }}>
-                    <span>Query: &ldquo;{query}&rdquo;</span>
-                    <button type="button" onClick={() => setQuery("")} style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", padding: 0 }}>
-                      <X size={13} />
-                    </button>
-                  </span>
-                )}
+                  <button onClick={resetAllFilters} aria-label="Clear all filters">
+                    Clear all
+                  </button>
+                </div>
               </div>
+            )}
 
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={resetAllFilters}
-                  style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "0.78rem", cursor: "pointer", textDecoration: "underline" }}
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
+            {/* Results count when no active filter */}
+            {!hasActiveFilters && (
+              <div style={{ fontSize: ".82rem", color: "var(--text-muted)", padding: "0 2px" }}>
+                <strong style={{ color: "var(--text-primary)" }}>{filtered.length}</strong> articles available
+              </div>
+            )}
 
-            {/* Product Cards Grid */}
+            {/* Product Grid */}
             {filtered.length > 0 ? (
               <div className="shop-products-grid">
                 {filtered.map((product) => (
@@ -885,41 +581,25 @@ export function ShopClient() {
                 ))}
               </div>
             ) : (
-              <div
-                style={{
-                  background: "#141922",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: 16,
-                  padding: "48px 24px",
-                  textAlign: "center",
-                }}
-              >
-                <ShoppingBag size={48} style={{ color: "#f2a928", marginBottom: 12 }} />
-                <h3 style={{ fontSize: "1.3rem", color: "#ffffff", marginBottom: 6 }}>No Matching Products Found</h3>
-                <p style={{ color: "#94a3b8", fontSize: "0.9rem", maxWidth: 400, margin: "0 auto 16px" }}>
-                  We could not find any equipment matching your active filters. Try adjusting your search or category selection.
+              <div style={{
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 12, padding: "48px 24px", textAlign: "center",
+              }}>
+                <ShoppingBag size={40} style={{ color: "var(--gold)", marginBottom: 12 }} />
+                <h3 style={{ fontSize: "1.2rem", color: "var(--text-primary)", marginBottom: 6 }}>No products found</h3>
+                <p style={{ color: "var(--text-secondary)", fontSize: ".88rem", maxWidth: 400, margin: "0 auto 16px" }}>
+                  Try adjusting your search or category selection.
                 </p>
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="button primary"
-                  style={{
-                    padding: "10px 18px",
-                    background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
-                    color: "#000",
-                    fontWeight: 700,
-                    borderRadius: 8,
-                    border: "none",
-                    cursor: "pointer",
-                  }}
+                  className="button primary compact"
                 >
-                  View Full Catalogue
+                  View all equipment
                 </button>
               </div>
             )}
-
           </div>
-
         </div>
       </div>
     </>

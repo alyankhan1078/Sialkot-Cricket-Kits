@@ -16,12 +16,10 @@ import {
   ArrowRight,
   ShoppingBag,
   Loader2,
-  Sparkles,
   Package,
   Truck,
   CheckCircle2,
-  Percent,
-  Sliders,
+  ChevronLeft,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { formatPrice, products } from "@/src/data/products";
@@ -36,30 +34,39 @@ type PaymentMethodType =
   | "pakistan"
   | "remitly";
 
-const countries = [
-  "United Kingdom",
-  "Pakistan",
-  "United States",
-  "Canada",
-  "Australia",
-  "United Arab Emirates",
-  "Saudi Arabia",
-  "New Zealand",
-  "South Africa",
-  "Ireland",
-  "Germany",
-  "Netherlands",
-  "Singapore",
-  "Qatar",
-  "Oman",
-  "Bahrain",
-  "Kuwait",
-  "Other International",
+type Step = 1 | 2 | 3 | 4;
+
+const DEPOSIT_OPTIONS = [
+  { percent: 50, label: "50% Deposit", sub: "Most common — balance due before dispatch", badge: "Recommended" },
+  { percent: 35, label: "35% Deposit", sub: "Partial commitment — larger balance before dispatch", badge: "" },
+  { percent: 100, label: "Pay in Full", sub: "Single payment — highest priority queue", badge: "" },
+  { percent: 30, label: "30% Minimum Deposit", sub: "Minimum to lock your slot in production", badge: "Min deposit" },
 ];
+
+const PAYMENT_METHODS: { id: PaymentMethodType; label: string; icon: React.ReactNode }[] = [
+  { id: "card", label: "Credit / Debit Card (Stripe)", icon: <CreditCard size={18} /> },
+  { id: "bank", label: "Bank Transfer (IBAN / SWIFT)", icon: <Building2 size={18} /> },
+  { id: "payoneer", label: "Payoneer", icon: <Wallet size={18} /> },
+  { id: "wise", label: "Wise International Transfer", icon: <Globe size={18} /> },
+  { id: "pakistan", label: "Pakistan Local (JazzCash / EasyPaisa / Raast)", icon: <Send size={18} /> },
+  { id: "remitly", label: "Remitly / Western Union / MoneyGram", icon: <Send size={18} /> },
+];
+
+const BANK_DETAILS = {
+  accountName: "Mian Talha Alyan",
+  iban: "PK07UNIL0109000411049685",
+  swift: "UNILPKKA",
+  bank: "United Bank Limited (UBL)",
+  branch: "Sialkot, Pakistan",
+};
+
+const countries = Object.keys(SHIPPING_DESTINATIONS);
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, clearCart } = useStore();
+
+  const [step, setStep] = useState<Step>(1);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -70,27 +77,25 @@ export default function CheckoutPage() {
     state: "",
     postalCode: "",
     country: "United Kingdom",
-    paymentMethod: "card" as PaymentMethodType,
-    transactionRef: "",
     notes: "",
+    transactionRef: "",
   });
-
-  const [depositPercent, setDepositPercent] = useState<number>(50);
-  const [showCustomDeposit, setShowCustomDeposit] = useState(false);
+  const [depositPercent, setDepositPercent] = useState(50);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("card");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const lines = cart.flatMap((item) => {
-    const product = products.find((candidate) => candidate.id === item.productId);
+    const product = products.find((p) => p.id === item.productId);
     return product ? [{ ...item, product }] : [];
   });
 
-  const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
-  const shippingCalculation = calculateShippingFee(formData.country, totalItemCount);
-  const grandTotal = subtotal + shippingCalculation.shippingFee;
-  const depositDueNow = Math.round((grandTotal * (depositPercent / 100)) * 100) / 100;
+  const subtotal = lines.reduce((t, i) => t + i.product.price * i.quantity, 0);
+  const totalItemCount = lines.reduce((t, i) => t + i.quantity, 0);
+  const shippingCalc = calculateShippingFee(formData.country, totalItemCount);
+  const grandTotal = subtotal + shippingCalc.shippingFee;
+  const depositDueNow = Math.round(grandTotal * (depositPercent / 100) * 100) / 100;
   const balanceRemaining = Math.round((grandTotal - depositDueNow) * 100) / 100;
 
   const copyToClipboard = (text: string, key: string) => {
@@ -100,70 +105,50 @@ export default function CheckoutPage() {
   };
 
   const getMethodTitle = (method: PaymentMethodType) => {
-    switch (method) {
-      case "card": return "Credit / Debit Card (Stripe)";
-      case "bank": return "UBL Direct Bank Wire (IBAN / SWIFT)";
-      case "payoneer": return "Payoneer (B2B & Global Receiving)";
-      case "wise": return "Wise International Transfer";
-      case "pakistan": return "Pakistan Local (JazzCash / Nayapay / SadaPay / Raast / EasyPaisa)";
-      case "remitly": return "Remitly / Western Union / MoneyGram";
-    }
+    const m = PAYMENT_METHODS.find((x) => x.id === method);
+    return m?.label ?? method;
   };
+
+  // Validation per step
+  const canContinueStep1 = lines.length > 0;
+  const canContinueStep2 = formData.fullName.trim() !== "" && formData.phone.trim() !== "";
+  const canContinueStep3 = depositPercent > 0 && paymentMethod !== undefined;
+
+  const cartMessage = `Hello Sialkot Cricket Kits,\n\nI would like to order:\n\n${lines
+    .map((l, i) => `${i + 1}. ${l.product.name} (x${l.quantity}) — ${formatPrice(l.product.price)} each`)
+    .join("\n")}\n\nSubtotal: ${formatPrice(subtotal)}\nDelivery to: ${formData.country}\nShipping: ${formatPrice(shippingCalc.shippingFee)}\nOrder Total: ${formatPrice(grandTotal)}\nDeposit (${depositPercent}%): ${formatPrice(depositDueNow)}\n\nName: ${formData.fullName}\nPhone: ${formData.phone}\n\nPlease confirm my order. Thank you!`;
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (lines.length === 0) {
-      setErrorMessage("Your cart is empty. Please add products to checkout.");
-      return;
-    }
-    if (!formData.fullName || !formData.phone) {
-      setErrorMessage("Please enter your full name and contact phone number.");
-      return;
-    }
+    if (lines.length === 0) { setErrorMessage("Your cart is empty."); return; }
+    if (!formData.fullName || !formData.phone) { setErrorMessage("Please enter your name and phone number."); return; }
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
-      // 1. If Card payment selected, trigger Stripe Checkout session
-      if (formData.paymentMethod === "card") {
-        const stripeRes = await fetch("/api/checkout/stripe", {
+      if (paymentMethod === "card") {
+        const res = await fetch("/api/checkout/stripe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            items: lines.map((l) => ({
-              id: l.product.id,
-              name: l.product.name,
-              category: l.product.category,
-              price: l.product.price,
-              quantity: l.quantity,
-              image: l.product.image,
-            })),
+            items: lines.map((l) => ({ id: l.product.id, name: l.product.name, category: l.product.category, price: l.product.price, quantity: l.quantity, image: l.product.image })),
             customerName: formData.fullName,
             customerEmail: formData.email,
             customerPhone: formData.phone,
             country: formData.country,
-            shippingFee: shippingCalculation.shippingFee,
+            shippingFee: shippingCalc.shippingFee,
             totalAmount: grandTotal,
-            depositPercent: depositPercent,
-            depositDueNow: depositDueNow,
-            balanceRemaining: balanceRemaining,
+            depositPercent,
+            depositDueNow,
+            balanceRemaining,
             notes: formData.notes,
           }),
         });
-
-        const stripeData = await stripeRes.json();
-
-        if (stripeData.success && stripeData.url) {
-          clearCart();
-          window.location.href = stripeData.url;
-          return;
-        }
-
-        // If Stripe keys are not configured yet, save as pending direct order
+        const data = await res.json();
+        if (data.success && data.url) { clearCart(); window.location.href = data.url; return; }
       }
 
-      // 2. Direct On-Site Order Creation
       const orderRes = await fetch("/api/checkout/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,919 +161,618 @@ export default function CheckoutPage() {
           state: formData.state,
           postalCode: formData.postalCode,
           country: formData.country,
-          items: lines.map((l) => ({
-            id: l.product.id,
-            name: l.product.name,
-            category: l.product.category,
-            price: l.product.price,
-            quantity: l.quantity,
-          })),
-          subtotal: subtotal,
-          shippingFee: shippingCalculation.shippingFee,
+          items: lines.map((l) => ({ id: l.product.id, name: l.product.name, category: l.product.category, price: l.product.price, quantity: l.quantity })),
+          subtotal,
+          shippingFee: shippingCalc.shippingFee,
           totalAmount: grandTotal,
           depositPercentage: depositPercent,
           amountPaidNow: depositDueNow,
-          balanceRemaining: balanceRemaining,
-          paymentMethod: getMethodTitle(formData.paymentMethod),
+          balanceRemaining,
+          paymentMethod: getMethodTitle(paymentMethod),
           transactionRef: formData.transactionRef,
           notes: formData.notes,
         }),
       });
 
       const orderData = await orderRes.json();
-
       if (orderData.success && orderData.orderId) {
         clearCart();
         router.push(`/checkout/success?orderId=${encodeURIComponent(orderData.orderId)}`);
       } else {
-        setErrorMessage(orderData.error || "Failed to process your order. Please try again.");
+        setErrorMessage(orderData.error || "Failed to process your order. Please try again or contact us on WhatsApp.");
       }
-    } catch (err: any) {
-      setErrorMessage("Network error while submitting order. Please check your connection or contact us on WhatsApp.");
+    } catch {
+      setErrorMessage("Network error. Please check your connection or contact us on WhatsApp.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // ── Empty cart ──────────────────────────────────────────────────────────────
   if (lines.length === 0) {
     return (
-      <main className="checkout-empty-page" style={{ maxWidth: 800, margin: "60px auto", padding: "0 24px", textAlign: "center" }}>
-        <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "48px 24px" }}>
-          <ShoppingBag size={56} style={{ color: "#f2a928", marginBottom: 16 }} />
-          <h1 style={{ fontSize: "1.8rem", color: "#fff", marginBottom: 8 }}>Your Shopping Cart is Empty</h1>
-          <p style={{ color: "#94a3b8", maxWidth: 440, margin: "0 auto 24px" }}>
-            Add match-grade cricket bats, protective gear, or accessories from our catalogue to proceed with direct checkout.
+      <main style={{ maxWidth: 640, margin: "5rem auto", padding: "0 1.2rem", textAlign: "center" }}>
+        <div className="checkout-card">
+          <ShoppingBag size={48} style={{ color: "var(--gold)", marginBottom: 16 }} />
+          <h1 style={{ fontSize: "1.6rem", marginBottom: 8 }}>Your cart is empty</h1>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
+            Add cricket equipment from our catalogue to proceed with checkout.
           </p>
-          <Link href="/shop" className="button primary" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)", color: "#000", fontWeight: 700 }}>
-            Browse Store Catalogue <ArrowRight size={16} />
+          <Link className="checkout-primary-cta" href="/shop">
+            Browse equipment <ArrowRight size={16} />
           </Link>
         </div>
       </main>
     );
   }
 
-  return (
-    <main style={{ minHeight: "100vh", background: "#0c1017", color: "#ffffff", paddingBottom: 60 }}>
-      {/* Checkout Header Hero */}
-      <section style={{ background: "linear-gradient(180deg, #141922 0%, #0c1017 100%)", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", padding: "40px 24px 30px", textAlign: "center" }}>
-        <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          <span style={{ color: "#f2a928", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", display: "block", marginBottom: 6 }}>
-            🛡️ Certified Factory Direct Checkout
-          </span>
-          <h1 style={{ fontSize: "2.2rem", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-0.02em" }}>
-            Secure Order Confirmation
-          </h1>
-          <p style={{ color: "#94a3b8", fontSize: "0.92rem", margin: 0 }}>
-            Handcrafted Sialkot match equipment with live video inspection &amp; express DHL/FedEx courier tracking worldwide.
-          </p>
+  // ── Step indicator ──────────────────────────────────────────────────────────
+  const STEPS = [
+    { n: 1, label: "Order" },
+    { n: 2, label: "Delivery" },
+    { n: 3, label: "Payment" },
+    { n: 4, label: "Review" },
+  ];
 
-          {/* 4-Step Progress Ribbon */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 18, flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#f2a928", fontWeight: 600 }}>
-              <span>1. Delivery &amp; Contact</span>
+  const StepIndicator = () => (
+    <div className="checkout-steps" role="list" aria-label="Checkout progress">
+      {STEPS.map(({ n, label }, idx) => {
+        const isDone = step > n;
+        const isActive = step === n;
+        return (
+          <>
+            <div
+              key={n}
+              className={`checkout-step-item${isActive ? " active" : isDone ? " done" : ""}`}
+              role="listitem"
+              aria-current={isActive ? "step" : undefined}
+            >
+              <div className="checkout-step-num">
+                {isDone ? <Check size={12} /> : n}
+              </div>
+              <span>{label}</span>
             </div>
-            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(242, 169, 40, 0.15)", border: "1px solid rgba(242, 169, 40, 0.35)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#f2a928", fontWeight: 600 }}>
-              <span>2. Confirmation Plan</span>
+            {idx < STEPS.length - 1 && (
+              <div key={`div-${n}`} className="checkout-step-divider" aria-hidden="true" />
+            )}
+          </>
+        );
+      })}
+    </div>
+  );
+
+  // ── Order summary sidebar ────────────────────────────────────────────────────
+  const OrderSummary = () => (
+    <div className="checkout-card">
+      <h3 className="checkout-card-title" style={{ fontSize: ".92rem" }}>
+        Order summary
+      </h3>
+      {lines.map(({ product, quantity }) => (
+        <div className="checkout-product-line" key={product.id}>
+          <img src={product.image} alt={product.name} />
+          <div>
+            <div className="checkout-product-name">{product.name}</div>
+            <div className="checkout-product-qty">Qty: {quantity}</div>
+          </div>
+          <div className="checkout-product-price">{formatPrice(product.price * quantity)}</div>
+        </div>
+      ))}
+
+      <div className="order-summary-divider" style={{ margin: ".75rem 0 .4rem" }} />
+
+      <div className="order-summary-line">
+        <span>Subtotal ({totalItemCount} item{totalItemCount > 1 ? "s" : ""})</span>
+        <strong>{formatPrice(subtotal)}</strong>
+      </div>
+      <div className="order-summary-line">
+        <span>Delivery — {formData.country}</span>
+        <strong>{formatPrice(shippingCalc.shippingFee)}</strong>
+      </div>
+      {shippingCalc.totalSaved > 0 && (
+        <div style={{ fontSize: ".74rem", color: "#0d5e38", background: "var(--success-light)", padding: ".3rem .6rem", borderRadius: 5, marginBottom: ".2rem", fontWeight: 600 }}>
+          Combined shipping — you save {formatPrice(shippingCalc.totalSaved)}
+        </div>
+      )}
+
+      <div className="order-summary-divider" />
+
+      <div className="order-total-line">
+        <span className="label">Order total</span>
+        <span className="value">{formatPrice(grandTotal)}</span>
+      </div>
+
+      {step >= 3 && (
+        <>
+          <div className="order-pay-today-line">
+            <span className="label">Pay today ({depositPercent}% deposit)</span>
+            <span className="value">{formatPrice(depositDueNow)}</span>
+          </div>
+          <div className="order-balance-line">
+            <span>Balance before dispatch</span>
+            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatPrice(balanceRemaining)}</span>
+          </div>
+        </>
+      )}
+
+      <div className="checkout-trust-note" style={{ marginTop: ".75rem" }}>
+        <ShieldCheck size={13} /> Factory direct · Tracked courier · Live ping video
+      </div>
+    </div>
+  );
+
+  // ── Step 1: Order review ─────────────────────────────────────────────────────
+  const Step1 = () => (
+    <div>
+      <h2 className="checkout-card-title" style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
+        Your order
+      </h2>
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        {lines.map(({ product, quantity }) => (
+          <div className="checkout-product-line" key={product.id}>
+            <img src={product.image} alt={product.name} />
+            <div>
+              <div className="checkout-product-name">{product.name}</div>
+              <div className="checkout-product-qty">Qty: {quantity}</div>
             </div>
-            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#cbd5e1" }}>
-              <span>3. Payment Channel</span>
-            </div>
-            <span style={{ color: "#475569", fontSize: "0.75rem" }}>→</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "5px 10px", borderRadius: 999, fontSize: "0.75rem", color: "#cbd5e1" }}>
-              <span>4. Live Ping Demo</span>
-            </div>
+            <div className="checkout-product-price">{formatPrice(product.price * quantity)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <p style={{ fontSize: ".84rem", color: "var(--text-secondary)", margin: "0 0 .6rem", lineHeight: 1.5 }}>
+          All items are inspected before dispatch. You will receive live product photos and a bat ping video via WhatsApp before courier handover.
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+          {[
+            { icon: <Package size={13} />, text: "Factory direct inspection" },
+            { icon: <Truck size={13} />, text: "Tracked express courier" },
+            { icon: <ShieldCheck size={13} />, text: "Flexible deposit from 30%" },
+            { icon: <CheckCircle2 size={13} />, text: "Live ping video before dispatch" },
+          ].map(({ icon, text }) => (
+            <span key={text} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".74rem", color: "var(--text-secondary)", background: "var(--surface-subtle)", border: "1px solid var(--border)", padding: ".3rem .65rem", borderRadius: 5, fontWeight: 600 }}>
+              <span style={{ color: "var(--gold)" }}>{icon}</span> {text}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <button
+        className="checkout-primary-cta"
+        onClick={() => setStep(2)}
+        disabled={!canContinueStep1}
+        style={{ pointerEvents: canContinueStep1 ? "auto" : "none", opacity: canContinueStep1 ? 1 : .6 }}
+      >
+        Continue to Delivery <ArrowRight size={16} />
+      </button>
+
+      <a
+        className="checkout-secondary-cta"
+        href={whatsappUrl(cartMessage)}
+        target="_blank"
+        rel="noreferrer"
+        style={{ marginTop: ".6rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".5rem" }}
+      >
+        💬 Complete order via WhatsApp instead
+      </a>
+    </div>
+  );
+
+  // ── Step 2: Delivery ─────────────────────────────────────────────────────────
+  const Step2 = () => (
+    <div>
+      <button className="checkout-back-btn" onClick={() => setStep(1)}>
+        <ChevronLeft size={16} /> Back to order
+      </button>
+      <h2 className="checkout-card-title" style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
+        Your details &amp; delivery
+      </h2>
+
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <div className="checkout-grid-2" style={{ marginBottom: "1rem" }}>
+          <div>
+            <label className="checkout-field-label" htmlFor="co-name">Full name *</label>
+            <input
+              id="co-name"
+              className="checkout-input"
+              type="text"
+              required
+              placeholder="e.g. James Anderson"
+              value={formData.fullName}
+              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="checkout-field-label" htmlFor="co-email">Email address (for invoice)</label>
+            <input
+              id="co-email"
+              className="checkout-input"
+              type="email"
+              placeholder="name@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
           </div>
         </div>
-      </section>
 
-      {/* Main Checkout Container */}
-      <section className="checkout-page-container">
-        <form className="checkout-form-grid" onSubmit={handleSubmitOrder}>
-          
-          {/* Left Column: Form Cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", minWidth: 0 }}>
-            
-            {/* 1. Contact & Delivery Destination Card */}
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid rgba(255, 255, 255, 0.06)", paddingBottom: 12 }}>
-                <h2 style={{ fontSize: "1.15rem", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#f2a928", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800 }}>1</span>
-                  <span>Contact &amp; Delivery Destination</span>
-                </h2>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Step 1 of 3</span>
-              </div>
+        <div style={{ marginBottom: "1rem" }}>
+          <label className="checkout-field-label" htmlFor="co-phone">
+            WhatsApp / phone number * <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(for courier tracking &amp; ping video)</span>
+          </label>
+          <input
+            id="co-phone"
+            className="checkout-input"
+            type="tel"
+            required
+            placeholder="+44 7123 456789 or +92 300 1234567"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          />
+        </div>
 
-              <div className="checkout-grid-2" style={{ marginBottom: 14 }}>
-                <div>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. James Anderson"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                </div>
+        <div style={{ marginBottom: "1rem" }}>
+          <label className="checkout-field-label" htmlFor="co-address">Street address</label>
+          <input
+            id="co-address"
+            className="checkout-input"
+            type="text"
+            placeholder="e.g. 42 High Street, Flat 2B"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+        </div>
 
-                <div>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    Email Address * (For Invoice)
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="name@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                  Phone / WhatsApp Number * (For Courier Live Tracking &amp; Ping Video Demo)
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="e.g. +44 7123 456789 or +92 300 1234567"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                />
-              </div>
-
-              {/* Destination Country with Flag and Combined Shipping Rate */}
-              <div style={{ marginBottom: 14, background: "rgba(255, 255, 255, 0.03)", padding: 14, borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <label style={{ color: "#ffffff", fontSize: "0.84rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Truck size={16} color="#f2a928" /> Destination Country (Combined Shipping) *
-                  </label>
-                  <span style={{ fontSize: "0.75rem", color: "#4ade80", fontWeight: 600 }}>
-                    ⚡ {shippingCalculation.destination.estimatedDelivery}
-                  </span>
-                </div>
-                <select
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1.5px solid #2d3748", color: "#fff", fontSize: "0.92rem", fontWeight: 600, cursor: "pointer" }}
-                >
-                  {countries.map((c) => {
-                    const flag = getCountryFlag(c);
-                    const dest = SHIPPING_DESTINATIONS[c];
-                    return (
-                      <option key={c} value={c}>
-                        {flag} {c} {dest ? `— ${formatPrice(dest.baseGbp)} base (+${formatPrice(dest.additionalItemGbp)}/extra bat)` : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem", color: "#94a3b8" }}>
-                  <span>📦 Tracked Express Courier:</span>
-                  <strong style={{ color: "#f2a928", fontSize: "0.9rem" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
-                </div>
-
-                {shippingCalculation.totalSaved > 0 ? (
-                  <div style={{ marginTop: 8, background: "rgba(34, 197, 94, 0.14)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: "6px 10px", borderRadius: 6, fontSize: "0.76rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>🎉 <strong>Combined Shipping Active:</strong> {totalItemCount} items packed in one parcel</span>
-                    <strong style={{ background: "#22c55e", color: "#000", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 6, fontSize: "0.74rem", color: "#94a3b8", display: "flex", justifyContent: "space-between" }}>
-                    <span>💡 Extra bats ship for only +{formatPrice(shippingCalculation.destination.additionalItemGbp)} each in combined parcel</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Address Fields */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                  Street Address / House No. *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 42 High Street, Flat 2B"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                />
-              </div>
-
-              <div className="checkout-grid-3">
-                <div>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="London / Lahore"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    State / County
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Greater London"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    Postal / ZIP Code
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="SW1A 1AA"
-                    value={formData.postalCode}
-                    onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Order Confirmation & Flexible Deposit Plan Card */}
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: "1px solid rgba(255, 255, 255, 0.06)", paddingBottom: 12 }}>
-                <h2 style={{ fontSize: "1.15rem", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#f2a928", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800 }}>2</span>
-                  <span>Order Confirmation &amp; Deposit Plan</span>
-                </h2>
-                <span style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80", padding: "3px 8px", borderRadius: 6, fontSize: "0.74rem", fontWeight: 600 }}>
-                  Flexible Confirmation
-                </span>
-              </div>
-              <p style={{ color: "#94a3b8", fontSize: "0.84rem", margin: "0 0 16px", lineHeight: 1.5 }}>
-                Custom willow equipment begins hand-crafting upon deposit confirmation. Choose your advance plan below. Balance is only payable upon receiving your live video inspection demo before courier pickup.
-              </p>
-
-              {/* 4 Plan Options Grid */}
-              <div className="checkout-plans-grid" style={{ marginBottom: 12 }}>
-                
-                {/* Option 1: 50% Half Payment (Recommended) */}
-                <label style={{
-                  padding: "14px",
-                  borderRadius: 10,
-                  border: depositPercent === 50 && !showCustomDeposit ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: depositPercent === 50 && !showCustomDeposit ? "rgba(242, 169, 40, 0.14)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="depositPlan"
-                    checked={depositPercent === 50 && !showCustomDeposit}
-                    onChange={() => {
-                      setDepositPercent(50);
-                      setShowCustomDeposit(false);
-                    }}
-                    style={{ accentColor: "#f2a928", marginTop: 3 }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ color: "#fff", fontSize: "0.92rem" }}>50% Half Advance</strong>
-                      <span style={{ color: "#f2a928", fontSize: "0.75rem", fontWeight: 700 }}>★ Standard</span>
-                    </div>
-                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f2a928", margin: "2px 0 4px" }}>
-                      Pay {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} Today
-                    </div>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>
-                      Balance {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} due upon video approval before dispatch.
-                    </span>
-                  </div>
-                </label>
-
-                {/* Option 2: 35% Flexible Booking */}
-                <label style={{
-                  padding: "14px",
-                  borderRadius: 10,
-                  border: depositPercent === 35 && !showCustomDeposit ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: depositPercent === 35 && !showCustomDeposit ? "rgba(242, 169, 40, 0.14)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="depositPlan"
-                    checked={depositPercent === 35 && !showCustomDeposit}
-                    onChange={() => {
-                      setDepositPercent(35);
-                      setShowCustomDeposit(false);
-                    }}
-                    style={{ accentColor: "#f2a928", marginTop: 3 }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ color: "#fff", fontSize: "0.92rem" }}>35% Booking Deposit</strong>
-                      <span style={{ color: "#60a5fa", fontSize: "0.75rem", fontWeight: 700 }}>Flexible</span>
-                    </div>
-                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f2a928", margin: "2px 0 4px" }}>
-                      Pay {formatPrice(Math.round(grandTotal * 0.35 * 100) / 100)} Today
-                    </div>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>
-                      Balance {formatPrice(Math.round(grandTotal * 0.65 * 100) / 100)} due upon video approval before dispatch.
-                    </span>
-                  </div>
-                </label>
-
-                {/* Option 3: 100% Full Payment Upfront */}
-                <label style={{
-                  padding: "14px",
-                  borderRadius: 10,
-                  border: depositPercent === 100 && !showCustomDeposit ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: depositPercent === 100 && !showCustomDeposit ? "rgba(242, 169, 40, 0.14)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="depositPlan"
-                    checked={depositPercent === 100 && !showCustomDeposit}
-                    onChange={() => {
-                      setDepositPercent(100);
-                      setShowCustomDeposit(false);
-                    }}
-                    style={{ accentColor: "#f2a928", marginTop: 3 }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ color: "#fff", fontSize: "0.92rem" }}>100% Full Payment</strong>
-                      <span style={{ color: "#4ade80", fontSize: "0.75rem", fontWeight: 700 }}>Full Upfront</span>
-                    </div>
-                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f2a928", margin: "2px 0 4px" }}>
-                      Pay {formatPrice(grandTotal)} Total
-                    </div>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>
-                      Expedited express workshop queue and priority courier booking.
-                    </span>
-                  </div>
-                </label>
-
-                {/* Option 4: 30% Minimum Booking Deposit */}
-                <label style={{
-                  padding: "14px",
-                  borderRadius: 10,
-                  border: depositPercent === 30 && !showCustomDeposit ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: depositPercent === 30 && !showCustomDeposit ? "rgba(242, 169, 40, 0.14)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="depositPlan"
-                    checked={depositPercent === 30 && !showCustomDeposit}
-                    onChange={() => {
-                      setDepositPercent(30);
-                      setShowCustomDeposit(false);
-                    }}
-                    style={{ accentColor: "#f2a928", marginTop: 3 }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ color: "#fff", fontSize: "0.92rem" }}>30% Minimum Deposit</strong>
-                      <span style={{ color: "#fca5a5", fontSize: "0.75rem", fontWeight: 700 }}>Lock Slot</span>
-                    </div>
-                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f2a928", margin: "2px 0 4px" }}>
-                      Pay {formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)} Today
-                    </div>
-                    <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>
-                      Minimum required amount to lock your manufacturing cleft.
-                    </span>
-                  </div>
-                </label>
-
-              </div>
-
-              {/* Optional Custom Percentage Slider Toggle */}
-              <div style={{ marginTop: 10, background: "rgba(255, 255, 255, 0.02)", padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(255, 255, 255, 0.06)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomDeposit(!showCustomDeposit)}
-                    style={{ background: "none", border: "none", color: "#f2a928", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, padding: 0 }}
-                  >
-                    <Sliders size={14} /> {showCustomDeposit ? "Hide Custom Percentage" : "Choose Custom Deposit Percentage (30% – 100%)"}
-                  </button>
-                  {showCustomDeposit && (
-                    <span style={{ color: "#ffffff", fontWeight: 700, fontSize: "0.85rem" }}>
-                      {depositPercent}% ({formatPrice(depositDueNow)})
-                    </span>
-                  )}
-                </div>
-
-                {showCustomDeposit && (
-                  <div style={{ marginTop: 10 }}>
-                    <input
-                      type="range"
-                      min={30}
-                      max={100}
-                      step={5}
-                      value={depositPercent}
-                      onChange={(e) => setDepositPercent(Number(e.target.value))}
-                      style={{ width: "100%", accentColor: "#f2a928", cursor: "pointer" }}
-                    />
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#94a3b8", marginTop: 4 }}>
-                      <span>30% Min</span>
-                      <span>35%</span>
-                      <span>50% (Standard)</span>
-                      <span>75%</span>
-                      <span>100% Full</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 3. Direct Payment Channel Selector */}
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: "1px solid rgba(255, 255, 255, 0.06)", paddingBottom: 12 }}>
-                <h2 style={{ fontSize: "1.15rem", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#f2a928", color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800 }}>3</span>
-                  <span>Choose Payment Channel</span>
-                </h2>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Step 3 of 3</span>
-              </div>
-              <p style={{ color: "#94a3b8", fontSize: "0.84rem", margin: "0 0 16px" }}>
-                Select how you wish to complete your {depositPercent === 100 ? "full order payment" : `${depositPercent}% confirmation advance`}.
-              </p>
-
-              {/* 6 Payment Method Channels Grid */}
-              <div className="checkout-methods-grid" style={{ marginBottom: 16 }}>
-                
-                {/* Method 1: Card */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "card" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "card" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="card"
-                    checked={formData.paymentMethod === "card"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "card" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>Credit / Debit Card</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>Visa, Mastercard, Apple Pay, Google Pay</span>
-                  </div>
-                </label>
-
-                {/* Method 2: Payoneer */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "payoneer" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "payoneer" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="payoneer"
-                    checked={formData.paymentMethod === "payoneer"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "payoneer" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>Payoneer Transfer</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>B2B &amp; Direct Receiving (GBP/USD/EUR)</span>
-                  </div>
-                </label>
-
-                {/* Method 3: Wise */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "wise" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "wise" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="wise"
-                    checked={formData.paymentMethod === "wise"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "wise" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>Wise Transfer</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>Fast UK/USA/AU bank wire</span>
-                  </div>
-                </label>
-
-                {/* Method 4: UBL Wire */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "bank" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "bank" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="bank"
-                    checked={formData.paymentMethod === "bank"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "bank" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>UBL Bank Wire</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>Direct IBAN &amp; SWIFT Transfer</span>
-                  </div>
-                </label>
-
-                {/* Method 5: Pakistan Local Wallets */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "pakistan" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "pakistan" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="pakistan"
-                    checked={formData.paymentMethod === "pakistan"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "pakistan" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>🇵🇰 Pakistan Wallets</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>JazzCash, SadaPay, Nayapay, EasyPaisa</span>
-                  </div>
-                </label>
-
-                {/* Method 6: Remitly / WU */}
-                <label style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: formData.paymentMethod === "remitly" ? "2px solid #f2a928" : "1px solid #2d3748",
-                  background: formData.paymentMethod === "remitly" ? "rgba(242, 169, 40, 0.12)" : "#181f2b",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="remitly"
-                    checked={formData.paymentMethod === "remitly"}
-                    onChange={() => setFormData({ ...formData, paymentMethod: "remitly" })}
-                    style={{ accentColor: "#f2a928" }}
-                  />
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.88rem", display: "block" }}>Remitly / Western Union</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "0.73rem" }}>MoneyGram, TapTap Send &amp; IMT</span>
-                  </div>
-                </label>
-
-              </div>
-
-              {/* Dynamic Account Details Box */}
-              {formData.paymentMethod === "card" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <strong style={{ color: "#4ade80", display: "block", marginBottom: 4 }}>💳 Instant Card Processing (Stripe)</strong>
-                  <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0 }}>
-                    You will be directed to complete secure card payment for {depositPercent === 100 ? `full order amount (${formatPrice(grandTotal)})` : `${depositPercent}% advance confirmation deposit (${formatPrice(depositDueNow)})`}.
-                  </p>
-                </div>
-              )}
-
-              {formData.paymentMethod === "payoneer" && (
-                <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#f2a928" }}>Payoneer Receiving Account</strong>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("alyankhan1078@gmail.com", "payoneer_email")}
-                      style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
-                    >
-                      {copiedKey === "payoneer_email" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "payoneer_email" ? "Copied" : "Copy Email"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
-                    <div>Email / Payoneer ID: <strong>alyankhan1078@gmail.com</strong></div>
-                    <div>Account Title: <strong>Alyan Wazir</strong> · Customer ID: <strong>99767685</strong></div>
-                    <div>Connected Bank: <strong>United Bank Limited (UBL - 0881304929964)</strong></div>
-                  </div>
-                </div>
-              )}
-
-              {formData.paymentMethod === "wise" && (
-                <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#60a5fa" }}>Wise International Details</strong>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("sialkotcricketkits@gmail.com", "wise_email")}
-                      style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
-                    >
-                      {copiedKey === "wise_email" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "wise_email" ? "Copied" : "Copy Wise Tag"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
-                    <div>Wise Tag / Email: <strong>sialkotcricketkits@gmail.com</strong></div>
-                    <div>Account Title: <strong>ALYAN WAZIR</strong></div>
-                  </div>
-                </div>
-              )}
-
-              {formData.paymentMethod === "bank" && (
-                <div style={{ background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <strong style={{ color: "#c084fc" }}>UBL Bank Account (Direct Wire)</strong>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard("PK93UNIL0109000304929964", "iban")}
-                      style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}
-                    >
-                      {copiedKey === "iban" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "iban" ? "Copied" : "Copy IBAN"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 4 }}>
-                    <div>Account Title: <strong>ALYAN WAZIR</strong> · Account No: <strong>0881304929964</strong></div>
-                    <div>IBAN: <strong>PK93UNIL0109000304929964</strong> · SWIFT: <strong>UNILPKKA</strong></div>
-                    <div>Bank Name: <strong>United Bank Limited (UBL)</strong> · Branch: <strong>0881-Wana</strong></div>
-                  </div>
-                </div>
-              )}
-
-              {formData.paymentMethod === "pakistan" && (
-                <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <strong style={{ color: "#4ade80", display: "block", marginBottom: 8 }}>🇵🇰 Pakistan Local Wallets &amp; Raast</strong>
-                  <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "grid", gap: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span>JazzCash / Nayapay / SadaPay / Raast ID: <strong>03275756188</strong></span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard("03275756188", "pk_wallets")}
-                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem" }}
-                      >
-                        {copiedKey === "pk_wallets" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "pk_wallets" ? "Copied" : "Copy"}
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 4 }}>
-                      <span>EasyPaisa Account: <strong>03499585519</strong></span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard("03499585519", "easypaisa_num")}
-                        style={{ background: "none", border: "none", color: "#f2a928", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem" }}
-                      >
-                        {copiedKey === "easypaisa_num" ? <Check size={14} color="#4ade80" /> : <Copy size={14} />} {copiedKey === "easypaisa_num" ? "Copied" : "Copy"}
-                      </button>
-                    </div>
-                    <div>Account Title: <strong>ALYAN WAZIR</strong></div>
-                  </div>
-                </div>
-              )}
-
-              {formData.paymentMethod === "remitly" && (
-                <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.2)", padding: 16, borderRadius: 10 }}>
-                  <strong style={{ color: "#f2a928", display: "block", marginBottom: 6 }}>International Money Transfer (Remitly / Western Union / TapTap)</strong>
-                  <p style={{ color: "#cbd5e1", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
-                    Send direct bank deposit to <strong>UBL Account #0881304929964 (IBAN: PK93UNIL0109000304929964)</strong> under name <strong>ALYAN WAZIR</strong>.
-                  </p>
-                </div>
-              )}
-
-              {/* Transaction Ref Input for Non-Card */}
-              {formData.paymentMethod !== "card" && (
-                <div style={{ marginTop: 16 }}>
-                  <label style={{ display: "block", color: "#cbd5e1", fontSize: "0.82rem", marginBottom: 6, fontWeight: 600 }}>
-                    Transaction ID / Reference Number (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. TXN-94829 or Bank Reference"
-                    value={formData.transactionRef}
-                    onChange={(e) => setFormData({ ...formData, transactionRef: e.target.value })}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.9rem" }}
-                  />
-                  <small style={{ color: "#94a3b8", display: "block", marginTop: 4, fontSize: "0.75rem" }}>
-                    You can also submit proof of payment directly to our team on WhatsApp after placing the order.
-                  </small>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Customization Specs & Workshop Notes */}
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "24px" }}>
-              <label style={{ display: "block", color: "#fff", fontSize: "0.95rem", fontWeight: 700, marginBottom: 8 }}>
-                Customization Specs &amp; Workshop Notes (Optional)
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Specify preferred bat weight (e.g. 2lbs 8oz), handle shape (oval/round), laser engraving text, or special courier delivery instructions..."
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                style={{ width: "100%", padding: "12px 14px", borderRadius: 8, background: "#181f2b", border: "1px solid #2d3748", color: "#fff", fontSize: "0.88rem", resize: "vertical" }}
-              />
-            </div>
+        <div className="checkout-grid-3">
+          <div>
+            <label className="checkout-field-label" htmlFor="co-city">City</label>
+            <input id="co-city" className="checkout-input" type="text" placeholder="London" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
           </div>
+          <div>
+            <label className="checkout-field-label" htmlFor="co-state">State / County</label>
+            <input id="co-state" className="checkout-input" type="text" placeholder="Optional" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} />
+          </div>
+          <div>
+            <label className="checkout-field-label" htmlFor="co-postal">Postcode</label>
+            <input id="co-postal" className="checkout-input" type="text" placeholder="SW1A 1AA" value={formData.postalCode} onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })} />
+          </div>
+        </div>
+      </div>
 
-          {/* Right Column: Order Summary Sticky Sidebar (Desktop) / Below (Mobile) */}
-          <div className="checkout-summary-sticky">
-            <div style={{ background: "#141922", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: 22, width: "100%", boxSizing: "border-box" }}>
-              <h2 style={{ fontSize: "1.15rem", color: "#fff", margin: "0 0 14px", paddingBottom: 10, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", fontWeight: 700 }}>
-                Order Summary ({lines.reduce((s, i) => s + i.quantity, 0)} Items)
-              </h2>
+      {/* Delivery country + shipping */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <label className="checkout-field-label" htmlFor="co-country">
+          <Truck size={13} style={{ display: "inline", verticalAlign: "middle", color: "var(--gold)", marginRight: 4 }} />
+          Delivery country
+        </label>
+        <select
+          id="co-country"
+          className="delivery-country-select"
+          value={formData.country}
+          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+        >
+          {countries.map((c) => (
+            <option key={c} value={c}>{getCountryFlag(c)} {c}</option>
+          ))}
+        </select>
 
-              {/* Items List */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 280, overflowY: "auto", marginBottom: 14, paddingRight: 4 }}>
-                {lines.map(({ product, quantity }) => (
-                  <div key={product.id} style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", paddingBottom: 8 }}>
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1px solid #2d3748", background: "#181f2b" }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <strong style={{ color: "#fff", fontSize: "0.84rem", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {product.name}
-                      </strong>
-                      <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
-                        Qty: {quantity} × {formatPrice(product.price)}
-                      </span>
-                    </div>
-                    <span style={{ color: "#f2a928", fontWeight: 700, fontSize: "0.88rem" }}>
-                      {formatPrice(product.price * quantity)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        <div className="delivery-info-box" style={{ marginTop: ".6rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".3rem" }}>
+            <span>Tracked express courier</span>
+            <span className="delivery-cost">{formatPrice(shippingCalc.shippingFee)}</span>
+          </div>
+          <div style={{ fontSize: ".78rem", color: "var(--text-secondary)" }}>
+            Estimated delivery: {shippingCalc.destination.estimatedDelivery}
+          </div>
+          {shippingCalc.totalSaved > 0 ? (
+            <div className="combined-shipping-note">
+              Combined shipping active — you save {formatPrice(shippingCalc.totalSaved)} on {totalItemCount} items
+            </div>
+          ) : (
+            <div style={{ fontSize: ".74rem", color: "var(--text-muted)", marginTop: ".3rem" }}>
+              Additional bats add only {formatPrice(shippingCalc.destination.additionalItemGbp)} each in the same parcel
+            </div>
+          )}
+        </div>
+      </div>
 
-              {/* Subtotal & Shipping Breakdown */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 12, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", fontSize: "0.86rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                  <span>Items Subtotal ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>
-                  <strong>{formatPrice(subtotal)}</strong>
-                </div>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                  <span>Tracked Courier ({formData.country})</span>
-                  <strong style={{ color: "#f2a928" }}>{formatPrice(shippingCalculation.shippingFee)}</strong>
-                </div>
+      <button
+        className="checkout-primary-cta"
+        onClick={() => setStep(3)}
+        disabled={!canContinueStep2}
+        style={{ pointerEvents: canContinueStep2 ? "auto" : "none", opacity: canContinueStep2 ? 1 : .6 }}
+      >
+        Continue to Payment <ArrowRight size={16} />
+      </button>
+    </div>
+  );
 
-                {shippingCalculation.totalSaved > 0 && (
-                  <div style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "4px 8px", borderRadius: 6, fontSize: "0.75rem", color: "#4ade80", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>✨ Combined Shipping Savings:</span>
-                    <strong>Save {formatPrice(shippingCalculation.totalSaved)}!</strong>
-                  </div>
-                )}
-                
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ color: "#94a3b8" }}>Total Order Value:</span>
-                  <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{formatPrice(grandTotal)}</strong>
-                </div>
-              </div>
+  // ── Step 3: Payment ──────────────────────────────────────────────────────────
+  const Step3 = () => (
+    <div>
+      <button className="checkout-back-btn" onClick={() => setStep(2)}>
+        <ChevronLeft size={16} /> Back to delivery
+      </button>
+      <h2 className="checkout-card-title" style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
+        Deposit &amp; payment method
+      </h2>
 
-              {/* Confirmation Deposit Breakdown Box */}
-              <div style={{ margin: "14px 0 16px", background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.25)", padding: 12, borderRadius: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                  <div>
-                    <strong style={{ color: "#fff", fontSize: "0.98rem", display: "block" }}>Due Today ({depositPercent}% Deposit)</strong>
-                    <span style={{ color: "#fde68a", fontSize: "0.72rem" }}>Required to Confirm &amp; Begin Crafting</span>
-                  </div>
-                  <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "#f2a928" }}>
-                    {formatPrice(depositDueNow)}
-                  </span>
-                </div>
-
-                {depositPercent < 100 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6, marginTop: 6, fontSize: "0.76rem", color: "#94a3b8" }}>
-                    <span>Balance Due on Dispatch:</span>
-                    <strong style={{ color: "#cbd5e1" }}>{formatPrice(balanceRemaining)}</strong>
-                  </div>
-                )}
-              </div>
-
-              {errorMessage && (
-                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", color: "#fca5a5", padding: "10px 14px", borderRadius: 8, fontSize: "0.82rem", marginBottom: 14 }}>
-                  {errorMessage}
-                </div>
-              )}
-
-              {/* Submit CTA */}
+      {/* Deposit selector */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <p className="checkout-card-subtitle">
+          Choose how much you would like to pay now. The remaining balance is due before we dispatch your order.
+        </p>
+        <div className="deposit-options">
+          {DEPOSIT_OPTIONS.map(({ percent, label, sub, badge }) => {
+            const amount = Math.round(grandTotal * (percent / 100) * 100) / 100;
+            const isSelected = depositPercent === percent;
+            return (
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="button primary wide"
-                style={{
-                  padding: "13px 18px",
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  borderRadius: 10,
-                  background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
-                  color: "#000000",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                key={percent}
+                type="button"
+                className={`deposit-option${isSelected ? " selected" : ""}`}
+                onClick={() => setDepositPercent(percent)}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" /> Processing Order...
-                  </>
-                ) : (
-                  <>
-                    <Lock size={16} /> Complete Order &amp; Confirm ({formatPrice(depositDueNow)})
-                  </>
-                )}
+                <div className="deposit-option-radio">
+                  <div className="deposit-option-radio-inner" />
+                </div>
+                <div className="deposit-option-body">
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: ".5rem" }}>
+                    <span className="deposit-option-title">{label}</span>
+                    {badge && <span className="deposit-option-badge">{badge}</span>}
+                  </div>
+                  <span className="deposit-option-amount">{formatPrice(amount)}</span>
+                  <span className="deposit-option-sub">{sub}</span>
+                </div>
               </button>
+            );
+          })}
+        </div>
+      </div>
 
-              {/* WhatsApp Alternative */}
-              <a
-                className="button whatsapp wide"
-                href={whatsappUrl(`Hello Sialkot Cricket Kits, I would like to confirm my order for ${lines.map(l => `${l.quantity}x ${l.product.name}`).join(", ")} (Total Order: £${grandTotal}, ${depositPercent}% Advance Deposit: £${depositDueNow}). Country: ${formData.country}. Name: ${formData.fullName || "Customer"}`)}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  marginTop: 8,
-                  padding: "9px 12px",
-                  fontSize: "0.82rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  background: "rgba(16, 185, 129, 0.15)",
-                  border: "1px solid rgba(16, 185, 129, 0.35)",
-                  color: "#34d399",
-                  borderRadius: 8,
-                  fontWeight: 600,
-                }}
-              >
-                💬 Place Order via WhatsApp
-              </a>
+      {/* Payment method */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <h3 className="checkout-card-title" style={{ fontSize: ".95rem" }}>How would you like to pay?</h3>
+        <div className="payment-methods">
+          {PAYMENT_METHODS.map(({ id, label, icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`payment-method-option${paymentMethod === id ? " selected" : ""}`}
+              onClick={() => setPaymentMethod(id)}
+            >
+              <span className="payment-method-icon">{icon}</span>
+              <span className="payment-method-label">{label}</span>
+            </button>
+          ))}
+        </div>
 
-              {/* Guarantees */}
-              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6, fontSize: "0.75rem", color: "#94a3b8" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle2 size={14} color="#22c55e" /> 100% Genuine Handcrafted Sialkot Willow
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle2 size={14} color="#22c55e" /> Live Bat Ping &amp; Prep Video Sent on WhatsApp
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle2 size={14} color="#22c55e" /> Worldwide Tracked Express Courier Dispatch
+        {/* Payment detail info */}
+        {paymentMethod === "bank" && (
+          <div className="payment-info-box amber" style={{ marginTop: ".75rem" }}>
+            <p style={{ margin: "0 0 .5rem", fontWeight: 700, fontSize: ".84rem" }}>Bank transfer details</p>
+            {Object.entries({ "Account name": BANK_DETAILS.accountName, "IBAN": BANK_DETAILS.iban, "SWIFT / BIC": BANK_DETAILS.swift, "Bank": BANK_DETAILS.bank }).map(([k, v]) => (
+              <div key={k} className="payment-info-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(242,169,40,.15)", padding: ".35rem 0" }}>
+                <span style={{ fontSize: ".78rem", color: "var(--text-secondary)" }}>{k}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: ".78rem", fontWeight: 700 }}>{v}</span>
+                  <button className="payment-info-copy" onClick={() => copyToClipboard(v, k)} aria-label={`Copy ${k}`}>
+                    {copiedKey === k ? <Check size={12} /> : <Copy size={12} />}
+                  </button>
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        )}
+
+        {paymentMethod === "card" && (
+          <div className="payment-info-box blue" style={{ marginTop: ".75rem" }}>
+            <Lock size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+            You will be redirected to a secure Stripe payment page to complete your card payment.
+          </div>
+        )}
+
+        {paymentMethod === "payoneer" && (
+          <div className="payment-info-box green" style={{ marginTop: ".75rem" }}>
+            Send to Payoneer email: <strong>sialkotcricketkits@gmail.com</strong>
+          </div>
+        )}
+
+        {paymentMethod === "wise" && (
+          <div className="payment-info-box blue" style={{ marginTop: ".75rem" }}>
+            Send via Wise to: <strong>sialkotcricketkits@gmail.com</strong>. Include your order details in the reference.
+          </div>
+        )}
+
+        {paymentMethod === "pakistan" && (
+          <div className="payment-info-box amber" style={{ marginTop: ".75rem" }}>
+            <strong>JazzCash / EasyPaisa / Raast:</strong> 03231438214<br />
+            <strong>SadaPay / NayaPay:</strong> sialkotcricketkits@gmail.com
+          </div>
+        )}
+
+        {paymentMethod === "remitly" && (
+          <div className="payment-info-box blue" style={{ marginTop: ".75rem" }}>
+            Please contact us on WhatsApp for Remitly / Western Union / MoneyGram transfer details.
+          </div>
+        )}
+      </div>
+
+      <button
+        className="checkout-primary-cta"
+        onClick={() => setStep(4)}
+        disabled={!canContinueStep3}
+        style={{ pointerEvents: canContinueStep3 ? "auto" : "none", opacity: canContinueStep3 ? 1 : .6 }}
+      >
+        Review &amp; Confirm <ArrowRight size={16} />
+      </button>
+    </div>
+  );
+
+  // ── Step 4: Review & Submit ──────────────────────────────────────────────────
+  const Step4 = () => (
+    <form onSubmit={handleSubmitOrder}>
+      <button className="checkout-back-btn" type="button" onClick={() => setStep(3)}>
+        <ChevronLeft size={16} /> Back to payment
+      </button>
+      <h2 className="checkout-card-title" style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
+        Review &amp; confirm
+      </h2>
+
+      {/* Summary rows */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem 1.5rem", fontSize: ".84rem" }}>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Name</span><strong>{formData.fullName}</strong></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Phone</span><strong>{formData.phone}</strong></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Email</span><strong>{formData.email || "—"}</strong></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Country</span><strong>{formData.country}</strong></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Deposit</span><strong>{depositPercent}%</strong></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".07em", display: "block", marginBottom: 2 }}>Payment</span><strong>{getMethodTitle(paymentMethod)}</strong></div>
+        </div>
+      </div>
+
+      {/* Transaction ref if applicable */}
+      {paymentMethod !== "card" && (
+        <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+          <label className="checkout-field-label" htmlFor="co-ref">
+            Transaction reference <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — enter after sending payment)</span>
+          </label>
+          <input
+            id="co-ref"
+            className="checkout-input"
+            type="text"
+            placeholder="e.g. TXN-123456 or transfer receipt number"
+            value={formData.transactionRef}
+            onChange={(e) => setFormData({ ...formData, transactionRef: e.target.value })}
+          />
+        </div>
+      )}
+
+      {/* Notes */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <label className="checkout-field-label" htmlFor="co-notes">Order notes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+        <textarea
+          id="co-notes"
+          className="checkout-input"
+          rows={3}
+          placeholder="Bat weight preference, handle type, engraving request, or anything else…"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          style={{ minHeight: 80, resize: "vertical" }}
+        />
+      </div>
+
+      {/* Totals */}
+      <div className="checkout-card" style={{ marginBottom: "1rem" }}>
+        <div className="order-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
+        <div className="order-summary-line"><span>Delivery ({formData.country})</span><strong>{formatPrice(shippingCalc.shippingFee)}</strong></div>
+        <div className="order-summary-divider" />
+        <div className="order-total-line"><span className="label">Order total</span><span className="value">{formatPrice(grandTotal)}</span></div>
+        <div className="order-pay-today-line">
+          <span className="label">Pay today ({depositPercent}% deposit)</span>
+          <span className="value">{formatPrice(depositDueNow)}</span>
+        </div>
+        <div className="order-balance-line">
+          <span>Balance before dispatch</span>
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatPrice(balanceRemaining)}</span>
+        </div>
+      </div>
+
+      {errorMessage && (
+        <div className="checkout-error" role="alert">{errorMessage}</div>
+      )}
+
+      <button
+        type="submit"
+        className="checkout-primary-cta"
+        disabled={isSubmitting}
+        style={{ pointerEvents: isSubmitting ? "none" : "auto", opacity: isSubmitting ? .7 : 1 }}
+      >
+        {isSubmitting ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Processing…</> : <><Lock size={15} /> Place Order — Pay {formatPrice(depositDueNow)} today</>}
+      </button>
+
+      <a
+        className="checkout-secondary-cta"
+        href={whatsappUrl(cartMessage)}
+        target="_blank"
+        rel="noreferrer"
+        style={{ marginTop: ".6rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".5rem" }}
+      >
+        💬 Complete order via WhatsApp instead
+      </a>
+
+      <div className="checkout-trust-note">
+        <Lock size={12} /> Secure checkout · Factory direct · No hidden fees
+      </div>
+    </form>
+  );
+
+  // ── Main render ──────────────────────────────────────────────────────────────
+  return (
+    <main style={{ background: "var(--surface-alt)", minHeight: "100vh", paddingBottom: 60 }}>
+      {/* Slim checkout header */}
+      <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: ".85rem clamp(1rem, 4vw, 4rem)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
+            <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" style={{ width: 40, height: 40, objectFit: "contain" }} />
+            <strong style={{ fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text-primary)" }}>
+              Sialkot Cricket Kits
+            </strong>
+          </Link>
+          <span style={{ display: "flex", alignItems: "center", gap: ".4rem", fontSize: ".74rem", color: "var(--text-muted)" }}>
+            <Lock size={13} /> Secure checkout
+          </span>
+        </div>
+      </div>
+
+      <div className="checkout-page-container">
+        <StepIndicator />
+
+        <div className="checkout-form-grid">
+          {/* Left: step content */}
+          <div>
+            {step === 1 && <Step1 />}
+            {step === 2 && <Step2 />}
+            {step === 3 && <Step3 />}
+            {step === 4 && <Step4 />}
           </div>
 
-        </form>
-      </section>
+          {/* Right: order summary sidebar */}
+          <div className="checkout-summary-sticky">
+            <OrderSummary />
+
+            {/* Delivery estimate */}
+            <div className="checkout-card" style={{ fontSize: ".82rem", color: "var(--text-secondary)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: ".5rem" }}>
+                <Truck size={15} style={{ color: "var(--gold)" }} />
+                <strong style={{ color: "var(--text-primary)", fontSize: ".88rem" }}>Delivery</strong>
+              </div>
+              <div style={{ marginBottom: ".25rem" }}>
+                <strong style={{ color: "var(--text-primary)" }}>{formData.country}</strong>
+              </div>
+              <div>{shippingCalc.destination.estimatedDelivery}</div>
+              <div style={{ marginTop: ".3rem", fontSize: ".74rem", color: "var(--text-muted)" }}>
+                Tracked DHL / FedEx express courier
+              </div>
+            </div>
+
+            {/* WhatsApp support */}
+            <a
+              href={whatsappUrl("Hello Sialkot Cricket Kits, I need help completing my checkout order.")}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "flex", alignItems: "center", gap: ".5rem",
+                padding: ".7rem .9rem", background: "#e8f7ef",
+                border: "1px solid rgba(22,139,82,.2)", borderRadius: 8,
+                fontSize: ".78rem", fontWeight: 700, color: "#0d5e38",
+                textDecoration: "none",
+              }}
+            >
+              💬 Need help? Chat on WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

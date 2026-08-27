@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   Truck,
   Video,
+  LayoutGrid,
 } from "lucide-react";
 import { ProductCard } from "@/src/components/ProductCard";
 import { getCategories, getFaqs, getProducts, getSettings } from "@/src/lib/data-service";
@@ -45,6 +46,7 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* Hero — dark photography, premium */}
       <section className="home-hero">
         <div className="hero-copy">
           <p className="eyebrow">Hand-selected in Sialkot · Delivered worldwide</p>
@@ -57,7 +59,7 @@ export default async function HomePage() {
           </p>
           <div className="hero-actions">
             <Link className="button primary" href="/shop">
-              Shop equipment <ArrowRight size={18} />
+              Shop equipment <ArrowRight size={17} />
             </Link>
             <a
               className="button ghost"
@@ -67,18 +69,19 @@ export default async function HomePage() {
               target="_blank"
               rel="noreferrer"
             >
-              <MessageCircle size={18} /> Chat on WhatsApp
+              <MessageCircle size={17} /> Chat on WhatsApp
             </a>
           </div>
+          {/* Hero assurance — shown on desktop only (hidden on mobile via CSS) */}
           <div className="hero-assurance">
             <span>
-              <ShieldCheck size={18} /> Catalogue pricing
+              <ShieldCheck size={16} /> Grade 1+ English Willow
             </span>
             <span>
-              <Video size={18} /> Live product videos
+              <Video size={16} /> Live ping videos
             </span>
             <span>
-              <Truck size={18} /> Worldwide delivery
+              <Truck size={16} /> Worldwide delivery
             </span>
           </div>
         </div>
@@ -95,12 +98,42 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Trust strip — compact horizontal, replaces mobile hero trust cards */}
+      <div className="trust-strip">
+        <span className="trust-strip-item">
+          <ShieldCheck size={14} /> Grade 1+ English Willow
+        </span>
+        <span className="trust-strip-item">
+          <Video size={14} /> Live ping videos
+        </span>
+        <span className="trust-strip-item">
+          <Truck size={14} /> Worldwide delivery
+        </span>
+        <span className="trust-strip-item">
+          <PackageCheck size={14} /> Flexible deposit from 30%
+        </span>
+      </div>
+
+      {/* Categories entry — direct, obvious */}
+      <div className="categories-section">
+        <Link
+          className="categories-entry-button"
+          href="/shop"
+          aria-label="Browse all categories"
+        >
+          <LayoutGrid size={18} className="cat-icon" style={{ color: "var(--gold)" }} />
+          <span>Browse Categories</span>
+          <ArrowRight size={16} className="cat-chevron" style={{ color: "var(--text-muted)" }} />
+        </Link>
+      </div>
+
+      {/* Category strip */}
       <section className="category-strip">
         <div className="section-intro compact">
           <p className="eyebrow dark">Complete your kit</p>
           <h2>Shop by category.</h2>
           <Link href="/shop">
-            View the complete shop <ArrowRight size={17} />
+            View the complete shop <ArrowRight size={16} />
           </Link>
         </div>
         <div className="category-grid">
@@ -115,17 +148,18 @@ export default async function HomePage() {
                 <span>{category.count} listings</span>
                 <h3>{category.name}</h3>
               </div>
-              <ArrowRight size={18} />
+              <ArrowRight size={17} />
             </Link>
           ))}
         </div>
       </section>
 
+      {/* Featured products */}
       <section className="section dark-section">
         <div className="section-intro light">
           <p className="eyebrow">Selected from the catalogue</p>
           <h2>Featured equipment.</h2>
-          <p>Individual prices are shown in PKR. Confirm stock, specification and delivery before payment.</p>
+          <p>Individual prices shown in GBP. Confirm stock and specification before payment.</p>
         </div>
         <div className="product-grid four">
           {featuredProducts.map((product) => (
@@ -134,9 +168,10 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Protection section */}
       <section className="section light-section">
         <div className="section-intro">
-          <p className="eyebrow dark">Protection & wicketkeeping</p>
+          <p className="eyebrow dark">Protection &amp; wicketkeeping</p>
           <h2>Confidence at the crease.</h2>
           <p>Choose from current pad, glove, keeping and helmet listings with model-specific pricing.</p>
         </div>
@@ -146,16 +181,17 @@ export default async function HomePage() {
           ))}
         </div>
         <Link className="inline-link" href="/shop?category=Batting%20Pads">
-          Explore protective equipment <ArrowRight size={17} />
+          Explore protective equipment <ArrowRight size={16} />
         </Link>
       </section>
 
+      {/* Kit bags split */}
       <section className="split-feature">
         <div className="split-image">
           <img src={bags[0]?.image || "/assets/products/bat-collection.webp"} alt="Cricket kit bag" />
         </div>
         <div className="split-copy">
-          <p className="eyebrow">Kit, duffle, wheelie & trolley</p>
+          <p className="eyebrow">Kit, duffle, wheelie &amp; trolley</p>
           <h2>Carry the whole game.</h2>
           <p>
             Browse the complete bag range with original stock photographs, current quantities and
@@ -167,11 +203,12 @@ export default async function HomePage() {
             <li>Original product images from current stock</li>
           </ul>
           <Link className="button primary" href="/shop?category=Kit%20%26%20Duffle%20Bags">
-            Shop kit bags <ArrowRight size={18} />
+            Shop kit bags <ArrowRight size={17} />
           </Link>
         </div>
       </section>
 
+      {/* Service grid */}
       <section className="service-grid">
         <article>
           <ShieldCheck />
@@ -195,6 +232,7 @@ export default async function HomePage() {
         </article>
       </section>
 
+      {/* Custom bat CTA */}
       <section className="custom-cta">
         <div>
           <p className="eyebrow">Your bat · Your specification</p>
@@ -219,10 +257,11 @@ export default async function HomePage() {
           </span>
         </div>
         <Link className="button primary" href="/custom-bat">
-          Build a custom bat <ArrowRight size={18} />
+          Build a custom bat <ArrowRight size={17} />
         </Link>
       </section>
 
+      {/* Catalogue CTA */}
       <section className="catalogue-cta">
         <div>
           <p className="eyebrow dark">Complete price catalogue</p>
@@ -234,7 +273,7 @@ export default async function HomePage() {
         </div>
         <div>
           <a className="button dark" href={settings.catalogueUrl} download>
-            <Download size={18} /> Download catalogue
+            <Download size={17} /> Download catalogue
           </a>
           <a
             className="button outline-dark"
@@ -242,11 +281,12 @@ export default async function HomePage() {
             target="_blank"
             rel="noreferrer"
           >
-            <MessageCircle size={18} /> Send a shortlist
+            <MessageCircle size={17} /> Send a shortlist
           </a>
         </div>
       </section>
 
+      {/* FAQ preview */}
       <section className="section faq-preview">
         <div className="section-intro">
           <p className="eyebrow dark">Before you order</p>
@@ -264,7 +304,7 @@ export default async function HomePage() {
           ))}
         </div>
         <Link className="inline-link" href="/faq">
-          Read all FAQs <ArrowRight size={17} />
+          Read all FAQs <ArrowRight size={16} />
         </Link>
       </section>
     </main>
