@@ -1,18 +1,35 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ChevronRight,
   Download,
+  Flame,
+  HelpCircle,
+  Layers,
   MessageCircle,
   PackageCheck,
+  PhoneCall,
   ShieldCheck,
-  SlidersHorizontal,
+  Sparkles,
   Truck,
   Video,
-  LayoutGrid,
 } from "lucide-react";
-import { ProductCard } from "@/src/components/ProductCard";
 import { getCategories, getFaqs, getProducts, getSettings } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { HomeAuthorityTicker } from "@/src/components/home/HomeAuthorityTicker";
+import { HomeHeroInteractive } from "@/src/components/home/HomeHeroInteractive";
+import { BatAnatomyShowcase } from "@/src/components/home/BatAnatomyShowcase";
+import { BatFinderWidget } from "@/src/components/home/BatFinderWidget";
+import { HomeCollectionsTabs } from "@/src/components/home/HomeCollectionsTabs";
+import { PingSoundExperience } from "@/src/components/home/PingSoundExperience";
+import { FactoryDirectMatrix } from "@/src/components/home/FactoryDirectMatrix";
+import { GlobalPlayerReviews } from "@/src/components/home/GlobalPlayerReviews";
+
+export const metadata = {
+  title: "Sialkot Cricket Kits | World Top-Class Cricket Bats & Gear Worldwide",
+  description:
+    "Direct from Sialkot master batmakers: Handcrafted Grade 1+ English Willow cricket bats, test-grade pads, gloves, and kit bags. Live WhatsApp ping videos and express worldwide delivery.",
+};
 
 export default async function HomePage() {
   const [products, categories, faqs, settings] = await Promise.all([
@@ -22,290 +39,247 @@ export default async function HomePage() {
     getSettings(),
   ]);
 
-  // Featured products (either marked featured or curated fallback)
-  let featuredProducts = products.filter((p) => p.featured);
-  if (featuredProducts.length === 0) {
-    featuredProducts = products.slice(0, 4);
-  } else {
-    featuredProducts = featuredProducts.slice(0, 4);
-  }
-
-  const protection = products
-    .filter((item) => ["Batting Pads", "Batting Gloves", "Keeping Gloves", "Helmets"].includes(item.category))
-    .slice(0, 4);
-  const bags = products.filter((item) => item.category === "Kit & Duffle Bags").slice(0, 4);
-
-  const categoriesWithInfo = categories.slice(0, 8).map((category) => {
-    const catProducts = products.filter((p) => p.category === category.name);
-    return {
-      name: category.name,
-      count: catProducts.length,
-      image: catProducts[0]?.image || "/assets/brand/sialkot-cricket-kits-logo.png",
-    };
-  });
-
   return (
-    <main>
-      {/* Hero — dark photography, premium */}
-      <section className="home-hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Hand-selected in Sialkot · Delivered worldwide</p>
-          <h1>
-            Built for players who inspect <em>every detail.</em>
-          </h1>
-          <p>
-            Explore exact product galleries for beauty-processed, bonafide, junior and Harrow bats—plus
-            professional protection, wicketkeeping equipment and kit bags.
-          </p>
-          <div className="hero-actions">
-            <Link className="button primary" href="/shop">
-              Shop equipment <ArrowRight size={17} />
-            </Link>
-            <a
-              className="button ghost"
-              href={whatsappUrl(
-                "Hello Sialkot Cricket Kits, I would like help choosing cricket equipment from your current catalogue."
-              )}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle size={17} /> Chat on WhatsApp
-            </a>
+    <main className="world-homepage">
+      {/* 1. Global Authority Marquee Ribbon */}
+      <HomeAuthorityTicker />
+
+      {/* 2. Cinematic Hero with Interactive 360 Bat Inspector */}
+      <HomeHeroInteractive />
+
+      {/* 3. Heritage & Numbers Bar */}
+      <section className="heritage-metrics-section">
+        <div className="metrics-container">
+          <div className="metric-box">
+            <span className="metric-big-num">42+</span>
+            <div className="metric-text-group">
+              <strong>Years of Heritage</strong>
+              <span>Generational batmakers based in Sialkot</span>
+            </div>
           </div>
-          {/* Hero assurance — shown on desktop only (hidden on mobile via CSS) */}
-          <div className="hero-assurance">
-            <span>
-              <ShieldCheck size={16} /> Grade 1+ English Willow
-            </span>
-            <span>
-              <Video size={16} /> Live ping videos
-            </span>
-            <span>
-              <Truck size={16} /> Worldwide delivery
-            </span>
+          <div className="metric-box">
+            <span className="metric-big-num">100%</span>
+            <div className="metric-text-group">
+              <strong>Grade 1+ English Willow</strong>
+              <span>Imported clefts air-cured 18+ months</span>
+            </div>
           </div>
-        </div>
-        <div className="hero-visual">
-          <img
-            src="/assets/products/bats/apex-edition/apex-pro-front-b.webp"
-            alt="Apex Pro beauty-processed cricket bat from Sialkot Cricket Kits"
-          />
-          <div className="hero-stamp">
-            <span>Original product galleries</span>
-            <strong>Face · profile · edge · toe</strong>
-            <Link href="/shop?category=Beauty%20Processed%20Bats">Explore cricket bats →</Link>
+          <div className="metric-box">
+            <span className="metric-big-num">60+</span>
+            <div className="metric-text-group">
+              <strong>Countries Shipped</strong>
+              <span>Tracked DHL / FedEx door-to-door delivery</span>
+            </div>
+          </div>
+          <div className="metric-box">
+            <span className="metric-big-num">10,000+</span>
+            <div className="metric-text-group">
+              <strong>Match Bats Tested</strong>
+              <span>Hand-knocked &amp; tested with 5.5oz leather balls</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Trust strip — compact horizontal, replaces mobile hero trust cards */}
-      <div className="trust-strip">
-        <span className="trust-strip-item">
-          <ShieldCheck size={14} /> Grade 1+ English Willow
-        </span>
-        <span className="trust-strip-item">
-          <Video size={14} /> Live ping videos
-        </span>
-        <span className="trust-strip-item">
-          <Truck size={14} /> Worldwide delivery
-        </span>
-        <span className="trust-strip-item">
-          <PackageCheck size={14} /> Flexible deposit from 30%
-        </span>
-      </div>
+      {/* 4. The Sialkot Difference: Anatomy of an Elite Match Bat */}
+      <BatAnatomyShowcase />
 
-      {/* Categories entry — direct, obvious */}
-      <div className="categories-section">
-        <Link
-          className="categories-entry-button"
-          href="/shop"
-          aria-label="Browse all categories"
-        >
-          <LayoutGrid size={18} className="cat-icon" style={{ color: "var(--gold)" }} />
-          <span>Browse Categories</span>
-          <ArrowRight size={16} className="cat-chevron" style={{ color: "var(--text-muted)" }} />
-        </Link>
-      </div>
+      {/* 5. Interactive "Find Your Match Willow" Selector Tool */}
+      <BatFinderWidget />
 
-      {/* Category strip */}
-      <section className="category-strip">
-        <div className="section-intro compact">
-          <p className="eyebrow dark">Complete your kit</p>
-          <h2>Shop by category.</h2>
-          <Link href="/shop">
-            View the complete shop <ArrowRight size={16} />
-          </Link>
-        </div>
-        <div className="category-grid">
-          {categoriesWithInfo.map((category) => (
-            <Link
-              className="category-card"
-              href={`/shop?category=${encodeURIComponent(category.name)}`}
-              key={category.name}
-            >
-              <img src={category.image} alt="" loading="lazy" />
-              <div>
-                <span>{category.count} listings</span>
-                <h3>{category.name}</h3>
+      {/* 6. Dynamic Curated Collections Tabs (Bats, Protection, Keeping, Bags) */}
+      <HomeCollectionsTabs products={products as any} />
+
+      {/* 7. The Signature Live Mallet Ping Test Guarantee */}
+      <PingSoundExperience />
+
+      {/* 8. Direct Factory Transparency vs. Big Brand Markup Matrix */}
+      <FactoryDirectMatrix />
+
+      {/* 9. Bespoke Custom Bat Lab Teaser */}
+      <section className="custom-lab-banner-section">
+        <div className="custom-lab-banner-container">
+          <div className="custom-banner-card">
+            <div className="custom-banner-visual">
+              <img
+                src="/assets/products/bats/special-edition/special-edition-front-a.webp"
+                alt="Custom carved cricket bat in Sialkot workshop"
+                className="custom-banner-img"
+              />
+              <span className="custom-banner-badge">Bespoke Workshop Service</span>
+            </div>
+
+            <div className="custom-banner-content">
+              <span className="section-eyebrow">Your Bat · Your Exact Dimensions</span>
+              <h2 className="custom-banner-title">
+                Hand-Carved to Your <span className="gold-text">Exact Match Specification.</span>
+              </h2>
+              <p className="custom-banner-p">
+                Select your raw English Willow cleft, handle geometry (round or oval), balance point,
+                edge thickness, and personalized laser engraving. Ready for match play with optional
+                15,000-machine knocking-in.
+              </p>
+
+              <div className="custom-banner-steps">
+                <div className="cb-step">
+                  <span className="cb-num">01</span>
+                  <div>
+                    <strong>Choose Cleft &amp; Grains</strong>
+                    <span>Grade 1+ unbleached willow</span>
+                  </div>
+                </div>
+                <div className="cb-step">
+                  <span className="cb-num">02</span>
+                  <div>
+                    <strong>Profile &amp; Spine</strong>
+                    <span>Duckbill, full, or concave</span>
+                  </div>
+                </div>
+                <div className="cb-step">
+                  <span className="cb-num">03</span>
+                  <div>
+                    <strong>Laser Engraving</strong>
+                    <span>Your name &amp; club emblem</span>
+                  </div>
+                </div>
+                <div className="cb-step">
+                  <span className="cb-num">04</span>
+                  <div>
+                    <strong>Live Ping Video</strong>
+                    <span>Confirmed before shipping</span>
+                  </div>
+                </div>
               </div>
-              <ArrowRight size={17} />
+
+              <div className="custom-banner-actions">
+                <Link href="/custom-bat" className="custom-action-primary">
+                  <span>Start Custom Bat Builder</span>
+                  <ArrowRight size={18} />
+                </Link>
+                <a
+                  href={whatsappUrl(
+                    "Hello Sialkot Cricket Kits, I want to discuss building a custom cricket bat with specific weight and profile."
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="custom-action-whatsapp"
+                >
+                  <MessageCircle size={18} />
+                  <span>Discuss Specs on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 10. Global Player Stories & Verified Reviews */}
+      <GlobalPlayerReviews />
+
+      {/* 11. Complete Price Sheet & Catalogue Download */}
+      <section className="catalogue-download-section">
+        <div className="catalogue-download-container">
+          <div className="cat-download-box">
+            <div className="cat-download-left">
+              <span className="section-eyebrow">Official Factory Catalogue</span>
+              <h2>Download the 2026 Complete Equipment Sheet</h2>
+              <p>
+                Get all 140+ bats, protective gear, wicketkeeping gloves, helmets, teamwear, and bag listings
+                with wholesale and individual retail GBP pricing in one PDF.
+              </p>
+            </div>
+            <div className="cat-download-actions">
+              <a
+                href={settings.catalogueUrl || "#"}
+                download
+                className="btn-download-pdf"
+              >
+                <Download size={18} />
+                <span>Download PDF Sheet</span>
+              </a>
+              <a
+                href={whatsappUrl("Hello Sialkot Cricket Kits, please send me your latest 2026 catalogue and price list.")}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-whatsapp-shortlist"
+              >
+                <MessageCircle size={18} />
+                <span>WhatsApp Shortlist</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 12. FAQ Section */}
+      <section className="home-faq-section">
+        <div className="home-faq-container">
+          <div className="section-head-center">
+            <span className="section-eyebrow">Clear Answers</span>
+            <h2 className="section-heading">
+              Frequently Asked <span className="gold-text">Questions</span>
+            </h2>
+            <p className="section-subtext">
+              Everything you need to know about international shipping times, live ping videos, knocking-in, and custom orders.
+            </p>
+          </div>
+
+          <div className="home-faq-grid">
+            {faqs.slice(0, 6).map((faq) => (
+              <details key={faq.id} className="home-faq-item">
+                <summary className="faq-summary">
+                  <span>{faq.question}</span>
+                  <span className="faq-toggle">+</span>
+                </summary>
+                <div className="faq-body">
+                  <p>{faq.answer}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+
+          <div className="faq-bottom-link">
+            <Link href="/faq" className="see-all-faqs-link">
+              <span>View All 20+ Frequently Asked Questions</span>
+              <ArrowRight size={16} />
             </Link>
-          ))}
+          </div>
         </div>
       </section>
 
-      {/* Featured products */}
-      <section className="section dark-section">
-        <div className="section-intro light">
-          <p className="eyebrow">Selected from the catalogue</p>
-          <h2>Featured equipment.</h2>
-          <p>Individual prices shown in GBP. Confirm stock and specification before payment.</p>
+      {/* 13. VIP Batmaker Concierge Final Banner */}
+      <section className="concierge-vip-section">
+        <div className="concierge-container">
+          <div className="concierge-card">
+            <div className="concierge-glow" />
+            <div className="concierge-content">
+              <span className="concierge-pill">Personal Batmaker Concierge</span>
+              <h2>Ready to Elevate Your Cricket Game?</h2>
+              <p>
+                Whether you need advice on the ideal weight for English wickets, want to inspect our current batch of Grade 1+ clefts, or need kit for your entire club—our master batmaker is a WhatsApp message away.
+              </p>
+              <div className="concierge-buttons">
+                <a
+                  href={whatsappUrl("Hello Master Batmaker, I would like personal guidance choosing my next match bat.")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="concierge-whatsapp-btn"
+                >
+                  <MessageCircle size={20} />
+                  <span>Start WhatsApp Consultation</span>
+                </a>
+                <Link href="/shop" className="concierge-shop-btn">
+                  <span>Browse Full Inventory</span>
+                  <ArrowRight size={18} />
+                </Link>
+              </div>
+              <div className="concierge-security-note">
+                <ShieldCheck size={16} />
+                <span>Zero obligation · 4K video inspection sent prior to any payment</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="product-grid four">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product as any} />
-          ))}
-        </div>
-      </section>
-
-      {/* Protection section */}
-      <section className="section light-section">
-        <div className="section-intro">
-          <p className="eyebrow dark">Protection &amp; wicketkeeping</p>
-          <h2>Confidence at the crease.</h2>
-          <p>Choose from current pad, glove, keeping and helmet listings with model-specific pricing.</p>
-        </div>
-        <div className="product-grid four">
-          {protection.map((product) => (
-            <ProductCard key={product.id} product={product as any} />
-          ))}
-        </div>
-        <Link className="inline-link" href="/shop?category=Batting%20Pads">
-          Explore protective equipment <ArrowRight size={16} />
-        </Link>
-      </section>
-
-      {/* Kit bags split */}
-      <section className="split-feature">
-        <div className="split-image">
-          <img src={bags[0]?.image || "/assets/products/bat-collection.webp"} alt="Cricket kit bag" />
-        </div>
-        <div className="split-copy">
-          <p className="eyebrow">Kit, duffle, wheelie &amp; trolley</p>
-          <h2>Carry the whole game.</h2>
-          <p>
-            Browse the complete bag range with original stock photographs, current quantities and
-            individual catalogue pricing.
-          </p>
-          <ul>
-            <li>Standard and premium editions</li>
-            <li>Duffle, wheelie and trolley formats</li>
-            <li>Original product images from current stock</li>
-          </ul>
-          <Link className="button primary" href="/shop?category=Kit%20%26%20Duffle%20Bags">
-            Shop kit bags <ArrowRight size={17} />
-          </Link>
-        </div>
-      </section>
-
-      {/* Service grid */}
-      <section className="service-grid">
-        <article>
-          <ShieldCheck />
-          <h3>Catalogue accuracy</h3>
-          <p>Prices and quantities are maintained dynamically in the official product catalogue.</p>
-        </article>
-        <article>
-          <Video />
-          <h3>See before ordering</h3>
-          <p>Ask for current product pictures or a live bat ping video through our official WhatsApp.</p>
-        </article>
-        <article>
-          <SlidersHorizontal />
-          <h3>Custom bat service</h3>
-          <p>Discuss weight, handle, profile, knocking-in and name engraving before production.</p>
-        </article>
-        <article>
-          <PackageCheck />
-          <h3>International support</h3>
-          <p>We confirm stock, packing, shipping cost and estimated delivery for your destination.</p>
-        </article>
-      </section>
-
-      {/* Custom bat CTA */}
-      <section className="custom-cta">
-        <div>
-          <p className="eyebrow">Your bat · Your specification</p>
-          <h2>Choose the details that suit your game.</h2>
-          <p>
-            Short or long handle, preferred weight, duckbill, mid, high, full, concave or traditional
-            profile—with optional knocking-in and name engraving.
-          </p>
-        </div>
-        <div className="custom-steps">
-          <span>
-            <b>01</b> Send your specification
-          </span>
-          <span>
-            <b>02</b> Review available willow
-          </span>
-          <span>
-            <b>03</b> Confirm with live ping video
-          </span>
-          <span>
-            <b>04</b> Production after advance
-          </span>
-        </div>
-        <Link className="button primary" href="/custom-bat">
-          Build a custom bat <ArrowRight size={17} />
-        </Link>
-      </section>
-
-      {/* Catalogue CTA */}
-      <section className="catalogue-cta">
-        <div>
-          <p className="eyebrow dark">Complete price catalogue</p>
-          <h2>Download the full 2026 stock sheet.</h2>
-          <p>
-            Review bats, gloves, pads, keeping equipment, bags, thigh pads, accessories and teamwear in
-            one professionally prepared PDF.
-          </p>
-        </div>
-        <div>
-          <a className="button dark" href={settings.catalogueUrl} download>
-            <Download size={17} /> Download catalogue
-          </a>
-          <a
-            className="button outline-dark"
-            href={whatsappUrl("Hello Sialkot Cricket Kits, I have reviewed your catalogue and would like to place an order.")}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MessageCircle size={17} /> Send a shortlist
-          </a>
-        </div>
-      </section>
-
-      {/* FAQ preview */}
-      <section className="section faq-preview">
-        <div className="section-intro">
-          <p className="eyebrow dark">Before you order</p>
-          <h2>Clear answers.</h2>
-        </div>
-        <div className="faq-grid">
-          {faqs.slice(0, 4).map((faq) => (
-            <details key={faq.id}>
-              <summary>
-                {faq.question}
-                <span>+</span>
-              </summary>
-              <p>{faq.answer}</p>
-            </details>
-          ))}
-        </div>
-        <Link className="inline-link" href="/faq">
-          Read all FAQs <ArrowRight size={16} />
-        </Link>
       </section>
     </main>
   );
