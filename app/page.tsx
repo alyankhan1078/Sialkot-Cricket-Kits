@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import { getCategories, getFaqs, getProducts, getSettings } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { CinematicHeroBanner } from "@/src/components/home/CinematicHeroBanner";
 import { HomeAuthorityTicker } from "@/src/components/home/HomeAuthorityTicker";
-import { HomeHeroInteractive } from "@/src/components/home/HomeHeroInteractive";
 import { BatAnatomyShowcase } from "@/src/components/home/BatAnatomyShowcase";
 import { BatFinderWidget } from "@/src/components/home/BatFinderWidget";
 import { HomeCollectionsTabs } from "@/src/components/home/HomeCollectionsTabs";
@@ -41,11 +41,11 @@ export default async function HomePage() {
 
   return (
     <main className="world-homepage">
-      {/* 1. Global Authority Marquee Ribbon */}
-      <HomeAuthorityTicker />
+      {/* 1. Cinematic Hero Banner (Directly beneath website header) */}
+      <CinematicHeroBanner />
 
-      {/* 2. Cinematic Hero with Interactive 360 Bat Inspector */}
-      <HomeHeroInteractive />
+      {/* 2. Global Authority Marquee Ribbon */}
+      <HomeAuthorityTicker />
 
       {/* 3. Heritage & Numbers Bar */}
       <section className="heritage-metrics-section">

@@ -1121,6 +1121,256 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 /* ──────────────────────────────────────────
+   MAIN CINEMATIC HERO BANNER (16:9 ORIGINAL IMAGE)
+   ────────────────────────────────────────── */
+.cinematic-hero {
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  background: #08090c;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Desktop Presentation (Screen width > 860px) */
+@media (min-width: 861px) {
+  .cinematic-hero {
+    min-height: clamp(650px, 46vw, 760px);
+    max-height: 780px;
+  }
+
+  .cinematic-hero-media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .cinematic-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Aligns to the right so every cricket bat, handle, and kit bag remains 100% visible and uncropped */
+    object-position: right center;
+    display: block;
+  }
+
+  /* Subtle vignette gradient only over the left dark area where the text sits */
+  .cinematic-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(8, 9, 12, 0.96) 0%,
+      rgba(8, 9, 12, 0.90) 30%,
+      rgba(8, 9, 12, 0.65) 45%,
+      rgba(8, 9, 12, 0.20) 58%,
+      rgba(8, 9, 12, 0) 72%
+    );
+    pointer-events: none;
+  }
+
+  .cinematic-hero-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 5rem clamp(1.5rem, 5.5vw, 6rem);
+    display: flex;
+    align-items: center;
+  }
+
+  .cinematic-hero-content {
+    /* Controlled width so the heading and text never stretch over or cover the cricket bats */
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Mobile & Tablet Layout (<= 860px) */
+/* Full 16:9 image on top preserving all bats, with content directly below */
+@media (max-width: 860px) {
+  .cinematic-hero {
+    flex-direction: column;
+    min-height: auto;
+    width: 100%;
+  }
+
+  .cinematic-hero-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 480px;
+    overflow: hidden;
+    background: #08090c;
+  }
+
+  .cinematic-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Recommended mobile focal position: 70-75% center ensures key bats stay in view */
+    object-position: 72% center;
+    display: block;
+  }
+
+  .cinematic-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 65%,
+      rgba(8, 9, 12, 0.85) 88%,
+      #08090c 100%
+    );
+    pointer-events: none;
+  }
+
+  .cinematic-hero-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    padding: 2.2rem 1.25rem 3.5rem;
+    background: #08090c;
+  }
+
+  .cinematic-hero-content {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+  }
+}
+
+/* Typography and CTA Buttons */
+.cinematic-hero-title {
+  font-size: clamp(2.35rem, 4.4vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  margin: 0 0 1.25rem;
+  text-transform: uppercase;
+}
+
+.cinematic-hero-desc {
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  line-height: 1.72;
+  color: #d1d5db;
+  margin: 0 0 2.4rem;
+  max-width: 540px;
+}
+
+.cinematic-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Primary CTA: Restrained deep-red accent matching the hero image */
+.cinematic-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1rem 2rem;
+  background: #b91c1c;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(185, 28, 28, 0.35);
+  transition: all 0.22s ease-in-out;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cinematic-btn-primary:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.45);
+  color: #ffffff;
+}
+
+.cinematic-btn-primary:active {
+  transform: translateY(0);
+}
+
+.cinematic-btn-primary:focus-visible {
+  outline: 3px solid #f87171;
+  outline-offset: 3px;
+}
+
+.cinematic-btn-primary .btn-arrow-icon {
+  transition: transform 0.2s ease;
+}
+
+.cinematic-btn-primary:hover .btn-arrow-icon {
+  transform: translateX(3px);
+}
+
+/* Secondary CTA: WhatsApp Us */
+.cinematic-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1rem 1.85rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  transition: all 0.22s ease-in-out;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cinematic-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #ffffff;
+  transform: translateY(-2px);
+  color: #ffffff;
+}
+
+.cinematic-btn-secondary:active {
+  transform: translateY(0);
+}
+
+.cinematic-btn-secondary:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.btn-wa-icon {
+  color: #25d366;
+}
+
+@media (max-width: 480px) {
+  .cinematic-hero-ctas {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cinematic-btn-primary,
+  .cinematic-btn-secondary {
+    width: 100%;
+  }
+}
+
+/* ──────────────────────────────────────────
    1. GLOBAL AUTHORITY TICKER
    ────────────────────────────────────────── */
 .authority-ticker-wrap {
