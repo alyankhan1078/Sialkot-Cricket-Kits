@@ -17,13 +17,7 @@ import {
 import { getCategories, getFaqs, getProducts, getSettings } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { CinematicHeroBanner } from "@/src/components/home/CinematicHeroBanner";
-import { HomeAuthorityTicker } from "@/src/components/home/HomeAuthorityTicker";
-import { BatAnatomyShowcase } from "@/src/components/home/BatAnatomyShowcase";
-import { BatFinderWidget } from "@/src/components/home/BatFinderWidget";
-import { HomeCollectionsTabs } from "@/src/components/home/HomeCollectionsTabs";
-import { PingSoundExperience } from "@/src/components/home/PingSoundExperience";
-import { FactoryDirectMatrix } from "@/src/components/home/FactoryDirectMatrix";
-import { GlobalPlayerReviews } from "@/src/components/home/GlobalPlayerReviews";
+import { HomeProductsDirect } from "@/src/components/home/HomeProductsDirect";
 
 export const metadata = {
   title: "Sialkot Cricket Kits | World Top-Class Cricket Bats & Gear Worldwide",
@@ -41,62 +35,16 @@ export default async function HomePage() {
 
   return (
     <main className="world-homepage">
-      {/* 1. Cinematic Hero Banner (Directly beneath website header) */}
+      {/* 1. Cinematic Hero Banner (Compact & Clean) */}
       <CinematicHeroBanner />
 
-      {/* 2. Global Authority Marquee Ribbon */}
-      <HomeAuthorityTicker />
+      {/* 2. Direct Parallel 3-Column Products Catalogue with Left Category Drawer */}
+      <HomeProductsDirect
+        initialProducts={products as any}
+        initialCategories={categories as any}
+      />
 
-      {/* 3. Heritage & Numbers Bar */}
-      <section className="heritage-metrics-section">
-        <div className="metrics-container">
-          <div className="metric-box">
-            <span className="metric-big-num">42+</span>
-            <div className="metric-text-group">
-              <strong>Years of Heritage</strong>
-              <span>Generational batmakers based in Sialkot</span>
-            </div>
-          </div>
-          <div className="metric-box">
-            <span className="metric-big-num">100%</span>
-            <div className="metric-text-group">
-              <strong>Grade 1+ English Willow</strong>
-              <span>Imported clefts air-cured 18+ months</span>
-            </div>
-          </div>
-          <div className="metric-box">
-            <span className="metric-big-num">60+</span>
-            <div className="metric-text-group">
-              <strong>Countries Shipped</strong>
-              <span>Tracked DHL / FedEx door-to-door delivery</span>
-            </div>
-          </div>
-          <div className="metric-box">
-            <span className="metric-big-num">10,000+</span>
-            <div className="metric-text-group">
-              <strong>Match Bats Tested</strong>
-              <span>Hand-knocked &amp; tested with 5.5oz leather balls</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. The Sialkot Difference: Anatomy of an Elite Match Bat */}
-      <BatAnatomyShowcase />
-
-      {/* 5. Interactive "Find Your Match Willow" Selector Tool */}
-      <BatFinderWidget />
-
-      {/* 6. Dynamic Curated Collections Tabs (Bats, Protection, Keeping, Bags) */}
-      <HomeCollectionsTabs products={products as any} />
-
-      {/* 7. The Signature Live Mallet Ping Test Guarantee */}
-      <PingSoundExperience />
-
-      {/* 8. Direct Factory Transparency vs. Big Brand Markup Matrix */}
-      <FactoryDirectMatrix />
-
-      {/* 9. Bespoke Custom Bat Lab Teaser */}
+      {/* 3. Bespoke Custom Bat Lab Teaser */}
       <section className="custom-lab-banner-section">
         <div className="custom-lab-banner-container">
           <div className="custom-banner-card">
@@ -172,9 +120,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 10. Global Player Stories & Verified Reviews */}
-      <GlobalPlayerReviews />
 
       {/* 11. Complete Price Sheet & Catalogue Download */}
       <section className="catalogue-download-section">

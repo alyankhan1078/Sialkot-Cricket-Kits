@@ -55,25 +55,24 @@ export function CinematicHeroBanner({
           </p>
 
           <div className="cinematic-hero-ctas">
-            <Link
-              href={primaryCtaLink}
-              className="cinematic-btn-primary"
+            <a
+              href="#products"
+              className="cinematic-btn-primary compact"
               id="hero-primary-cta"
             >
-              <span>{primaryCtaText}</span>
-              <ArrowRight size={18} className="btn-arrow-icon" />
-            </Link>
+              <span>Explore Products ↓</span>
+            </a>
 
             <a
               href={whatsappUrl(whatsappMessage)}
               target="_blank"
               rel="noreferrer"
-              className="cinematic-btn-secondary"
+              className="cinematic-btn-secondary compact"
               id="hero-secondary-cta"
               aria-label="Contact Sialkot Cricket Kits on WhatsApp"
             >
-              <MessageCircle size={18} className="btn-wa-icon" />
-              <span>{secondaryCtaText}</span>
+              <MessageCircle size={15} className="btn-wa-icon" />
+              <span>WhatsApp Us</span>
             </a>
           </div>
         </div>
