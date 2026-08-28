@@ -249,7 +249,7 @@ function OrderSuccessContent() {
               <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".06em", display: "block", marginBottom: 4 }}>
                 Payment Submission Details
               </span>
-              <strong style={{ color: "var(--primary)", fontSize: ".95rem", display: "block" }}>{order.paymentMethod}</strong>
+              <strong style={{ color: "#f2a928", fontSize: ".98rem", display: "block" }}>{order.paymentMethod}</strong>
               <span style={{ color: "#cbd5e1", fontSize: ".82rem", display: "block" }}>
                 Beneficiary: <strong>{UBL_PAYMENT_CONFIG.beneficiaryFullName} (UBL)</strong>
               </span>
@@ -280,7 +280,7 @@ function OrderSuccessContent() {
                   <td style={{ padding: "12px 0", color: "#fff", fontWeight: 500 }}>{it.name}</td>
                   <td style={{ padding: "12px 0", textAlign: "center" }}>{it.quantity}</td>
                   <td style={{ padding: "12px 0", textAlign: "right" }}>{formatPrice(it.price)}</td>
-                  <td style={{ padding: "12px 0", textAlign: "right", color: "var(--primary)", fontWeight: 600 }}>
+                  <td style={{ padding: "12px 0", textAlign: "right", color: "#f2a928", fontWeight: 600 }}>
                     {formatPrice(it.price * it.quantity)}
                   </td>
                 </tr>
@@ -288,7 +288,7 @@ function OrderSuccessContent() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3} style={{ padding: "14px 0 4px", textAlign: "right", fontSize: ".9rem", color: "var(--text-muted)" }}>
+                <td colSpan={3} style={{ padding: "14px 0 4px", textAlign: "right", fontSize: ".9rem", color: "#94a3b8" }}>
                   Subtotal:
                 </td>
                 <td style={{ padding: "14px 0 4px", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 600 }}>
@@ -297,7 +297,7 @@ function OrderSuccessContent() {
               </tr>
               {order.shippingFee !== undefined && (
                 <tr>
-                  <td colSpan={3} style={{ padding: "4px 0", textAlign: "right", fontSize: ".9rem", color: "var(--text-muted)" }}>
+                  <td colSpan={3} style={{ padding: "4px 0", textAlign: "right", fontSize: ".9rem", color: "#94a3b8" }}>
                     Tracked Courier ({order.country}):
                   </td>
                   <td style={{ padding: "4px 0", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 600 }}>
@@ -309,7 +309,7 @@ function OrderSuccessContent() {
                 <td colSpan={3} style={{ padding: "12px 0 0", textAlign: "right", fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
                   Total Order Value:
                 </td>
-                <td style={{ padding: "12px 0 0", textAlign: "right", fontSize: "1.35rem", fontWeight: 800, color: "var(--primary)" }}>
+                <td style={{ padding: "12px 0 0", textAlign: "right", fontSize: "1.35rem", fontWeight: 800, color: "#f2a928" }}>
                   {formatPrice(order.totalAmount)}
                 </td>
               </tr>
@@ -338,7 +338,7 @@ function OrderSuccessContent() {
 
           {order.notes && (
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid #334155", padding: "12px 16px", borderRadius: 8, fontSize: ".82rem", color: "#cbd5e1", whiteSpace: "pre-line" }}>
-              <strong style={{ color: "var(--primary)", display: "block", marginBottom: 4 }}>Order &amp; Evidence Notes:</strong>
+              <strong style={{ color: "#f2a928", display: "block", marginBottom: 4 }}>Order &amp; Evidence Notes:</strong>
               {order.notes}
             </div>
           )}
