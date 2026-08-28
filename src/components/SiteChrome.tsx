@@ -7,7 +7,6 @@ import {
   Menu,
   Search,
   ShoppingBag,
-  Heart,
   X,
   ChevronRight,
   ChevronDown,
@@ -22,8 +21,6 @@ import {
   ArrowRight,
   Instagram,
   Facebook,
-  PhoneCall,
-  Award,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -57,7 +54,7 @@ interface CatalogueColumn {
   items: CatalogueItem[];
 }
 
-// Category structure for Gray-Nicolls style mega menu
+// Category structure for catalogue menu
 const catalogueColumns: CatalogueColumn[] = [
   {
     heading: "Cricket Bats",
@@ -65,50 +62,50 @@ const catalogueColumns: CatalogueColumn[] = [
     icon: "🏏",
     items: [
       { name: "Beauty Processed Bats", href: "/shop?category=Beauty%20Processed%20Bats", highlight: "Pro Grade 1+" },
-      { name: "Bonafide Match Bats", href: "/shop?category=Bonafide%20Bats", highlight: "Contoured Spine" },
+      { name: "Bonafide Bats", href: "/shop?category=Bonafide%20Bats", highlight: "Match Profiles" },
       { name: "Junior & Harrow Bats", href: "/shop?category=Junior%20%26%20Harrow%20Bats", highlight: "Sizes 4-6" },
       { name: "Custom Bat Lab", href: "/custom-bat", isSpecial: true, highlight: "Bespoke Specs" },
     ],
   },
   {
     heading: "Protective Gear",
-    badge: "Test Match Grade",
+    badge: "Test Grade",
     icon: "🛡️",
     items: [
-      { name: "Batting Pads", href: "/shop?category=Batting%20Pads", highlight: "Featherlight Cane" },
-      { name: "Batting Gloves", href: "/shop?category=Batting%20Gloves", highlight: "Split Finger" },
+      { name: "Batting Pads", href: "/shop?category=Batting%20Pads" },
+      { name: "Batting Gloves", href: "/shop?category=Batting%20Gloves" },
       { name: "Keeping Gloves", href: "/shop?category=Keeping%20Gloves" },
       { name: "Helmets", href: "/shop?category=Helmets" },
-      { name: "Thigh Pads & Guards", href: "/shop?category=Thigh%20Pads" },
+      { name: "Thigh Pads", href: "/shop?category=Thigh%20Pads" },
       { name: "Keeping Inners", href: "/shop?category=Keeping%20Inners" },
+      { name: "Keeping Guards", href: "/shop?category=Keeping%20Guards" },
     ],
   },
   {
     heading: "Luggage & Teamwear",
-    badge: "Tour Grade",
+    badge: "Tournament Grade",
     icon: "🎒",
     items: [
-      { name: "Kit & Duffle Bags", href: "/shop?category=Kit%20%26%20Duffle%20Bags", highlight: "Wheeled & Stand" },
-      { name: "Teamwear & Whites", href: "/shop?category=Teamwear" },
+      { name: "Kit & Duffle Bags", href: "/shop?category=Kit%20%26%20Duffle%20Bags", highlight: "Wheeled / Stand" },
+      { name: "Teamwear", href: "/shop?category=Teamwear" },
       { name: "Waterproof Caps", href: "/shop?category=Waterproof%20Caps" },
-      { name: "Cricket Accessories", href: "/shop?category=Other%20Accessories" },
+      { name: "Other Accessories", href: "/shop?category=Other%20Accessories" },
     ],
   },
 ];
 
 // Customer-facing nav links
 const navItems = [
-  ["Bespoke Bat Lab", "/custom-bat"],
-  ["2026 Catalogue", "/shop"],
+  ["Custom Bat", "/custom-bat"],
   ["About", "/about"],
   ["FAQ", "/faq"],
   ["Contact", "/contact"],
-  ["Payment", "/payment"],
+  ["Payment Guidance", "/payment"],
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { cartCount, setCartOpen, favourites } = useStore();
+  const { cartCount, setCartOpen } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catalogueDropdownOpen, setCatalogueDropdownOpen] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(true);
@@ -119,7 +116,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     factoryAddress: "House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
     businessName: "Sialkot Cricket Kits",
     announcementText:
-      "Direct from Sialkot Master Batmakers · Worldwide Express Tracked Courier · Live Video Ping Verification",
+      "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
     catalogueUrl: "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf",
     instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
     facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
@@ -225,53 +222,26 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Gray-Nicolls Style Announcement Bar */}
-      <div className="announcement-bar gn-announcement" role="banner">
-        <div className="gn-announcement-inner">
-          <div className="gn-announcement-left">
-            <span className="gn-live-dot" />
-            <span>{settings.announcementText}</span>
-          </div>
-          <div className="gn-announcement-right">
-            <a
-              href={whatsappUrl("Hello Master Batmaker, I would like live advice on bat specifications.")}
-              target="_blank"
-              rel="noreferrer"
-              className="gn-top-link"
-            >
-              💬 WhatsApp Consultation
-            </a>
-            <span className="gn-top-sep">|</span>
-            <a
-              href={settings.catalogueUrl || "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf"}
-              download
-              className="gn-top-link"
-            >
-              📄 2026 PDF Catalogue
-            </a>
-          </div>
-        </div>
+      {/* Slim announcement bar */}
+      <div className="announcement-bar" role="banner">
+        <span>Worldwide delivery available</span>
+        <span className="announcement-bar-sep">·</span>
+        <span>Live product &amp; ping videos</span>
       </div>
 
-      {/* Gray-Nicolls Style Master Header */}
-      <header className="site-header gn-header">
-        <Link className="brand-lockup gn-brand-lockup" href="/" aria-label="Sialkot Cricket Kits home">
-          <img
-            src="/assets/brand/sialkot-cricket-kits-logo.png"
-            alt="Sialkot Cricket Kits"
-            className="gn-brand-logo"
-            width={48}
-            height={48}
-          />
-          <div className="gn-brand-text">
-            <span className="gn-brand-title">SIALKOT CRICKET KITS</span>
-            <span className="gn-brand-subtitle">MASTER BATMAKERS · EST. SIALKOT</span>
-          </div>
+      {/* Header — white/light */}
+      <header className="site-header">
+        <Link className="brand-lockup" href="/" aria-label="Sialkot Cricket Kits home">
+          <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" />
+          <span>
+            <strong>{settings.businessName}</strong>
+            <small>Performance equipment · Sialkot</small>
+          </span>
         </Link>
 
-        {/* Desktop Navigation with Gray-Nicolls Mega Menu */}
-        <nav className="desktop-nav gn-desktop-nav" aria-label="Main navigation">
-          {/* 1. Bats Mega Menu Trigger */}
+        {/* Desktop navigation */}
+        <nav className="desktop-nav" aria-label="Main navigation">
+          {/* Catalogue Dropdown Trigger */}
           <div
             className="nav-catalogue-wrapper"
             ref={dropdownRef}
@@ -280,26 +250,26 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           >
             <button
               type="button"
-              className={`nav-catalogue-btn gn-nav-item ${catalogueDropdownOpen ? "is-open" : ""}`}
+              className={`nav-catalogue-btn ${catalogueDropdownOpen ? "is-open" : ""}`}
               onClick={() => setCatalogueDropdownOpen((prev) => !prev)}
               aria-expanded={catalogueDropdownOpen}
               aria-haspopup="true"
-              aria-label="Equipment Catalogue Ranges Menu"
+              aria-label="Catalogue categories menu"
             >
-              <span>EQUIPMENT RANGES</span>
+              <span>Catalogue</span>
               <ChevronDown
-                size={12}
+                size={13}
                 className={`nav-cat-chevron ${catalogueDropdownOpen ? "rotate" : ""}`}
               />
             </button>
 
-            {/* Gray-Nicolls Style Mega Dropdown Panel */}
-            <div className={`nav-catalogue-megamenu gn-megamenu ${catalogueDropdownOpen ? "is-active" : ""}`}>
+            {/* Mega Dropdown Panel */}
+            <div className={`nav-catalogue-megamenu ${catalogueDropdownOpen ? "is-active" : ""}`}>
               <div className="megamenu-inner">
                 <div className="megamenu-header-strip">
                   <div className="megamenu-header-left">
-                    <span className="megamenu-badge">2026 SEASON</span>
-                    <span className="megamenu-header-title">The Complete Match-Grade Equipment Catalogue</span>
+                    <span className="megamenu-badge">Factory Direct</span>
+                    <span className="megamenu-header-title">Official 2026 Equipment Catalogue</span>
                   </div>
                   <Link
                     href="/shop"
@@ -343,96 +313,75 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                   ))}
                 </div>
 
-                {/* Mega-menu Spotlight Footer Cards */}
                 <div className="megamenu-footer-strip">
                   <Link
                     href="/custom-bat"
-                    className="megamenu-footer-card highlight"
+                    className="megamenu-footer-card"
                     onClick={handleNavClick}
                   >
-                    <Sparkles size={18} className="gold-icon" />
+                    <Sparkles size={16} className="gold-icon" />
                     <div>
-                      <strong>Bespoke Custom Bat Lab</strong>
-                      <span>Pick raw cleft, profile, handle shape &amp; laser engraving</span>
+                      <strong>Custom Bat Workshop</strong>
+                      <span>Hand-carved to your exact match specs &amp; grains</span>
                     </div>
-                    <ChevronRight size={16} style={{ marginLeft: "auto", opacity: 0.7 }} />
                   </Link>
                   <a
                     href={settings.catalogueUrl || "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf"}
                     download
                     className="megamenu-footer-card"
                   >
-                    <Download size={18} className="gold-icon" />
+                    <Download size={16} className="gold-icon" />
                     <div>
-                      <strong>Download 2026 PDF Catalogue</strong>
-                      <span>Full wholesale &amp; retail price breakdown in GBP</span>
+                      <strong>Download PDF Price Sheet</strong>
+                      <span>Complete 2026 catalogue with GBP pricing</span>
                     </div>
-                    <ChevronRight size={16} style={{ marginLeft: "auto", opacity: 0.7 }} />
                   </a>
                 </div>
               </div>
             </div>
           </div>
 
-          <Link href="/shop" className="gn-nav-item">
-            ALL PRODUCTS
-          </Link>
-          <Link href="/custom-bat" className="gn-nav-item gn-nav-highlight">
-            CUSTOM BAT LAB
-          </Link>
-          <Link href="/about" className="gn-nav-item">
-            ABOUT &amp; HERITAGE
-          </Link>
-          <Link href="/contact" className="gn-nav-item">
-            CONTACT
-          </Link>
+          <Link href="/shop">Shop All</Link>
+          {navItems.map(([label, href]) => (
+            <Link href={href} key={href}>
+              {label}
+            </Link>
+          ))}
         </nav>
 
-        {/* Gray-Nicolls Header Action Suite */}
-        <div className="header-actions gn-header-actions">
+        {/* Header action icons */}
+        <div className="header-actions">
           <Link
-            className="header-icon gn-action-icon"
+            className="header-icon"
             href="/shop?focus=search"
             aria-label="Search products"
-            title="Search Catalogue"
           >
             <Search size={18} />
           </Link>
 
-          <Link
-            className="header-icon gn-action-icon"
-            href="/shop?filter=favourites"
-            aria-label="Saved favourites"
-            title="Favourites"
-          >
-            <Heart size={18} fill={favourites.length > 0 ? "currentColor" : "none"} />
-            {favourites.length > 0 && <span className="gn-action-badge">{favourites.length}</span>}
-          </Link>
-
           <button
-            className="header-icon cart-button gn-action-icon"
+            className="header-icon cart-button"
             onClick={() => setCartOpen(true)}
             aria-label={`Open cart${cartCount > 0 ? `, ${cartCount} item${cartCount > 1 ? "s" : ""}` : ""}`}
-            title="Shopping Cart"
           >
             <ShoppingBag size={18} />
-            {cartCount > 0 && <span className="gn-action-badge" aria-hidden="true">{cartCount}</span>}
+            {cartCount > 0 && <span aria-hidden="true">{cartCount}</span>}
           </button>
 
           <a
-            className="button compact desktop-whatsapp gn-header-wa-btn"
+            className="button compact desktop-whatsapp"
             href={whatsappUrl(
               "Hello Sialkot Cricket Kits, I would like information about your current cricket equipment catalogue."
             )}
             target="_blank"
             rel="noreferrer"
           >
-            <span>WhatsApp Us</span>
+            WhatsApp
           </a>
 
-          {/* Mobile Hamburger */}
+          {/* Hamburger — mobile only */}
           <button
-            className="hamburger-button gn-hamburger"
+            className="hamburger-button"
             aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen}
             aria-controls="mobile-drawer-nav"
