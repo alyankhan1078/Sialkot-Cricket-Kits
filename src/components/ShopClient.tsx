@@ -378,7 +378,7 @@ export function ShopClient() {
       <section
         style={{
           position: "relative",
-          background: "linear-gradient(90deg, rgba(8,9,12,0.97) 0%, rgba(8,9,12,0.87) 50%, rgba(8,9,12,0.5) 100%), url('/images/shop-catalogue-cover.jpg') center/cover no-repeat",
+          background: "linear-gradient(90deg, rgba(8,9,12,0.92) 0%, rgba(8,9,12,0.72) 48%, rgba(8,9,12,0.2) 100%), url('/images/shop-catalogue-cover.jpg') right center/cover no-repeat",
           borderBottom: "1px solid rgba(255,255,255,.06)",
           padding: "3.5rem clamp(1.2rem, 6vw, 6rem)",
           width: "100%", boxSizing: "border-box",
