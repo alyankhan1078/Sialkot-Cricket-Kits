@@ -60,13 +60,32 @@ export function ShopClient() {
   }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const params = new URLSearchParams(window.location.search);
-      const requestedCategory = params.get("category");
-      if (requestedCategory) setCategory(requestedCategory);
-      if (params.get("focus") === "search") searchRef.current?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
+    let lastUrl = window.location.href;
+    const checkUrl = () => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        const params = new URLSearchParams(window.location.search);
+        const requestedCategory = params.get("category");
+        if (requestedCategory) {
+          setCategory(requestedCategory);
+        }
+        if (params.get("focus") === "search") searchRef.current?.focus();
+      }
+    };
+
+    // Initial check
+    const initialParams = new URLSearchParams(window.location.search);
+    const initialCategory = initialParams.get("category");
+    if (initialCategory) setCategory(initialCategory);
+    if (initialParams.get("focus") === "search") searchRef.current?.focus();
+
+    window.addEventListener("popstate", checkUrl);
+    const intervalId = setInterval(checkUrl, 200);
+
+    return () => {
+      window.removeEventListener("popstate", checkUrl);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Lock body scroll when mobile drawer is open
