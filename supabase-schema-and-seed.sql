@@ -196,9 +196,9 @@ INSERT INTO admin_config (key, value) VALUES ('admin_password', 'admin123');
 
 -- Insert Site Settings
 INSERT INTO site_settings (key, value, label) VALUES
-  ('whatsapp_number', '+92 323 1438214', 'WhatsApp Support Number'),
+  ('whatsapp_number', '+92 327 5756188', 'WhatsApp Support Number'),
   ('contact_email', 'sialkotcricketkits@gmail.com', 'Contact Email Address'),
-  ('location', 'Model Town, Sialkot, Pakistan', 'Factory & Store Location'),
+  ('location', 'House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan', 'Factory & Store Location'),
   ('currency', 'GBP', 'Store Currency'),
   ('currency_symbol', '£', 'Currency Symbol'),
   ('worldwide_delivery', 'true', 'Worldwide Delivery Active');
@@ -206,7 +206,7 @@ INSERT INTO site_settings (key, value, label) VALUES
 -- Insert FAQs
 INSERT INTO faqs (question, answer, sort_order, active) VALUES
   ('Do you offer worldwide international delivery?', 'Yes, we provide tracked international courier delivery (DHL / FedEx Express / Air Cargo) to the United Kingdom, USA, Canada, Australia, UAE, Saudi Arabia, Europe and worldwide.', 1, true),
-  ('Can I see a live video or ping demonstration of the bat before ordering?', 'Yes! We encourage all customers to message us on WhatsApp (+92 323 1438214) to view live high-definition videos, weight scale checks, and ping demonstrations of the exact bat.', 2, true),
+  ('Can I see a live video or ping demonstration of the bat before ordering?', 'Yes! We encourage all customers to message us on WhatsApp (+92 327 5756188) to view live high-definition videos, weight scale checks, and ping demonstrations of the exact bat.', 2, true),
   ('Do you provide custom bat making and personalized player specifications?', 'Yes. We handcraft bespoke bats tailored to your exact weight (e.g. 2lb 7oz to 2lb 12oz), handle shape (oval/round), edge depth (up to 45mm), and profile preference.', 3, true),
   ('What payment methods do you accept for international orders?', 'We accept Wise, Bank Transfer, Western Union, Remitly, MoneyGram, and TapTap Send with secure proof of payment confirmation.', 4, true),
   ('Do you offer machine knocking-in and bat preparation?', 'Yes, we offer professional machine knocking-in, oiling, scuff sheet fitting, and toe guard application upon request before dispatch.', 5, true);

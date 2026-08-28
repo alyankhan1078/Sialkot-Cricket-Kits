@@ -21,7 +21,7 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "payments" | "security">("general");
 
   const [settings, setSettings] = useState<DBSettings>({
-    whatsappNumber: "+92 323 1438214",
+    whatsappNumber: "+92 327 5756188",
     contactEmail: "sialkotcricketkits@gmail.com",
     contactPhone: "+92 327 5756188",
     factoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
     easypaisaEnabled: true,
 
     // International Remittance & Digital
-    payoneerEmail: "alyankhan1078@gmail.com",
+    payoneerEmail: "sialkotcricketkits@gmail.com",
     payoneerEnabled: true,
     wiseEmail: "sialkotcricketkits@gmail.com",
     wiseTag: "@sialkotcricket",
@@ -291,7 +291,7 @@ export default function AdminSettingsPage() {
               <label>WhatsApp Number (Primary Checkout)</label>
               <input
                 className="admin-input"
-                placeholder="+92 323 1438214"
+                placeholder="+92 327 5756188"
                 value={settings.whatsappNumber}
                 onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
                 required
@@ -694,7 +694,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.payoneerEmail || ""}
                   onChange={(e) => setSettings({ ...settings, payoneerEmail: e.target.value })}
-                  placeholder="alyankhan1078@gmail.com"
+                  placeholder="sialkotcricketkits@gmail.com"
                 />
               </div>
 

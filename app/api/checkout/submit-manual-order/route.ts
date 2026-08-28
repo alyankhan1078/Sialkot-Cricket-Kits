@@ -146,10 +146,11 @@ export async function POST(request: Request) {
       amountSent = depositDue;
     }
 
-    // ── Generate Order ID ──
-    const year = new Date().getFullYear();
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const orderId = `SCK-${year}-${randomSuffix}`;
+    // ── Generate or Use Canonical Order ID ──
+    const clientProvidedOrderId = (formData.get("orderId") as string)?.trim();
+    const orderId = clientProvidedOrderId && /^SCK-\d{4}-\d{3,6}$/i.test(clientProvidedOrderId)
+      ? clientProvidedOrderId.toUpperCase()
+      : `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
     if (!transferReference) {
       transferReference = sendViaWhatsApp ? `WA-${orderId}` : orderId;

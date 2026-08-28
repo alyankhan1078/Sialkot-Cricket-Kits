@@ -305,9 +305,9 @@ let memoryFaqs: DBFaq[] = initialFaqs.map(([question, answer], index) => ({
 }));
 
 let memorySettings: DBSettings = {
-  whatsappNumber: "+92 323 1438214",
+  whatsappNumber: "+92 327 5756188",
   contactEmail: "sialkotcricketkits@gmail.com",
-  contactPhone: "+92 323 1438214",
+  contactPhone: "+92 327 5756188",
   factoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
   businessName: "Sialkot Cricket Kits",
   announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
@@ -355,7 +355,7 @@ let memorySettings: DBSettings = {
   easypaisaEnabled: true,
 
   // Payoneer & International Digital
-  payoneerEmail: "alyankhan1078@gmail.com",
+  payoneerEmail: "sialkotcricketkits@gmail.com",
   payoneerEnabled: true,
   wiseEmail: "sialkotcricketkits@gmail.com",
   wiseTag: "@sialkotcricket",
@@ -965,6 +965,54 @@ export async function deleteEnquiry(id: number): Promise<boolean> {
   return true;
 }
 
+export function sanitizeOrderRecord(order: DBOrder): DBOrder {
+  if (!order) return order;
+
+  const phone = (order.customerPhone || "").replace(/\s+/g, "");
+  const email = (order.customerEmail || "").toLowerCase();
+  const address = (order.address || "").toLowerCase();
+  const notes = (order.notes || "");
+
+  const isLegacyPersonalRecord =
+    phone.includes("03449832129") ||
+    phone.includes("923449832129") ||
+    phone.includes("03499585519") ||
+    phone.includes("923499585519") ||
+    email.includes("alyankhan1078@gmail.com") ||
+    email.includes("aliyankhan10@gmail.com") ||
+    address.includes("awami kuthab") ||
+    address.includes("nazir market") ||
+    address.includes("south waziristan") ||
+    address.includes("wana") ||
+    address.includes("29540");
+
+  if (isLegacyPersonalRecord) {
+    return {
+      ...order,
+      customerName: "ALYAN WAZIR",
+      customerPhone: "+92 327 5756188",
+      customerEmail: "sialkotcricketkits@gmail.com",
+      address: "House No. 207, Gulshan Street, Model Town",
+      city: "Sialkot",
+      state: "Punjab",
+      postalCode: "51310",
+      country: "Pakistan",
+      notes: notes
+        .replace(/AWAMI KUTHAB KHANA[^,\n]*/gi, "House No. 207, Gulshan Street, Model Town, Sialkot")
+        .replace(/NAZIR MARKET[^,\n]*/gi, "")
+        .replace(/SOUTH WAZIRISTAN[^,\n]*/gi, "Sialkot")
+        .replace(/WANA SWLTD[^,\n]*/gi, "")
+        .replace(/29540/g, "51310")
+        .replace(/alyankhan1078@gmail\.com/gi, "sialkotcricketkits@gmail.com")
+        .replace(/aliyankhan10@gmail\.com/gi, "sialkotcricketkits@gmail.com")
+        .replace(/\+?92\s*344\s*9832129/gi, "+92 327 5756188")
+        .replace(/\+?92\s*349\s*9585519/gi, "+92 327 5756188"),
+    };
+  }
+
+  return order;
+}
+
 // ─── Orders & Sales Analytics Operations ──────────────────────────────────────
 export async function getOrders(options?: {
   status?: string;
@@ -972,7 +1020,7 @@ export async function getOrders(options?: {
   startDate?: string;
   endDate?: string;
 }): Promise<DBOrder[]> {
-  let list = [...memoryOrders];
+  let list = memoryOrders.map(sanitizeOrderRecord);
 
   if (options?.status && options.status !== "all") {
     list = list.filter((o) => o.status === options.status);
@@ -1004,15 +1052,15 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
+  const found = memoryOrders.find((o) => o.id === id || o.orderReference === id);
+  return found ? sanitizeOrderRecord(found) : null;
 }
 
 export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
-  return (
-    memoryOrders.find(
-      (o) => o.providerTrackerId === trackerId || o.id === trackerId || o.orderReference === trackerId
-    ) || null
+  const found = memoryOrders.find(
+    (o) => o.providerTrackerId === trackerId || o.id === trackerId || o.orderReference === trackerId
   );
+  return found ? sanitizeOrderRecord(found) : null;
 }
 
 export async function createOrder(

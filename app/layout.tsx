@@ -48,10 +48,10 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "SportingGoodsStore",
     name: "Sialkot Cricket Kits",
-    url: "https://sialkotcricketkits.com",
-    logo: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
+    url: "https://sialkotcricketkits.co.uk",
+    logo: "https://sialkotcricketkits.co.uk/assets/brand/sialkot-cricket-kits-logo.png",
     email: "sialkotcricketkits@gmail.com",
-    telephone: "+923231438214",
+    telephone: "+923275756188",
     address: {
       "@type": "PostalAddress",
       streetAddress: "House No. 207, Gulshan Street, Model Town",

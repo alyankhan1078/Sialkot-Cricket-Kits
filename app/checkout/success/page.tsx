@@ -22,6 +22,7 @@ import {
 import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { UBL_PAYMENT_CONFIG, FACTORY_INFO } from "@/src/lib/payment-config";
+import { BUSINESS_CONFIG } from "@/src/lib/business-config";
 import type { DBOrder } from "@/src/lib/data-service";
 
 function OrderSuccessContent() {
@@ -54,7 +55,7 @@ function OrderSuccessContent() {
   };
 
   const whatsappConfirmationMsg = order
-    ? `Hello Sialkot Cricket Kits,\n\nI have submitted my order #${order.id}.\nCustomer: ${order.customerName}\nTransfer Reference: ${order.transferReference || "Attached on site"}\nTotal Value: £${order.totalAmount}\nAmount Paid / Due: £${order.depositAmount || order.totalAmount}\n\nPlease confirm when payment is verified. Thank you!`
+    ? `Hello Sialkot Cricket Kits,\n\nI have submitted my order #${order.id}.\nCustomer: ${order.customerName}\nBank/Transfer Reference: ${order.transferReference || "Attached on site"}\nTotal Value: £${order.totalAmount}\nAmount Paid / Due: £${order.depositAmount || order.totalAmount}\n\nPlease confirm when payment is verified. Thank you!`
     : "Hello Sialkot Cricket Kits, I just submitted my order and payment evidence. Please check my transfer.";
 
   return (
@@ -161,7 +162,7 @@ function OrderSuccessContent() {
             Order Submitted Successfully
           </h1>
 
-          {/* Status Badge */}
+          {/* Canonical Order Reference & Status */}
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "14px 0" }}>
             <div
               style={{
@@ -177,7 +178,7 @@ function OrderSuccessContent() {
                 fontSize: ".9rem",
               }}
             >
-              Order Ref: #{orderId || "SCK-CONFIRMED"}
+              Order Reference: #{orderId || "SCK-CONFIRMED"}
             </div>
 
             <div
@@ -199,7 +200,7 @@ function OrderSuccessContent() {
           </div>
 
           <p style={{ color: "#cbd5e1", fontSize: ".88rem", maxWidth: 640, margin: "12px auto 0", lineHeight: 1.5 }}>
-            Thank you. Your order and transfer details have been submitted. Our team will verify the funds in the UBL account (<strong>ALYAN WAZIR</strong>) and notify you upon verification.
+            Thank you. Your order and transfer evidence have been submitted. Our team in Sialkot will verify the funds against the UBL account (<strong>{UBL_PAYMENT_CONFIG.beneficiaryFullName}</strong>) and notify you upon verification.
           </p>
 
           {/* Actions Bar */}
@@ -280,7 +281,7 @@ function OrderSuccessContent() {
               boxShadow: "0 12px 36px rgba(0,0,0,0.4)",
             }}
           >
-            {/* 1. Header with Logo & Brand Information */}
+            {/* 1. Header with Logo & Official Business Information */}
             <div className="invoice-header-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid rgba(255,255,255,0.12)", paddingBottom: 22, marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <img
@@ -290,17 +291,17 @@ function OrderSuccessContent() {
                 />
                 <div>
                   <h2 className="invoice-brand-title" style={{ fontSize: "1.35rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: ".06em", color: "#f2a928", margin: "0 0 4px" }}>
-                    SIALKOT CRICKET KITS
+                    {BUSINESS_CONFIG.businessName}
                   </h2>
                   <span style={{ fontSize: ".82rem", color: "#cbd5e1", display: "block", fontWeight: 600 }}>
-                    {FACTORY_INFO.factoryName} · Master Cricket Equipment Manufacturers
+                    {BUSINESS_CONFIG.factoryName} · Master Cricket Equipment Manufacturers
                   </span>
                   <span style={{ fontSize: ".76rem", color: "#94a3b8", display: "block", marginTop: 2 }}>
-                    📍 {FACTORY_INFO.fullAddress}
+                    📍 {BUSINESS_CONFIG.fullAddress}
                   </span>
                   <div style={{ display: "flex", gap: 14, marginTop: 4, fontSize: ".74rem", color: "#94a3b8" }}>
-                    <span>📱 WhatsApp: +92 327 5756188</span>
-                    <span>✉️ sialkotcricketkits@gmail.com</span>
+                    <span>📱 WhatsApp: {BUSINESS_CONFIG.displayPhone}</span>
+                    <span>✉️ {BUSINESS_CONFIG.primaryEmail}</span>
                   </div>
                 </div>
               </div>
@@ -321,12 +322,12 @@ function OrderSuccessContent() {
               </div>
             </div>
 
-            {/* 2. Customer & Payment Information Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, background: "rgba(0,0,0,0.35)", padding: 18, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginBottom: 26 }}>
-              {/* Left Column: Customer & Delivery Details */}
+            {/* 2. Three-Section Grid: Seller Details, Customer Destination, and Payment Summary */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, background: "rgba(0,0,0,0.35)", padding: 18, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginBottom: 26 }}>
+              {/* Customer & Delivery Destination (Dynamic Customer Input) */}
               <div>
                 <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, display: "block", marginBottom: 6 }}>
-                  DELIVERY DESTINATION &amp; CUSTOMER
+                  CUSTOMER &amp; DELIVERY DESTINATION
                 </span>
                 <strong style={{ color: "#fff", fontSize: "1.05rem", display: "block", marginBottom: 4 }}>
                   {order.customerName}
@@ -351,7 +352,7 @@ function OrderSuccessContent() {
                 )}
               </div>
 
-              {/* Right Column: Payment & UBL Bank Evidence */}
+              {/* Payment & Bank Beneficiary Summary */}
               <div>
                 <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, display: "block", marginBottom: 6 }}>
                   PAYMENT &amp; BENEFICIARY SUMMARY
@@ -360,7 +361,7 @@ function OrderSuccessContent() {
                   {order.paymentMethod}
                 </strong>
                 <div style={{ color: "#cbd5e1", fontSize: ".82rem", marginBottom: 2 }}>
-                  Beneficiary Name: <strong style={{ color: "#fff" }}>{UBL_PAYMENT_CONFIG.beneficiaryFullName} (UBL)</strong>
+                  Beneficiary Name: <strong style={{ color: "#fff" }}>{UBL_PAYMENT_CONFIG.beneficiaryFullName} ({UBL_PAYMENT_CONFIG.bankName})</strong>
                 </div>
                 <div style={{ color: "#cbd5e1", fontSize: ".82rem", marginBottom: 2 }}>
                   Account No: <code style={{ color: "#38bdf8", fontSize: ".84rem" }}>{UBL_PAYMENT_CONFIG.accountNumber}</code>
@@ -370,7 +371,7 @@ function OrderSuccessContent() {
                 </div>
                 {order.transferReference && (
                   <div style={{ color: "#38bdf8", fontSize: ".82rem", fontFamily: "monospace", marginTop: 4 }}>
-                    Transfer Reference: <strong>{order.transferReference}</strong>
+                    Bank/Transfer Transaction Reference: <strong>{order.transferReference}</strong>
                   </div>
                 )}
               </div>
@@ -458,7 +459,7 @@ function OrderSuccessContent() {
               </tfoot>
             </table>
 
-            {/* 4. Notes & Factory Verification Footer */}
+            {/* 4. Notes & Official Seller Information Box */}
             {order.notes && (
               <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", padding: "12px 14px", borderRadius: 8, fontSize: ".8rem", color: "#cbd5e1", marginBottom: 20, whiteSpace: "pre-line" }}>
                 <strong style={{ color: "#f2a928", display: "block", marginBottom: 3 }}>Order &amp; Evidence Notes:</strong>
@@ -468,11 +469,11 @@ function OrderSuccessContent() {
 
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, fontSize: ".76rem", color: "#94a3b8" }}>
               <div>
-                <span>🛡️ Official Order Receipt · <strong>Sialkot Cricket Kits</strong></span>
-                <span style={{ display: "block" }}>For ping videos &amp; dispatch tracking, WhatsApp: <strong>+92 327 5756188</strong></span>
+                <span>🛡️ Official Order Receipt · <strong>{BUSINESS_CONFIG.businessName}</strong></span>
+                <span style={{ display: "block" }}>For ping videos &amp; dispatch tracking, WhatsApp: <strong>{BUSINESS_CONFIG.displayPhone}</strong> · Email: <strong>{BUSINESS_CONFIG.primaryEmail}</strong></span>
               </div>
               <div style={{ textAlign: "right" }}>
-                <span>Factory: Superior Cricket Factory, Model Town, Sialkot</span>
+                <span>Seller: {BUSINESS_CONFIG.fullAddress}</span>
               </div>
             </div>
           </div>

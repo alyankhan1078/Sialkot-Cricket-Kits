@@ -213,6 +213,7 @@ export default function CheckoutPage() {
         )
       );
 
+      submitFormData.append("orderId", provisionalRef);
       submitFormData.append("senderName", (evidenceData.senderName || formData.fullName).trim());
       submitFormData.append("senderCountry", (evidenceData.senderCountry || formData.country).trim());
       submitFormData.append("provider", evidenceData.provider || "Bank Transfer");

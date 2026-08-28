@@ -6,6 +6,7 @@ import {
   ALLOWED_RECEIPT_MIME_TYPES,
   MAX_RECEIPT_FILE_SIZE_BYTES,
 } from "../src/lib/payment-config.ts";
+import { BUSINESS_CONFIG } from "../src/lib/business-config.ts";
 import {
   createOrder,
   createPaymentSubmission,
@@ -13,6 +14,7 @@ import {
   rejectPaymentSubmission,
   getPaymentStatusHistory,
   checkDuplicateTransferReference,
+  sanitizeOrderRecord,
 } from "../src/lib/data-service.ts";
 
 async function runManualPaymentTests() {
@@ -33,13 +35,67 @@ async function runManualPaymentTests() {
     }
   }
 
-  // ── Test 1: Centralized Bank Configuration Integrity ──
+  // ── Test 1: Centralized Business & Bank Configuration Integrity ──
+  assert(BUSINESS_CONFIG.businessName === "Sialkot Cricket Kits", "Business name is strictly Sialkot Cricket Kits");
+  assert(BUSINESS_CONFIG.displayPhone === "+92 327 5756188", "Business phone is strictly +92 327 5756188");
+  assert(BUSINESS_CONFIG.primaryEmail === "sialkotcricketkits@gmail.com", "Business email is strictly sialkotcricketkits@gmail.com");
+  assert(BUSINESS_CONFIG.fullAddress === "House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan", "Business address is House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan");
   assert(UBL_PAYMENT_CONFIG.beneficiaryFullName === "ALYAN WAZIR", "Beneficiary name is strictly ALYAN WAZIR");
   assert(UBL_PAYMENT_CONFIG.accountNumber === "0881304929964", "UBL Account Number is 0881304929964");
   assert(UBL_PAYMENT_CONFIG.iban === "PK93UNIL0109000304929964", "UBL IBAN is PK93UNIL0109000304929964");
   assert(UBL_PAYMENT_CONFIG.branchName === "0881 – Wana", "Branch Name is 0881 – Wana");
   assert(UBL_PAYMENT_CONFIG.swiftBic === "UNILPKKA", "SWIFT/BIC is UNILPKKA");
   assert(FACTORY_INFO.factoryName === "Superior Cricket Factory", "Factory Name is Superior Cricket Factory");
+
+  // ── Test 1B: Legacy Order Sanitizer vs Genuine Customer Orders ──
+  const legacyTestOrder = {
+    id: "SCK-OLD-01",
+    customerName: "Alyan Wazir",
+    customerPhone: "03449832129",
+    customerEmail: "alyankhan1078@gmail.com",
+    address: "AWAMI KUTHAB KHANA NAZIR MARKET SOUTH WAZIRISTAN WANA SWLTD",
+    city: "Wana",
+    state: "South Waziristan",
+    postalCode: "29540",
+    country: "Pakistan",
+    totalAmount: 500,
+    status: "pending",
+    items: [],
+    paymentStatus: "payment_submitted",
+    fulfilmentStatus: "new",
+    paymentMethod: "UBL Bank Transfer",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const sanitized = sanitizeOrderRecord(legacyTestOrder);
+  assert(sanitized.customerPhone === "+92 327 5756188", "Legacy order phone sanitized to official +92 327 5756188");
+  assert(sanitized.customerEmail === "sialkotcricketkits@gmail.com", "Legacy order email sanitized to official sialkotcricketkits@gmail.com");
+  assert(sanitized.address.includes("House No. 207, Gulshan Street"), "Legacy order address sanitized to official Sialkot address");
+
+  const genuineCustomerOrder = {
+    id: "SCK-NEW-01",
+    customerName: "David Warner",
+    customerPhone: "+61 412 345 678",
+    customerEmail: "david@cricketaustralia.com",
+    address: "123 Sydney Cricket Ground Road",
+    city: "Sydney",
+    state: "NSW",
+    postalCode: "2000",
+    country: "Australia",
+    totalAmount: 750,
+    status: "pending",
+    items: [],
+    paymentStatus: "payment_submitted",
+    fulfilmentStatus: "new",
+    paymentMethod: "UBL Bank Transfer",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const preserved = sanitizeOrderRecord(genuineCustomerOrder);
+  assert(preserved.customerName === "David Warner", "Genuine customer name preserved dynamically");
+  assert(preserved.customerPhone === "+61 412 345 678", "Genuine customer phone preserved dynamically");
+  assert(preserved.address === "123 Sydney Cricket Ground Road", "Genuine customer address preserved dynamically");
+  assert(preserved.country === "Australia", "Genuine customer destination preserved dynamically");
 
   // ── Test 2: Receipt File Rules & Limits ──
   assert(MAX_RECEIPT_FILE_SIZE_BYTES === 8 * 1024 * 1024, "Maximum receipt size is 8 MB");

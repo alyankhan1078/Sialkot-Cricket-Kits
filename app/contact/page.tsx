@@ -42,7 +42,7 @@ export default function ContactPage() {
         <article>
           <MessageCircle />
           <span>WhatsApp</span>
-          <a href={whatsappUrl("Hello Sialkot Cricket Kits, I would like to discuss an order.")} target="_blank" rel="noreferrer">+92 323 1438214</a>
+          <a href={whatsappUrl("Hello Sialkot Cricket Kits, I would like to discuss an order.")} target="_blank" rel="noreferrer">+92 327 5756188</a>
           <p>Fastest option for stock, pictures and live videos.</p>
         </article>
         <article>

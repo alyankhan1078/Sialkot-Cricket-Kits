@@ -1,8 +1,9 @@
+import { BUSINESS_CONFIG } from "@/src/lib/business-config";
 import type { Product } from "@/src/data/products";
 import { formatPrice } from "@/src/data/products";
 import type { DBOrder } from "@/src/lib/data-service";
 
-export const WHATSAPP_NUMBER = "923231438214";
+export const WHATSAPP_NUMBER = BUSINESS_CONFIG.whatsappRaw;
 
 export const whatsappUrl = (message: string, targetPhone = WHATSAPP_NUMBER) => {
   const cleanPhone = targetPhone.replace(/[^0-9]/g, "");
