@@ -22,6 +22,7 @@ import {
 import { products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
+import { ALL_COUNTRIES } from "@/src/lib/countries";
 import {
   CURRENCIES,
   CurrencyConfig,
@@ -301,19 +302,7 @@ function CartDrawer() {
     setCurrency,
     formatPrice,
   } = useStore();
-  const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
-
-  // Sync delivery country dropdown with currency when currency changes
-  useEffect(() => {
-    if (currency === "PKR") setSelectedCountry("Pakistan");
-    else if (currency === "USD") setSelectedCountry("United States");
-    else if (currency === "AUD") setSelectedCountry("Australia");
-    else if (currency === "CAD") setSelectedCountry("Canada");
-    else if (currency === "AED") setSelectedCountry("United Arab Emirates");
-    else if (currency === "SAR") setSelectedCountry("Saudi Arabia");
-    else if (currency === "NZD") setSelectedCountry("New Zealand");
-    else if (currency === "GBP") setSelectedCountry("United Kingdom");
-  }, [currency]);
+  const [selectedCountry, setSelectedCountry] = useState("");
 
   const lines = cart.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
@@ -323,7 +312,7 @@ function CartDrawer() {
   const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
   const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
   const shippingCalculation = calculateShippingFee(selectedCountry, totalItemCount);
-  const grandTotal = subtotal + shippingCalculation.shippingFee;
+  const grandTotal = subtotal + (shippingCalculation.hasDestination ? shippingCalculation.shippingFee : 0);
   const depositDueNow = Math.round(grandTotal * 0.5 * 100) / 100;
 
   // WhatsApp message for the cart with local currency and GBP note
@@ -332,7 +321,11 @@ function CartDrawer() {
       (item, index) =>
         `${index + 1}. ${item.product.name}\n   Quantity: ${item.quantity}\n   Price: ${formatPrice(item.product.price)} each`
     )
-    .join("\n\n")}\n\nSubtotal: ${formatPrice(subtotal)}\nDelivery to: ${selectedCountry}\nShipping: ${formatPrice(shippingCalculation.shippingFee)}\nOrder Total: ${formatPrice(grandTotal)} (${currency !== "GBP" ? `approx. £${grandTotal}` : "GBP"})\n\nPlease confirm my order. Thank you!`;
+    .join("\n\n")}\n\nSubtotal: ${formatPrice(subtotal)}${
+    shippingCalculation.hasDestination
+      ? `\nDelivery to: ${shippingCalculation.countryName}\nShipping: ${formatPrice(shippingCalculation.shippingFee)}`
+      : "\nDelivery: (Destination to be confirmed)"
+  }\nOrder Total: ${formatPrice(grandTotal)} (${currency !== "GBP" ? `approx. £${grandTotal}` : "GBP"})\n\nPlease confirm my order. Thank you!`;
 
   return (
     <div className={`cart-layer${isCartOpen ? " is-open" : ""}`} aria-hidden={!isCartOpen}>
@@ -567,14 +560,14 @@ function CartDrawer() {
                   className="delivery-country-select"
                   style={{ fontSize: ".85rem" }}
                 >
-                  {Object.keys(SHIPPING_DESTINATIONS).map((c) => {
-                    const flag = getCountryFlag(c);
-                    return (
-                      <option key={c} value={c}>
-                        {flag} {c}
-                      </option>
-                    );
-                  })}
+                  <option value="" disabled>
+                    Select your destination country
+                  </option>
+                  {ALL_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.name}>
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
                 </select>
                 {/* Shipping info */}
                 <div style={{
@@ -586,10 +579,12 @@ function CartDrawer() {
                   color: "var(--text-secondary)",
                 }}>
                   <span>
-                    Tracked courier delivery · {shippingCalculation.destination.estimatedDelivery}
+                    {shippingCalculation.hasDestination && shippingCalculation.destination
+                      ? `Tracked courier delivery · ${shippingCalculation.destination.estimatedDelivery}`
+                      : "Select destination country to calculate exact delivery"}
                   </span>
                 </div>
-                {totalItemCount > 1 && (
+                {shippingCalculation.hasDestination && totalItemCount > 1 && (
                   <div style={{
                     marginTop: ".35rem",
                     fontSize: ".74rem",
@@ -602,7 +597,7 @@ function CartDrawer() {
                     Combined shipping — you save {formatPrice(shippingCalculation.totalSaved)}!
                   </div>
                 )}
-                {totalItemCount === 1 && (
+                {shippingCalculation.hasDestination && shippingCalculation.destination && totalItemCount === 1 && (
                   <div style={{ marginTop: ".35rem", fontSize: ".74rem", color: "var(--text-muted)" }}>
                     Add another bat — saves on shipping ({formatPrice(shippingCalculation.destination.additionalItemGbp)}/extra bat)
                   </div>
@@ -621,15 +616,25 @@ function CartDrawer() {
                 <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatPrice(subtotal)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".84rem", color: "var(--text-secondary)" }}>
-                <span>Delivery ({selectedCountry})</span>
-                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatPrice(shippingCalculation.shippingFee)}</span>
+                <span>
+                  {shippingCalculation.hasDestination
+                    ? `Delivery (${shippingCalculation.countryName})`
+                    : "Delivery: Select destination"}
+                </span>
+                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                  {shippingCalculation.hasDestination
+                    ? formatPrice(shippingCalculation.shippingFee)
+                    : "—"}
+                </span>
               </div>
 
               <div style={{ height: 1, background: "var(--border)", margin: ".2rem 0" }} />
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: ".88rem", fontWeight: 700, color: "var(--text-primary)" }}>Order total</span>
-                <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>{formatPrice(grandTotal)}</span>
+                <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                  {shippingCalculation.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                </span>
               </div>
 
               {/* Pay today highlight */}

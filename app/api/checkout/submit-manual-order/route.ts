@@ -7,6 +7,7 @@ import {
   type OrderItem,
 } from "@/src/lib/data-service";
 import { calculateShippingFee } from "@/src/lib/shipping";
+import { isCountrySupported, resolveCountry } from "@/src/lib/countries";
 import {
   ALLOWED_RECEIPT_MIME_TYPES,
   ALLOWED_RECEIPT_EXTENSIONS,
@@ -59,8 +60,23 @@ export async function POST(request: Request) {
     const city = (formData.get("city") as string)?.trim();
     const state = (formData.get("state") as string)?.trim();
     const postalCode = (formData.get("postalCode") as string)?.trim();
-    const country = (formData.get("country") as string)?.trim() || "Pakistan";
+    const countryRaw = (formData.get("country") as string)?.trim();
+    const countryCodeRaw = (formData.get("countryCode") as string)?.trim();
     const deliveryInstructions = (formData.get("deliveryInstructions") as string)?.trim();
+
+    // ── Country Validation & Strict India Rejection ──
+    const countryValidation = isCountrySupported(countryRaw || countryCodeRaw);
+    if (!countryValidation.valid || !countryValidation.country) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: countryValidation.error || "Please select your destination country.",
+        },
+        { status: 400 }
+      );
+    }
+    const country = countryValidation.country.name;
+    const countryCode = countryValidation.country.code;
 
     // 2. Extract Items & Deposit
     const itemsRaw = formData.get("items") as string;
@@ -172,6 +188,15 @@ export async function POST(request: Request) {
 
     // ── Server-Side Shipping Calculation ──
     const shippingCalc = calculateShippingFee(country, totalQuantity);
+    if (shippingCalc.requiresQuotation) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `A delivery quotation is required for ${country}. Please contact our support team on WhatsApp before submitting.`,
+        },
+        { status: 400 }
+      );
+    }
     const shippingFee = shippingCalc.shippingFee;
     const grandTotal = Math.round((calculatedSubtotalGbp + shippingFee) * 100) / 100;
 

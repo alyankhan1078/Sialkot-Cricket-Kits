@@ -1,5 +1,5 @@
-import { products as initialProducts, categoryOrder, type Product as ProductType } from "@/src/data/products";
-import { faqs as initialFaqs } from "@/src/data/faqs";
+import { products as initialProducts, categoryOrder, type Product as ProductType } from "../data/products.ts";
+import { faqs as initialFaqs } from "../data/faqs.ts";
 
 export interface DBProduct {
   id: string;

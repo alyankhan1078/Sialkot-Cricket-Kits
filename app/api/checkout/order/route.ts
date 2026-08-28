@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createOrder, getSettings } from "@/src/lib/data-service";
 import { sendOrderConfirmationEmail } from "@/src/lib/email";
+import { isCountrySupported } from "@/src/lib/countries";
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const countryValidation = isCountrySupported(country || body.countryCode);
+    if (!countryValidation.valid || !countryValidation.country) {
+      return NextResponse.json(
+        { success: false, error: countryValidation.error || "Please select your destination country." },
+        { status: 400 }
+      );
+    }
+    const validatedCountry = countryValidation.country.name;
 
     const itemsSubtotal = items.reduce(
       (sum: number, item: any) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
       customerName,
       customerEmail: customerEmail || undefined,
       customerPhone: customerPhone || undefined,
-      country: country || "Pakistan",
+      country: validatedCountry,
       items: items.map((i: any) => ({
         productId: i.id || i.productId,
         name: i.name,

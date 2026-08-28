@@ -46,7 +46,7 @@ export type Product = {
   isBestSeller?: boolean;
 };
 
-import { PRODUCT_CONTENT_MAP } from "./product-content";
+import { PRODUCT_CONTENT_MAP } from "./product-content.ts";
 
 const item = (number: number) => `/assets/products/item-${String(number).padStart(3, "0")}.webp`;
 const batImage = "/assets/products/bat-collection.webp";
@@ -575,7 +575,7 @@ export const categories = categoryOrder.map((name) => ({
   image: products.find((product) => product.category === name)?.image ?? brandImage,
 }));
 
-import { formatCurrencyPrice } from "@/src/lib/currency";
+import { formatCurrencyPrice } from "../lib/currency.ts";
 
 export const formatPrice = (price: number, currencyCode: string = "GBP") =>
   formatCurrencyPrice(price, currencyCode);

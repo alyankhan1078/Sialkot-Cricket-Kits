@@ -23,6 +23,7 @@ import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { UBL_PAYMENT_CONFIG, FACTORY_INFO } from "@/src/lib/payment-config";
 import { BUSINESS_CONFIG } from "@/src/lib/business-config";
+import { getCountryFlag } from "@/src/lib/shipping";
 import type { DBOrder } from "@/src/lib/data-service";
 
 function OrderSuccessContent() {
@@ -343,7 +344,7 @@ function OrderSuccessContent() {
                   </div>
                 )}
                 <div style={{ color: "#cbd5e1", fontSize: ".82rem", lineHeight: 1.4, marginTop: 4 }}>
-                  <span>📍</span> {order.address ? `${order.address}, ` : ""}{order.city ? `${order.city}, ` : ""}{order.state ? `${order.state}, ` : ""}{order.postalCode ? `${order.postalCode}, ` : ""}{order.country}
+                  <span>📍</span> {order.address ? `${order.address}, ` : ""}{order.city ? `${order.city}, ` : ""}{order.state ? `${order.state}, ` : ""}{order.postalCode ? `${order.postalCode}, ` : ""}{getCountryFlag(order.country)} {order.country}
                 </div>
                 {order.deliveryInstructions && (
                   <div style={{ color: "#94a3b8", fontSize: ".76rem", fontStyle: "italic", marginTop: 4 }}>

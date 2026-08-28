@@ -44,10 +44,10 @@ import {
 } from "@/src/lib/payment-config";
 import PolicyAgreementModal from "@/src/components/PolicyAgreementModal";
 import { POLICY_METADATA } from "@/src/lib/policy-agreement";
+import { CountrySelector } from "@/src/components/CountrySelector";
+import { resolveCountry } from "@/src/lib/countries";
 
 type Step = 1 | 2 | 3 | 4 | 5;
-
-const countries = Object.keys(SHIPPING_DESTINATIONS);
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState<Step>(1);
 
-  // Step 1: Contact & Delivery Form
+  // Step 1: Contact & Delivery Form (Starts completely empty with no country preselected)
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -64,9 +64,12 @@ export default function CheckoutPage() {
     city: "",
     state: "",
     postalCode: "",
-    country: currency === "PKR" ? "Pakistan" : currency === "USD" ? "United States" : currency === "AUD" ? "Australia" : "United Kingdom",
+    country: "",
+    countryCode: "",
     deliveryInstructions: "",
   });
+
+  const [countryError, setCountryError] = useState<string | null>(null);
 
   // Step 3: Payment Method
   const [paymentMethod, setPaymentMethod] = useState<"ubl_manual" | "cod">("ubl_manual");
@@ -109,7 +112,7 @@ export default function CheckoutPage() {
   const subtotal = lines.reduce((t, i) => t + i.product.price * i.quantity, 0);
   const totalItemCount = lines.reduce((t, i) => t + i.quantity, 0);
   const shippingCalc = calculateShippingFee(formData.country, totalItemCount);
-  const grandTotal = subtotal + shippingCalc.shippingFee;
+  const grandTotal = subtotal + (shippingCalc.hasDestination ? shippingCalc.shippingFee : 0);
   const depositDueNow =
     depositPercent === 100
       ? grandTotal
@@ -187,6 +190,25 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!formData.country || !formData.country.trim()) {
+      setErrorMessage("Please select your destination country.");
+      setCountryError("Please select your destination country.");
+      setStep(1);
+      return;
+    }
+
+    if (formData.countryCode === "IN" || formData.country.toLowerCase().includes("india")) {
+      setErrorMessage("Delivery to the selected destination is currently unavailable.");
+      setCountryError("Delivery to the selected destination is currently unavailable.");
+      setStep(1);
+      return;
+    }
+
+    if (shippingCalc.requiresQuotation) {
+      setErrorMessage(`A delivery quotation is required for ${shippingCalc.countryName}. Please contact our support desk on WhatsApp to confirm shipping before submitting.`);
+      return;
+    }
+
     if (!receiptFile) {
       setErrorMessage("Please upload your payment receipt screenshot or document before submitting your order.");
       return;
@@ -209,7 +231,8 @@ export default function CheckoutPage() {
       submitFormData.append("city", formData.city.trim());
       submitFormData.append("state", formData.state.trim());
       submitFormData.append("postalCode", formData.postalCode.trim());
-      submitFormData.append("country", formData.country);
+      submitFormData.append("country", formData.country.trim());
+      submitFormData.append("countryCode", formData.countryCode || "");
       submitFormData.append("deliveryInstructions", formData.deliveryInstructions.trim());
       submitFormData.append("depositPercent", String(depositPercent));
       submitFormData.append("policiesAccepted", "true");
@@ -427,18 +450,19 @@ export default function CheckoutPage() {
                   </div>
 
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Destination Country *</label>
-                    <select
-                      className="checkout-select"
+                    <CountrySelector
                       value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    >
-                      {countries.map((c) => (
-                        <option key={c} value={c}>
-                          {getCountryFlag(c)} {c}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(selected) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          country: selected.name,
+                          countryCode: selected.code,
+                        }));
+                        setCountryError(null);
+                        setErrorMessage(null);
+                      }}
+                      error={countryError}
+                    />
                   </div>
 
                   <div style={{ gridColumn: "1 / -1" }}>
@@ -510,6 +534,17 @@ export default function CheckoutPage() {
                       setErrorMessage("Please enter a WhatsApp/Phone number or Email.");
                       return;
                     }
+                    if (!formData.country || !formData.country.trim()) {
+                      setCountryError("Please select your destination country.");
+                      setErrorMessage("Please select your destination country.");
+                      return;
+                    }
+                    if (formData.countryCode === "IN" || formData.country.toLowerCase().includes("india")) {
+                      setCountryError("Delivery to the selected destination is currently unavailable.");
+                      setErrorMessage("Delivery to the selected destination is currently unavailable.");
+                      return;
+                    }
+                    setCountryError(null);
                     setErrorMessage(null);
                     setStep(2);
                   }}
@@ -575,9 +610,30 @@ export default function CheckoutPage() {
                 {/* Totals Summary */}
                 <div style={{ background: "rgba(0,0,0,0.25)", padding: 16, borderRadius: 10, marginBottom: 20 }}>
                   <div className="order-summary-line"><span>Subtotal ({totalItemCount} items)</span><strong>{formatPrice(subtotal)}</strong></div>
-                  <div className="order-summary-line"><span>Tracked Courier ({formData.country})</span><strong>{formatPrice(shippingCalc.shippingFee)}</strong></div>
+                  <div className="order-summary-line">
+                    <span>
+                      {shippingCalc.hasDestination
+                        ? `Tracked Courier (${shippingCalc.countryName})`
+                        : "Tracked Courier: Select destination"}
+                    </span>
+                    <strong>
+                      {shippingCalc.hasDestination
+                        ? formatPrice(shippingCalc.shippingFee)
+                        : "—"}
+                    </strong>
+                  </div>
+                  {shippingCalc.requiresQuotation && (
+                    <div style={{ marginTop: 6, padding: "6px 10px", background: "rgba(242, 169, 40, 0.1)", border: "1px solid rgba(242, 169, 40, 0.3)", borderRadius: 6, fontSize: ".76rem", color: "#fbbf24" }}>
+                      ⚠️ A delivery quotation is required for this destination.
+                    </div>
+                  )}
                   <div className="order-summary-divider" />
-                  <div className="order-total-line"><span className="label">Total Order Value</span><span className="value">{formatPrice(grandTotal)}</span></div>
+                  <div className="order-total-line">
+                    <span className="label">Total Order Value</span>
+                    <span className="value">
+                      {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                    </span>
+                  </div>
                 </div>
 
                 <button
@@ -1219,10 +1275,34 @@ export default function CheckoutPage() {
 
               <div className="order-summary-divider" style={{ margin: "10px 0" }} />
 
-              <div className="order-summary-line" style={{ fontSize: ".82rem" }}><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
-              <div className="order-summary-line" style={{ fontSize: ".82rem" }}><span>Delivery ({formData.country})</span><strong>{formatPrice(shippingCalc.shippingFee)}</strong></div>
+              <div className="order-summary-line" style={{ fontSize: ".82rem" }}>
+                <span>Subtotal</span>
+                <strong>{formatPrice(subtotal)}</strong>
+              </div>
+              <div className="order-summary-line" style={{ fontSize: ".82rem" }}>
+                <span>
+                  {shippingCalc.hasDestination
+                    ? `Delivery (${shippingCalc.countryName})`
+                    : "Delivery: Select destination"}
+                </span>
+                <strong>
+                  {shippingCalc.hasDestination
+                    ? formatPrice(shippingCalc.shippingFee)
+                    : "—"}
+                </strong>
+              </div>
+              {shippingCalc.requiresQuotation && (
+                <div style={{ marginTop: 6, padding: "6px 10px", background: "rgba(242, 169, 40, 0.1)", border: "1px solid rgba(242, 169, 40, 0.3)", borderRadius: 6, fontSize: ".76rem", color: "#fbbf24" }}>
+                  ⚠️ A delivery quotation is required for {shippingCalc.countryName}. Please confirm with our support team on WhatsApp.
+                </div>
+              )}
               <div className="order-summary-divider" style={{ margin: "10px 0" }} />
-              <div className="order-total-line" style={{ fontSize: "1.05rem" }}><span className="label">Order Total</span><span className="value">{formatPrice(grandTotal)}</span></div>
+              <div className="order-total-line" style={{ fontSize: "1.05rem" }}>
+                <span className="label">Order Total</span>
+                <span className="value">
+                  {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                </span>
+              </div>
 
               {depositPercent < 100 && (
                 <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(34, 197, 94, 0.08)", borderRadius: 8, border: "1px solid rgba(34, 197, 94, 0.2)", fontSize: ".8rem" }}>
@@ -1245,7 +1325,9 @@ export default function CheckoutPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Truck size={14} color="var(--primary)" />
-                  <span>Tracked Courier: {shippingCalc.destination.estimatedDelivery}</span>
+                  <span>
+                    Tracked Courier: {shippingCalc.hasDestination && shippingCalc.destination ? shippingCalc.destination.estimatedDelivery : "Calculated after country selection"}
+                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Building2 size={14} color="#38bdf8" />

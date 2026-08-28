@@ -4,7 +4,7 @@
  * Version: 1.0
  */
 
-import { BUSINESS_CONFIG } from "@/src/lib/business-config";
+import { BUSINESS_CONFIG } from "./business-config.ts";
 
 export const POLICY_METADATA = {
   title: "International Shipping, Returns, Product Disclosure, Customisation and Payment Agreement",
