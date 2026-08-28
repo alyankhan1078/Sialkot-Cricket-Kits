@@ -25,6 +25,7 @@ import {
   X,
   RefreshCw,
   Camera,
+  MessageCircle,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { products } from "@/src/data/products";
@@ -68,6 +69,11 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"ubl_manual" | "cod">("ubl_manual");
   const [depositPercent, setDepositPercent] = useState<number>(100);
 
+  // Generate provisional reference for transfer description
+  const [provisionalRef] = useState(
+    () => `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
+  );
+
   // Step 5: Payment Evidence Form
   const [evidenceData, setEvidenceData] = useState({
     senderName: "",
@@ -78,7 +84,7 @@ export default function CheckoutPage() {
     transferDate: new Date().toISOString().split("T")[0],
     transferReference: "",
     customerNote: "",
-    confirmedAccurate: false,
+    confirmedAccurate: true,
   });
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -87,20 +93,9 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [sendProofViaWhatsApp, setSendProofViaWhatsApp] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-sync sender defaults when navigating to Step 5
-  useEffect(() => {
-    if (!evidenceData.senderName && formData.fullName) {
-      setEvidenceData((prev) => ({
-        ...prev,
-        senderName: formData.fullName,
-        senderCountry: formData.country,
-        currencySent: currency || "GBP",
-      }));
-    }
-  }, [formData, currency, evidenceData.senderName]);
 
   const lines = cart.flatMap((item) => {
     const product = products.find((p) => p.id === item.productId);
@@ -117,10 +112,17 @@ export default function CheckoutPage() {
       : Math.round(grandTotal * (depositPercent / 100) * 100) / 100;
   const balanceRemaining = Math.max(0, Math.round((grandTotal - depositDueNow) * 100) / 100);
 
-  // Generate provisional reference for transfer description
-  const [provisionalRef] = useState(
-    () => `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
-  );
+  // Auto-sync sender defaults when navigating to Step 5 or updating amounts
+  useEffect(() => {
+    setEvidenceData((prev) => ({
+      ...prev,
+      senderName: prev.senderName || formData.fullName,
+      senderCountry: prev.senderCountry || formData.country,
+      currencySent: prev.currencySent || currency || "GBP",
+      amountSent: prev.amountSent || String(depositDueNow),
+      transferReference: prev.transferReference || provisionalRef,
+    }));
+  }, [formData, currency, depositDueNow, provisionalRef]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -144,6 +146,7 @@ export default function CheckoutPage() {
     }
 
     setReceiptFile(file);
+    setSendProofViaWhatsApp(false);
 
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -161,31 +164,23 @@ export default function CheckoutPage() {
   };
 
   // Submit manual order with payment evidence
-  const handleSubmitManualOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitManualOrder = async (e?: React.FormEvent, isDirectWhatsApp: boolean = false) => {
+    if (e) e.preventDefault();
 
     if (lines.length === 0) {
       setErrorMessage("Your cart is empty.");
       return;
     }
 
-    if (!formData.fullName.trim() || !formData.phone.trim()) {
-      setErrorMessage("Please complete contact name and phone number.");
+    if (!formData.fullName.trim()) {
+      setErrorMessage("Please enter your Full Name.");
+      setStep(1);
       return;
     }
 
-    if (!evidenceData.transferReference.trim()) {
-      setErrorMessage("Transfer reference / transaction number is required.");
-      return;
-    }
-
-    if (!receiptFile) {
-      setErrorMessage("Please attach or upload your transfer receipt or payment screenshot.");
-      return;
-    }
-
-    if (!evidenceData.confirmedAccurate) {
-      setErrorMessage("Please check the confirmation box verifying your payment details.");
+    if (!formData.phone.trim() && !formData.email.trim()) {
+      setErrorMessage("Please enter your WhatsApp / Phone number or Email.");
+      setStep(1);
       return;
     }
 
@@ -194,15 +189,15 @@ export default function CheckoutPage() {
 
     try {
       const submitFormData = new FormData();
-      submitFormData.append("customerName", formData.fullName);
-      submitFormData.append("customerEmail", formData.email);
-      submitFormData.append("customerPhone", formData.phone);
-      submitFormData.append("address", formData.address);
-      submitFormData.append("city", formData.city);
-      submitFormData.append("state", formData.state);
-      submitFormData.append("postalCode", formData.postalCode);
+      submitFormData.append("customerName", formData.fullName.trim());
+      submitFormData.append("customerEmail", formData.email.trim());
+      submitFormData.append("customerPhone", formData.phone.trim());
+      submitFormData.append("address", formData.address.trim());
+      submitFormData.append("city", formData.city.trim());
+      submitFormData.append("state", formData.state.trim());
+      submitFormData.append("postalCode", formData.postalCode.trim());
       submitFormData.append("country", formData.country);
-      submitFormData.append("deliveryInstructions", formData.deliveryInstructions);
+      submitFormData.append("deliveryInstructions", formData.deliveryInstructions.trim());
       submitFormData.append("depositPercent", String(depositPercent));
 
       submitFormData.append(
@@ -218,15 +213,19 @@ export default function CheckoutPage() {
         )
       );
 
-      submitFormData.append("senderName", evidenceData.senderName || formData.fullName);
-      submitFormData.append("senderCountry", evidenceData.senderCountry || formData.country);
-      submitFormData.append("provider", evidenceData.provider);
+      submitFormData.append("senderName", (evidenceData.senderName || formData.fullName).trim());
+      submitFormData.append("senderCountry", (evidenceData.senderCountry || formData.country).trim());
+      submitFormData.append("provider", evidenceData.provider || "Bank Transfer");
       submitFormData.append("amountSent", evidenceData.amountSent || String(depositDueNow));
-      submitFormData.append("currencySent", evidenceData.currencySent || currency);
-      submitFormData.append("transferDate", evidenceData.transferDate);
-      submitFormData.append("transferReference", evidenceData.transferReference);
-      submitFormData.append("customerNote", evidenceData.customerNote);
-      submitFormData.append("receipt", receiptFile);
+      submitFormData.append("currencySent", evidenceData.currencySent || currency || "GBP");
+      submitFormData.append("transferDate", evidenceData.transferDate || new Date().toISOString().split("T")[0]);
+      submitFormData.append("transferReference", (evidenceData.transferReference || provisionalRef).trim());
+      submitFormData.append("customerNote", evidenceData.customerNote.trim());
+      submitFormData.append("sendViaWhatsApp", isDirectWhatsApp || !receiptFile ? "true" : "false");
+
+      if (receiptFile) {
+        submitFormData.append("receipt", receiptFile);
+      }
 
       const res = await fetch("/api/checkout/submit-manual-order", {
         method: "POST",
@@ -237,6 +236,13 @@ export default function CheckoutPage() {
 
       if (data.success && data.orderId) {
         clearCart();
+
+        // If user submitted without receipt file, open WhatsApp immediately
+        if (isDirectWhatsApp || !receiptFile) {
+          const waMsg = `Hello Sialkot Cricket Kits,\n\nI have submitted Order #${data.orderId}.\nCustomer: ${formData.fullName}\nTotal: £${grandTotal}\nAmount Due: £${depositDueNow}\nRef: ${evidenceData.transferReference || provisionalRef}\n\nI am attaching my payment receipt screenshot here. Please verify.`;
+          window.open(whatsappUrl(waMsg), "_blank");
+        }
+
         router.push(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
       } else {
         setErrorMessage(
@@ -353,7 +359,6 @@ export default function CheckoutPage() {
                       placeholder="e.g. Imran Khan"
                       value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      required
                     />
                   </div>
 
@@ -365,7 +370,6 @@ export default function CheckoutPage() {
                       placeholder="+44 7700 900123 / +92 300 1234567"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      required
                     />
                   </div>
 
@@ -396,7 +400,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Street Address *</label>
+                    <label className="checkout-field-label">Street Address</label>
                     <input
                       className="checkout-input"
                       type="text"
@@ -407,7 +411,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">City *</label>
+                    <label className="checkout-field-label">City</label>
                     <input
                       className="checkout-input"
                       type="text"
@@ -455,8 +459,18 @@ export default function CheckoutPage() {
                   type="button"
                   className="checkout-primary-cta"
                   style={{ marginTop: 24, width: "100%" }}
-                  disabled={!formData.fullName.trim() || !formData.phone.trim()}
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    if (!formData.fullName.trim()) {
+                      setErrorMessage("Please enter your Full Name before proceeding.");
+                      return;
+                    }
+                    if (!formData.phone.trim() && !formData.email.trim()) {
+                      setErrorMessage("Please enter a WhatsApp/Phone number or Email.");
+                      return;
+                    }
+                    setErrorMessage(null);
+                    setStep(2);
+                  }}
                 >
                   Proceed to Review Order <ArrowRight size={16} />
                 </button>
@@ -750,7 +764,7 @@ export default function CheckoutPage() {
 
             {/* ── STEP 5: SUBMIT PAYMENT EVIDENCE ── */}
             {step === 5 && (
-              <form onSubmit={handleSubmitManualOrder} className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
+              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
                 <button className="checkout-back-btn" type="button" onClick={() => setStep(4)}>
                   <ChevronLeft size={16} /> Back to Transfer Details
                 </button>
@@ -762,31 +776,29 @@ export default function CheckoutPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                   <div>
-                    <label className="checkout-field-label">Sender’s Full Name *</label>
+                    <label className="checkout-field-label">Sender’s Full Name</label>
                     <input
                       className="checkout-input"
                       type="text"
                       placeholder="Name on bank/remittance account"
                       value={evidenceData.senderName}
                       onChange={(e) => setEvidenceData({ ...evidenceData, senderName: e.target.value })}
-                      required
                     />
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">Country Payment Sent From *</label>
+                    <label className="checkout-field-label">Country Payment Sent From</label>
                     <input
                       className="checkout-input"
                       type="text"
                       placeholder="e.g. United Kingdom, USA, UAE"
                       value={evidenceData.senderCountry}
                       onChange={(e) => setEvidenceData({ ...evidenceData, senderCountry: e.target.value })}
-                      required
                     />
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">Transfer Provider / Method *</label>
+                    <label className="checkout-field-label">Transfer Provider / Method</label>
                     <select
                       className="checkout-select"
                       value={evidenceData.provider}
@@ -801,19 +813,18 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">Transfer / Reference Number *</label>
+                    <label className="checkout-field-label">Transfer / Reference Number</label>
                     <input
                       className="checkout-input"
                       type="text"
-                      placeholder="e.g. TXN-12345678 or MTCN"
+                      placeholder={provisionalRef}
                       value={evidenceData.transferReference}
                       onChange={(e) => setEvidenceData({ ...evidenceData, transferReference: e.target.value })}
-                      required
                     />
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">Amount Sent *</label>
+                    <label className="checkout-field-label">Amount Sent</label>
                     <input
                       className="checkout-input"
                       type="number"
@@ -825,7 +836,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="checkout-field-label">Currency Sent *</label>
+                    <label className="checkout-field-label">Currency Sent</label>
                     <select
                       className="checkout-select"
                       value={evidenceData.currencySent}
@@ -840,7 +851,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Transfer Date *</label>
+                    <label className="checkout-field-label">Transfer Date</label>
                     <input
                       className="checkout-input"
                       type="date"
@@ -863,7 +874,7 @@ export default function CheckoutPage() {
 
                 {/* ── File Upload Box ── */}
                 <div style={{ marginBottom: 20 }}>
-                  <label className="checkout-field-label">Payment Receipt / Screenshot * (Max 8 MB)</label>
+                  <label className="checkout-field-label">Payment Receipt / Screenshot Proof (Max 8 MB)</label>
 
                   <input
                     ref={fileInputRef}
@@ -893,7 +904,7 @@ export default function CheckoutPage() {
                         border: isDragOver ? "2px dashed var(--primary)" : "2px dashed #334155",
                         background: isDragOver ? "rgba(242,169,40,0.08)" : "rgba(255,255,255,0.02)",
                         borderRadius: 12,
-                        padding: "28px 16px",
+                        padding: "24px 16px",
                         textAlign: "center",
                         cursor: "pointer",
                         transition: "all .2s ease",
@@ -901,7 +912,7 @@ export default function CheckoutPage() {
                     >
                       <UploadCloud size={36} color="var(--primary)" style={{ margin: "0 auto 8px", display: "block" }} />
                       <strong style={{ fontSize: ".9rem", color: "#fff", display: "block" }}>
-                        Click to browse or drag &amp; drop your receipt
+                        Click to select or drag &amp; drop your receipt screenshot
                       </strong>
                       <span style={{ fontSize: ".76rem", color: "var(--text-muted)", display: "block", marginTop: 4 }}>
                         Supports JPG, PNG, WEBP images or PDF document (up to 8 MB)
@@ -936,7 +947,7 @@ export default function CheckoutPage() {
                           {receiptFile.name}
                         </strong>
                         <small style={{ color: "#4ade80", fontSize: ".75rem" }}>
-                          {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB · Ready for verification
+                          {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB · Attached &amp; ready
                         </small>
                       </div>
 
@@ -952,48 +963,56 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Required Confirmation Checkbox */}
+                {/* WhatsApp alternative upload option */}
                 <div style={{ marginBottom: 20 }}>
                   <label
                     style={{
                       display: "flex",
-                      alignItems: "flex-start",
+                      alignItems: "center",
                       gap: 10,
                       cursor: "pointer",
                       fontSize: ".82rem",
-                      color: "#cbd5e1",
+                      color: "#94a3b8",
                       lineHeight: 1.4,
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid var(--border)",
+                      padding: "10px 14px",
+                      borderRadius: 8,
                     }}
                   >
                     <input
                       type="checkbox"
-                      checked={evidenceData.confirmedAccurate}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, confirmedAccurate: e.target.checked })}
-                      style={{ marginTop: 2, accentColor: "var(--primary)", width: 16, height: 16 }}
-                      required
+                      checked={sendProofViaWhatsApp}
+                      onChange={(e) => {
+                        setSendProofViaWhatsApp(e.target.checked);
+                        if (e.target.checked) setReceiptFile(null);
+                      }}
+                      style={{ accentColor: "#22c55e", width: 16, height: 16 }}
                     />
                     <span>
-                      I confirm that I have completed the payment and that the information and receipt provided are accurate.
+                      💬 <em>I prefer to send my payment screenshot directly via WhatsApp after submitting order</em>
                     </span>
                   </label>
                 </div>
 
                 {errorMessage && (
-                  <div className="checkout-error" role="alert" style={{ marginBottom: 16 }}>
+                  <div className="checkout-error" role="alert" style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid #ef4444", borderRadius: 8, color: "#f87171", fontSize: ".84rem" }}>
                     {errorMessage}
                   </div>
                 )}
 
+                {/* Primary Submit Button (Always clickable) */}
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSubmitManualOrder(undefined, sendProofViaWhatsApp || !receiptFile)}
                   className="checkout-primary-cta"
-                  style={{ width: "100%", opacity: isSubmitting ? 0.75 : 1, pointerEvents: isSubmitting ? "none" : "auto" }}
-                  disabled={isSubmitting || !evidenceData.confirmedAccurate || !receiptFile}
+                  style={{ width: "100%", opacity: isSubmitting ? 0.75 : 1, cursor: isSubmitting ? "wait" : "pointer" }}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                      Uploading Evidence &amp; Submitting Order…
+                      Submitting Order for Verification…
                     </>
                   ) : (
                     <>
@@ -1003,16 +1022,16 @@ export default function CheckoutPage() {
                   )}
                 </button>
 
-                <a
+                <button
+                  type="button"
+                  onClick={() => handleSubmitManualOrder(undefined, true)}
                   className="checkout-secondary-cta"
-                  href={whatsappUrl(whatsappEnquiryMessage)}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80" }}
+                  disabled={isSubmitting}
                 >
-                  💬 Submit Order &amp; Confirm on WhatsApp Instead
-                </a>
-              </form>
+                  <MessageCircle size={16} /> Submit Order &amp; Confirm on WhatsApp
+                </button>
+              </div>
             )}
           </div>
 
@@ -1037,7 +1056,7 @@ export default function CheckoutPage() {
                         <small style={{ color: "var(--text-muted)" }}>Qty: {l.quantity}</small>
                       </div>
                     </div>
-                    <strong>{formatPrice(l.product.price * l.quantity)}</strong>
+                    <strong>{formatPrice(l.product.price * lineQuantity(l.quantity))}</strong>
                   </div>
                 ))}
               </div>
@@ -1083,4 +1102,8 @@ export default function CheckoutPage() {
       </div>
     </main>
   );
+}
+
+function lineQuantity(qty: number) {
+  return typeof qty === "number" && qty > 0 ? qty : 1;
 }

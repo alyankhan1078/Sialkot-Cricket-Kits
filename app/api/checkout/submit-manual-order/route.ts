@@ -67,15 +67,16 @@ export async function POST(request: Request) {
     const depositPercent = Number(formData.get("depositPercent")) || 100;
 
     // 3. Extract Payment Submission Evidence
-    const senderName = (formData.get("senderName") as string)?.trim();
-    const senderCountry = (formData.get("senderCountry") as string)?.trim();
-    const provider = (formData.get("provider") as string)?.trim();
-    const amountSent = parseFloat(formData.get("amountSent") as string) || 0;
+    const senderName = (formData.get("senderName") as string)?.trim() || customerName || "Customer";
+    const senderCountry = (formData.get("senderCountry") as string)?.trim() || country;
+    const provider = (formData.get("provider") as string)?.trim() || "Bank Transfer";
+    let amountSent = parseFloat(formData.get("amountSent") as string) || 0;
     const currencySent = (formData.get("currencySent") as string)?.trim() || "GBP";
     const transferDate = (formData.get("transferDate") as string)?.trim() || new Date().toISOString().split("T")[0];
-    const transferReference = (formData.get("transferReference") as string)?.trim();
+    let transferReference = (formData.get("transferReference") as string)?.trim();
     const customerNote = (formData.get("customerNote") as string)?.trim();
     const receiptFile = formData.get("receipt") as File | null;
+    const sendViaWhatsApp = formData.get("sendViaWhatsApp") === "true";
 
     // ── Input Validation ──
     if (!customerName) {
@@ -85,60 +86,6 @@ export async function POST(request: Request) {
     if (!customerPhone && !customerEmail) {
       return NextResponse.json(
         { success: false, error: "Please provide a valid WhatsApp/phone number or email." },
-        { status: 400 }
-      );
-    }
-
-    if (!transferReference) {
-      return NextResponse.json(
-        { success: false, error: "Transfer reference / transaction number is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!senderName) {
-      return NextResponse.json(
-        { success: false, error: "Sender's full name is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!provider) {
-      return NextResponse.json(
-        { success: false, error: "Please select the transfer provider or payment channel used." },
-        { status: 400 }
-      );
-    }
-
-    if (!receiptFile) {
-      return NextResponse.json(
-        { success: false, error: "Please upload your official bank transfer receipt or payment screenshot." },
-        { status: 400 }
-      );
-    }
-
-    // ── Receipt File Validation ──
-    if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { success: false, error: "Receipt file size exceeds the 8 MB limit. Please upload a smaller image or PDF." },
-        { status: 400 }
-      );
-    }
-
-    const fileExt = path.extname(receiptFile.name).toLowerCase();
-    if (!ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) || !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF." },
-        { status: 400 }
-      );
-    }
-
-    const fileBytes = await receiptFile.arrayBuffer();
-    const fileBuffer = Buffer.from(fileBytes);
-
-    if (!validateFileMagicBytes(fileBuffer, receiptFile.type)) {
-      return NextResponse.json(
-        { success: false, error: "File content does not match the expected image or PDF format." },
         { status: 400 }
       );
     }
@@ -195,22 +142,67 @@ export async function POST(request: Request) {
         : Math.round(grandTotal * (chosenDepositPercent / 100) * 100) / 100;
     const balanceRemaining = Math.max(0, Math.round((grandTotal - depositDue) * 100) / 100);
 
-    // ── Generate Order ID & Secure Private Receipt Path ──
+    if (amountSent <= 0) {
+      amountSent = depositDue;
+    }
+
+    // ── Generate Order ID ──
     const year = new Date().getFullYear();
     const randomSuffix = Math.floor(100 + Math.random() * 900);
     const orderId = `SCK-${year}-${randomSuffix}`;
-    const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
 
+    if (!transferReference) {
+      transferReference = sendViaWhatsApp ? `WA-${orderId}` : orderId;
+    }
+
+    // ── Handle Receipt File ──
     let receiptStoragePath = "";
-    try {
-      const privateDir = path.join(process.cwd(), "private_receipts");
-      await fs.mkdir(privateDir, { recursive: true });
-      const fullDiskPath = path.join(privateDir, safeUniqueName);
-      await fs.writeFile(fullDiskPath, fileBuffer);
-      receiptStoragePath = safeUniqueName;
-    } catch {
-      // In sandboxed environments without disk access, store base64 data safely
-      receiptStoragePath = `data:${receiptFile.type};base64,${fileBuffer.toString("base64")}`;
+    let receiptOriginalName = "WhatsApp Submission Pending";
+    let receiptMimeType = "image/jpeg";
+    let receiptFileSize = 0;
+
+    if (receiptFile && receiptFile.size > 0) {
+      if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { success: false, error: "Receipt file size exceeds the 8 MB limit. Please upload a smaller image or PDF." },
+          { status: 400 }
+        );
+      }
+
+      const fileExt = path.extname(receiptFile.name).toLowerCase();
+      if (!ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) || !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF." },
+          { status: 400 }
+        );
+      }
+
+      const fileBytes = await receiptFile.arrayBuffer();
+      const fileBuffer = Buffer.from(fileBytes);
+
+      if (!validateFileMagicBytes(fileBuffer, receiptFile.type)) {
+        return NextResponse.json(
+          { success: false, error: "File content does not match the expected image or PDF format." },
+          { status: 400 }
+        );
+      }
+
+      const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
+      try {
+        const privateDir = path.join(process.cwd(), "private_receipts");
+        await fs.mkdir(privateDir, { recursive: true });
+        const fullDiskPath = path.join(privateDir, safeUniqueName);
+        await fs.writeFile(fullDiskPath, fileBuffer);
+        receiptStoragePath = safeUniqueName;
+      } catch {
+        receiptStoragePath = `data:${receiptFile.type};base64,${fileBuffer.toString("base64")}`;
+      }
+
+      receiptOriginalName = receiptFile.name;
+      receiptMimeType = receiptFile.type;
+      receiptFileSize = receiptFile.size;
+    } else {
+      receiptStoragePath = "WhatsApp Evidence Verification Pending";
     }
 
     // Check for duplicate transfer reference across previous submissions
@@ -222,6 +214,7 @@ export async function POST(request: Request) {
       `Beneficiary Target: ALYAN WAZIR (UBL Bank)`,
       `Sender: ${senderName} (${senderCountry}) via ${provider}`,
       `Transfer Reference: ${transferReference}`,
+      sendViaWhatsApp ? `📱 [Customer sending receipt screenshot via WhatsApp]` : "",
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
         : "",
@@ -274,9 +267,9 @@ export async function POST(request: Request) {
       transferReference,
       transferDate,
       receiptStoragePath,
-      receiptOriginalName: receiptFile.name,
-      receiptMimeType: receiptFile.type,
-      receiptFileSize: receiptFile.size,
+      receiptOriginalName,
+      receiptMimeType,
+      receiptFileSize,
       status: "payment_submitted",
       customerNote,
     });
@@ -284,7 +277,7 @@ export async function POST(request: Request) {
     // Link submission ID to order
     newOrder.paymentSubmissionId = paymentSubmission.id;
 
-    // Send confirmation email asynchronously (does not block client response)
+    // Send confirmation email asynchronously
     sendOrderConfirmationEmail(newOrder).catch((err) => {
       console.error("[Order Confirmation Email Dispatch Error]:", err);
     });
