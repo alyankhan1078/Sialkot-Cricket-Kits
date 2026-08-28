@@ -8,7 +8,7 @@ import { formatPrice, type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/
 import { productMessage, whatsappUrl } from "@/src/lib/whatsapp";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { addToCart, favourites, toggleFavourite } = useStore();
+  const { addToCart, favourites, toggleFavourite, formatPrice } = useStore();
   const [isJustAdded, setIsJustAdded] = useState(false);
   const favourite = favourites.includes(product.id);
   const isBest = product.isBestSeller || BEST_SELLING_PRODUCT_IDS.includes(product.id);

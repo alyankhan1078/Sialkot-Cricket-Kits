@@ -5180,6 +5180,87 @@ h1, h2, h3, p { margin-top: 0; }
   }
 }
 
+/* ──────────────────────────────────────────
+   MULTI-CURRENCY DISPLAY & SELECTOR STYLES
+   ────────────────────────────────────────── */
+.currency-announcement-tag {
+  color: #fef08a;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.currency-announcement-tag strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.header-currency-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.header-currency-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface-subtle) url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") right 8px center/11px no-repeat;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 6px 26px 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.header-currency-select:hover,
+.header-currency-select:focus {
+  border-color: var(--gold);
+  background-color: var(--surface);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(242, 169, 40, 0.2);
+}
+
+.mobile-drawer-currency {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-drawer-currency label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.mobile-currency-select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .header-currency-wrapper {
+    display: none;
+  }
+}
+
 @media print {
   .announcement-bar, .site-header, .site-footer, .floating-whatsapp, .cart-layer, .hero-actions, .product-card-actions, .shop-controls { display: none!important; }
   body { background: white; }

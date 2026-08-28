@@ -540,10 +540,10 @@ export const categories = categoryOrder.map((name) => ({
   image: products.find((product) => product.category === name)?.image ?? brandImage,
 }));
 
-export const formatPrice = (price: number) =>
-  Number.isInteger(price)
-    ? `£${price.toLocaleString("en-GB")}`
-    : `£${price.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { formatCurrencyPrice } from "@/src/lib/currency";
+
+export const formatPrice = (price: number, currencyCode: string = "GBP") =>
+  formatCurrencyPrice(price, currencyCode);
 
 export const getProduct = (id: string) => products.find((product) => product.id === id);
 

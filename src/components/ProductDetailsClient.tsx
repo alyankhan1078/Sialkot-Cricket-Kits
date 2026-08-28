@@ -11,7 +11,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
   const [country, setCountry] = useState("");
   const gallery = product.images?.length ? product.images : [product.image];
   const [activeImage, setActiveImage] = useState(gallery[0]);
-  const { addToCart, favourites, toggleFavourite } = useStore();
+  const { addToCart, favourites, toggleFavourite, formatPrice } = useStore();
   const [isJustAdded, setIsJustAdded] = useState(false);
   const favourite = favourites.includes(product.id);
 

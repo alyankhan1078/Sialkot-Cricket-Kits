@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
 import {
@@ -16,10 +17,20 @@ import {
   X,
   Lock,
   Truck,
+  Globe,
 } from "lucide-react";
-import { formatPrice, products } from "@/src/data/products";
+import { products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
+import {
+  CURRENCIES,
+  CurrencyConfig,
+  DEFAULT_CURRENCY,
+  convertGbpToCurrency,
+  detectCurrencyFromTimezone,
+  formatCurrencyPrice,
+  COUNTRY_TO_CURRENCY_MAP,
+} from "@/src/lib/currency";
 
 export type CartItem = {
   productId: string;
@@ -47,12 +58,19 @@ type StoreContextValue = {
   toggleFavourite: (productId: string) => void;
   lastAddedItem: AddedItemInfo | null;
   clearLastAddedItem: () => void;
+  currency: string;
+  setCurrency: (code: string) => void;
+  currencyConfig: CurrencyConfig;
+  currencies: typeof CURRENCIES;
+  formatPrice: (amountInGbp: number, showGbpSubtext?: boolean) => string;
+  convertPrice: (amountInGbp: number) => number;
 };
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
 const CART_STORAGE_KEY = "sialkot-cricket-kits:cart";
 const FAVOURITES_STORAGE_KEY = "sialkot-cricket-kits:favourites";
+const CURRENCY_STORAGE_KEY = "sialkot-cricket-kits:currency";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -60,7 +78,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setCartOpen] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState<AddedItemInfo | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [currency, setCurrencyState] = useState<string>(DEFAULT_CURRENCY);
 
+  // Initialize and auto-detect visitor currency
   useEffect(() => {
     try {
       const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);
@@ -70,6 +90,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const savedFavs = window.localStorage.getItem(FAVOURITES_STORAGE_KEY);
       if (savedFavs) {
         setFavourites(JSON.parse(savedFavs));
+      }
+
+      // Check if user previously selected a currency
+      const savedCurrency = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+      if (savedCurrency && CURRENCIES[savedCurrency]) {
+        setCurrencyState(savedCurrency);
+      } else {
+        // Fast client-side timezone detection (e.g. Asia/Karachi -> PKR, US -> USD)
+        const detectedTz = detectCurrencyFromTimezone();
+        setCurrencyState(detectedTz);
+
+        // Background server-side Geo IP detection for maximum accuracy
+        fetch("/api/geo")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.currency && CURRENCIES[data.currency]) {
+              const currentSaved = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+              if (!currentSaved) {
+                setCurrencyState(data.currency);
+              }
+            }
+          })
+          .catch(() => {});
       }
     } catch {
       // Ignore storage read errors in restricted contexts
@@ -87,6 +130,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Ignore storage write errors in restricted contexts
     }
   }, [cart, favourites, hasHydrated]);
+
+  const setCurrency = useCallback((newCurrency: string) => {
+    if (CURRENCIES[newCurrency]) {
+      setCurrencyState(newCurrency);
+      try {
+        window.localStorage.setItem(CURRENCY_STORAGE_KEY, newCurrency);
+      } catch {}
+    }
+  }, []);
+
+  const formatPrice = useCallback(
+    (amountInGbp: number, showGbpSubtext: boolean = false) => {
+      return formatCurrencyPrice(amountInGbp, currency, { showGbpSubtext });
+    },
+    [currency]
+  );
+
+  const convertPrice = useCallback(
+    (amountInGbp: number) => {
+      return convertGbpToCurrency(amountInGbp, currency);
+    },
+    [currency]
+  );
+
+  const currencyConfig = CURRENCIES[currency] || CURRENCIES.GBP;
 
   const toggleFavourite = (productId: string) => {
     setFavourites((current) =>
@@ -164,6 +232,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toggleFavourite,
         lastAddedItem,
         clearLastAddedItem,
+        currency,
+        setCurrency,
+        currencyConfig,
+        currencies: CURRENCIES,
+        formatPrice,
+        convertPrice,
       }}
     >
       {children}
@@ -188,8 +262,23 @@ function CartDrawer() {
     clearCart,
     lastAddedItem,
     clearLastAddedItem,
+    currency,
+    setCurrency,
+    formatPrice,
   } = useStore();
   const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
+
+  // Sync delivery country dropdown with currency when currency changes
+  useEffect(() => {
+    if (currency === "PKR") setSelectedCountry("Pakistan");
+    else if (currency === "USD") setSelectedCountry("United States");
+    else if (currency === "AUD") setSelectedCountry("Australia");
+    else if (currency === "CAD") setSelectedCountry("Canada");
+    else if (currency === "AED") setSelectedCountry("United Arab Emirates");
+    else if (currency === "SAR") setSelectedCountry("Saudi Arabia");
+    else if (currency === "NZD") setSelectedCountry("New Zealand");
+    else if (currency === "GBP") setSelectedCountry("United Kingdom");
+  }, [currency]);
 
   const lines = cart.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
@@ -202,13 +291,13 @@ function CartDrawer() {
   const grandTotal = subtotal + shippingCalculation.shippingFee;
   const depositDueNow = Math.round(grandTotal * 0.5 * 100) / 100;
 
-  // WhatsApp message for the cart
+  // WhatsApp message for the cart with local currency and GBP note
   const cartMessage = `Hello Sialkot Cricket Kits,\n\nI would like to order:\n\n${lines
     .map(
       (item, index) =>
         `${index + 1}. ${item.product.name}\n   Quantity: ${item.quantity}\n   Price: ${formatPrice(item.product.price)} each`
     )
-    .join("\n\n")}\n\nSubtotal: ${formatPrice(subtotal)}\nDelivery to: ${selectedCountry}\nShipping: ${formatPrice(shippingCalculation.shippingFee)}\nOrder Total: ${formatPrice(grandTotal)}\n\nPlease confirm my order. Thank you!`;
+    .join("\n\n")}\n\nSubtotal: ${formatPrice(subtotal)}\nDelivery to: ${selectedCountry}\nShipping: ${formatPrice(shippingCalculation.shippingFee)}\nOrder Total: ${formatPrice(grandTotal)} (${currency !== "GBP" ? `approx. £${grandTotal}` : "GBP"})\n\nPlease confirm my order. Thank you!`;
 
   return (
     <div className={`cart-layer${isCartOpen ? " is-open" : ""}`} aria-hidden={!isCartOpen}>
@@ -240,16 +329,43 @@ function CartDrawer() {
               )}
             </h2>
           </div>
-          <button
-            className="icon-button"
-            onClick={() => {
-              setCartOpen(false);
-              clearLastAddedItem();
-            }}
-            aria-label="Close cart"
-          >
-            <X size={18} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="cart-currency-badge-wrap" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="cart-currency-select"
+                aria-label="Change currency"
+                title="Select Currency"
+                style={{
+                  fontSize: ".76rem",
+                  fontWeight: 700,
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 6px",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                }}
+              >
+                {Object.values(CURRENCIES).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              className="icon-button"
+              onClick={() => {
+                setCartOpen(false);
+                clearLastAddedItem();
+              }}
+              aria-label="Close cart"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Empty state */}

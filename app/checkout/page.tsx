@@ -22,7 +22,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
-import { formatPrice, products } from "@/src/data/products";
+import { products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
 
@@ -64,7 +64,7 @@ const countries = Object.keys(SHIPPING_DESTINATIONS);
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, clearCart } = useStore();
+  const { cart, clearCart, formatPrice, currency, setCurrency, currencies } = useStore();
 
   const [step, setStep] = useState<Step>(1);
 
@@ -76,7 +76,7 @@ export default function CheckoutPage() {
     city: "",
     state: "",
     postalCode: "",
-    country: "United Kingdom",
+    country: currency === "PKR" ? "Pakistan" : currency === "USD" ? "United States" : currency === "AUD" ? "Australia" : "United Kingdom",
     notes: "",
     transactionRef: "",
   });

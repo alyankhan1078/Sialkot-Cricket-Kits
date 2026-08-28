@@ -105,7 +105,7 @@ const navItems = [
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { cartCount, setCartOpen } = useStore();
+  const { cartCount, setCartOpen, currency, setCurrency, currencies } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catalogueDropdownOpen, setCatalogueDropdownOpen] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(true);
@@ -222,11 +222,15 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Slim announcement bar */}
+      {/* Slim announcement bar with auto-currency indicator */}
       <div className="announcement-bar" role="banner">
         <span>Worldwide delivery available</span>
         <span className="announcement-bar-sep">·</span>
         <span>Live product &amp; ping videos</span>
+        <span className="announcement-bar-sep">·</span>
+        <span className="currency-announcement-tag">
+          Prices in <strong>{currencies[currency]?.flag} {currency} ({currencies[currency]?.symbol})</strong>
+        </span>
       </div>
 
       {/* Header — white/light */}
@@ -351,6 +355,23 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
         {/* Header action icons */}
         <div className="header-actions">
+          {/* Currency Switcher Dropdown */}
+          <div className="header-currency-wrapper">
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="header-currency-select"
+              aria-label="Select store currency"
+              title="Change Display Currency"
+            >
+              {Object.values(currencies).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code} ({c.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <Link
             className="header-icon"
             href="/shop?focus=search"
@@ -519,6 +540,23 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="mobile-drawer-footer">
+            {/* Mobile Currency Picker */}
+            <div className="mobile-drawer-currency">
+              <label htmlFor="mobile-currency-select">Display Currency:</label>
+              <select
+                id="mobile-currency-select"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="mobile-currency-select"
+              >
+                {Object.values(currencies).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} — {c.name} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <a
               className="mobile-drawer-whatsapp"
               href={whatsappUrl(
