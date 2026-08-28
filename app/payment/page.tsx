@@ -22,8 +22,7 @@ export const metadata: Metadata = {
 
 const acceptedInternationalMethods = [
   "Payoneer (B2B & Global Receiving in GBP, USD, EUR)",
-  "JazzCash / Nayapay / SadaPay / Raast (0327 5756188)",
-  "EasyPaisa Account (0349 9585519)",
+  "JazzCash / Nayapay / SadaPay / Raast / EasyPaisa (0327 5756188)",
   "Wise (TransferWise)",
   "TapTap Send",
   "Remitly",
@@ -280,7 +279,7 @@ export default function PaymentPage() {
 
                 <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>EasyPaisa Account:</span>
-                  <strong style={{ color: "#4ade80", fontSize: "1rem" }}>0349 9585519</strong>
+                  <strong style={{ color: "#4ade80", fontSize: "1rem" }}>0327 5756188</strong>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between" }}>

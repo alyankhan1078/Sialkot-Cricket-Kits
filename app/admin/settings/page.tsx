@@ -66,7 +66,7 @@ export default function AdminSettingsPage() {
     sadapayNumber: "03275756188",
     sadapayTitle: "ALYAN WAZIR",
     sadapayEnabled: true,
-    easypaisaNumber: "03499585519",
+    easypaisaNumber: "03275756188",
     easypaisaTitle: "ALYAN WAZIR",
     easypaisaEnabled: true,
 
@@ -664,7 +664,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.easypaisaNumber || ""}
                   onChange={(e) => setSettings({ ...settings, easypaisaNumber: e.target.value })}
-                  placeholder="03499585519"
+                  placeholder="03275756188"
                 />
               </div>
 

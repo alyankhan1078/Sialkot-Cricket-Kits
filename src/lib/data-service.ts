@@ -350,7 +350,7 @@ let memorySettings: DBSettings = {
   sadapayNumber: "03275756188",
   sadapayTitle: "ALYAN WAZIR",
   sadapayEnabled: true,
-  easypaisaNumber: "03499585519",
+  easypaisaNumber: "03275756188",
   easypaisaTitle: "ALYAN WAZIR",
   easypaisaEnabled: true,
 
