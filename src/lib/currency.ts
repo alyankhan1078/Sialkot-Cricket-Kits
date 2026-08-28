@@ -11,12 +11,12 @@ export interface CurrencyConfig {
 }
 
 export const CURRENCIES: Record<string, CurrencyConfig> = {
-  PKR: {
-    code: "PKR",
-    name: "Pakistani Rupee",
-    symbol: "Rs",
-    flag: "🇵🇰",
-    rateFromGbp: 370,
+  GBP: {
+    code: "GBP",
+    name: "British Pound",
+    symbol: "£",
+    flag: "🇬🇧",
+    rateFromGbp: 1.0,
     decimals: 0,
     prefix: true,
   },
@@ -29,12 +29,12 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     decimals: 0,
     prefix: true,
   },
-  GBP: {
-    code: "GBP",
-    name: "British Pound",
-    symbol: "£",
-    flag: "🇬🇧",
-    rateFromGbp: 1.0,
+  PKR: {
+    code: "PKR",
+    name: "Pakistani Rupee",
+    symbol: "Rs",
+    flag: "🇵🇰",
+    rateFromGbp: 370,
     decimals: 0,
     prefix: true,
   },
@@ -136,10 +136,10 @@ export function formatCurrencyPrice(
 
 // Map Country Code (ISO 3166-1 alpha-2) to Currency Code
 export const COUNTRY_TO_CURRENCY_MAP: Record<string, string> = {
-  PK: "PKR", // Pakistan
-  US: "USD", // United States
+  PK: "GBP", // Pakistani customers see Pounds (£ / GBP)
   GB: "GBP", // United Kingdom
   UK: "GBP",
+  US: "USD", // United States
   CA: "CAD", // Canada
   AU: "AUD", // Australia
   NZ: "NZD", // New Zealand
@@ -164,7 +164,7 @@ export const COUNTRY_TO_CURRENCY_MAP: Record<string, string> = {
 export function detectCurrencyFromTimezone(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    if (tz.includes("Karachi") || tz.includes("Pakistan")) return "PKR";
+    if (tz.includes("Karachi") || tz.includes("Pakistan")) return "GBP";
     if (
       tz.includes("New_York") ||
       tz.includes("Chicago") ||
