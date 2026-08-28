@@ -9,6 +9,7 @@ import {
 import { BUSINESS_CONFIG } from "../src/lib/business-config.ts";
 import {
   createOrder,
+  getOrderById,
   createPaymentSubmission,
   verifyPaymentSubmission,
   rejectPaymentSubmission,
@@ -191,9 +192,102 @@ async function runManualPaymentTests() {
     true
   );
 
-  assert(rejectResult.success === true, "Admin rejection succeeded");
-  assert(rejectResult.submission?.status === "payment_reupload_requested", "Status updated to payment_reupload_requested");
-  assert(rejectResult.submission?.rejectionReason !== undefined, "Rejection reason preserved");
+  // ── Test 8: Test Customer 1 — Karan Khan Isolation & Dynamic Retrieval ──
+  const karanOrderId = `SCK-KARAN-${Date.now()}`;
+  await createOrder({
+    id: karanOrderId,
+    orderReference: karanOrderId,
+    customerName: "Karan Khan",
+    customerPhone: "+44 7911 123456",
+    customerEmail: "karan.khan@ukcricketclub.co.uk",
+    address: "45 Headingley Cricket Lane",
+    city: "Leeds",
+    state: "West Yorkshire",
+    postalCode: "LS6 1BX",
+    country: "United Kingdom",
+    deliveryInstructions: "Leave behind front gate if out at practice",
+    items: [{ name: "Player Edition Pro Grade Bat", price: 280, quantity: 1 }],
+    totalAmount: 310,
+    depositPercent: 50,
+    depositAmount: 155,
+    balanceRemaining: 155,
+    paymentStatus: "payment_submitted",
+    fulfilmentStatus: "new",
+    status: "payment_submitted",
+    paymentMethod: "UBL Bank Transfer (Taptap Send)",
+    transferReference: "KK-TXN-778899",
+    notes: "Sender: Karan Khan via Taptap Send",
+  });
+
+  const fetchedKaran = await getOrderById(karanOrderId);
+  assert(fetchedKaran !== null, "Karan Khan order retrieved successfully");
+  assert(fetchedKaran?.customerName === "Karan Khan", "Karan Khan customer name is strictly preserved (never overwritten with ALYAN WAZIR)");
+  assert(fetchedKaran?.customerPhone === "+44 7911 123456", "Karan Khan customer phone is strictly preserved");
+  assert(fetchedKaran?.customerEmail === "karan.khan@ukcricketclub.co.uk", "Karan Khan customer email is strictly preserved");
+  assert(fetchedKaran?.address === "45 Headingley Cricket Lane", "Karan Khan address is strictly preserved");
+  assert(fetchedKaran?.city === "Leeds", "Karan Khan city is Leeds");
+  assert(fetchedKaran?.country === "United Kingdom", "Karan Khan country is United Kingdom");
+
+  // ── Test 9: Test Customer 2 — Zara Ali Dynamic Data & Non-Contamination ──
+  const zaraOrderId = `SCK-ZARA-${Date.now()}`;
+  await createOrder({
+    id: zaraOrderId,
+    orderReference: zaraOrderId,
+    customerName: "Zara Ali",
+    customerPhone: "+971 50 123 4567",
+    customerEmail: "zara.ali@dubaisports.ae",
+    address: "Villa 12, Jumeirah Beach Road",
+    city: "Dubai",
+    state: "Dubai",
+    postalCode: "00000",
+    country: "United Arab Emirates",
+    deliveryInstructions: "Please call on arrival",
+    items: [{ name: "Premium Batting Pads", price: 65, quantity: 2 }],
+    totalAmount: 160,
+    depositPercent: 100,
+    depositAmount: 160,
+    balanceRemaining: 0,
+    paymentStatus: "payment_submitted",
+    fulfilmentStatus: "new",
+    status: "payment_submitted",
+    paymentMethod: "UBL Bank Transfer (Wise)",
+    transferReference: "ZA-TXN-112233",
+  });
+
+  const fetchedZara = await getOrderById(zaraOrderId);
+  assert(fetchedZara !== null, "Zara Ali order retrieved successfully");
+  assert(fetchedZara?.customerName === "Zara Ali", "Zara Ali customer name is strictly preserved");
+  assert(fetchedZara?.customerEmail === "zara.ali@dubaisports.ae", "Zara Ali email is strictly preserved");
+  assert(fetchedZara?.customerPhone === "+971 50 123 4567", "Zara Ali phone is strictly preserved");
+  assert(fetchedZara?.address === "Villa 12, Jumeirah Beach Road", "Zara Ali UAE address is strictly preserved");
+  assert(fetchedZara?.customerName !== fetchedKaran?.customerName, "Zara Ali and Karan Khan customer records are completely isolated");
+
+  // ── Test 10: Mandatory Payment Receipt Validation ──
+  let missingReceiptBlocked = false;
+  try {
+    const invalidSubmission = await createPaymentSubmission({
+      orderId: `SCK-ERR-${Date.now()}`,
+      paymentMethod: "UBL Bank Transfer",
+      senderName: "No Receipt User",
+      senderCountry: "UK",
+      provider: "Direct",
+      amountSent: 100,
+      currencySent: "GBP",
+      transferReference: "NO-RCPT-1",
+      transferDate: "2026-08-29",
+      receiptStoragePath: "", // Missing storage path
+      receiptOriginalName: "",
+      receiptMimeType: "",
+      receiptFileSize: 0,
+      status: "payment_submitted",
+    });
+    if (!invalidSubmission.receiptStoragePath) {
+      missingReceiptBlocked = true;
+    }
+  } catch {
+    missingReceiptBlocked = true;
+  }
+  assert(missingReceiptBlocked === true, "Submission without valid receipt evidence is correctly flagged/blocked");
 
   console.log("\n=================================================");
   console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

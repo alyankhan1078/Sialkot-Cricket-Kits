@@ -1020,7 +1020,7 @@ export async function getOrders(options?: {
   startDate?: string;
   endDate?: string;
 }): Promise<DBOrder[]> {
-  let list = memoryOrders.map(sanitizeOrderRecord);
+  let list = [...memoryOrders];
 
   if (options?.status && options.status !== "all") {
     list = list.filter((o) => o.status === options.status);
@@ -1052,15 +1052,15 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  const found = memoryOrders.find((o) => o.id === id || o.orderReference === id);
-  return found ? sanitizeOrderRecord(found) : null;
+  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
 }
 
 export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
-  const found = memoryOrders.find(
-    (o) => o.providerTrackerId === trackerId || o.id === trackerId || o.orderReference === trackerId
+  return (
+    memoryOrders.find(
+      (o) => o.providerTrackerId === trackerId || o.id === trackerId || o.orderReference === trackerId
+    ) || null
   );
-  return found ? sanitizeOrderRecord(found) : null;
 }
 
 export async function createOrder(

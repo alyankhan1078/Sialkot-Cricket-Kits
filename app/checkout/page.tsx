@@ -93,7 +93,6 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [sendProofViaWhatsApp, setSendProofViaWhatsApp] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,7 +145,6 @@ export default function CheckoutPage() {
     }
 
     setReceiptFile(file);
-    setSendProofViaWhatsApp(false);
 
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -163,8 +161,8 @@ export default function CheckoutPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Submit manual order with payment evidence
-  const handleSubmitManualOrder = async (e?: React.FormEvent, isDirectWhatsApp: boolean = false) => {
+  // Submit manual order with mandatory payment evidence
+  const handleSubmitManualOrder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (lines.length === 0) {
@@ -181,6 +179,11 @@ export default function CheckoutPage() {
     if (!formData.phone.trim() && !formData.email.trim()) {
       setErrorMessage("Please enter your WhatsApp / Phone number or Email.");
       setStep(1);
+      return;
+    }
+
+    if (!receiptFile) {
+      setErrorMessage("Please upload your payment receipt screenshot or document before submitting your order.");
       return;
     }
 
@@ -222,11 +225,7 @@ export default function CheckoutPage() {
       submitFormData.append("transferDate", evidenceData.transferDate || new Date().toISOString().split("T")[0]);
       submitFormData.append("transferReference", (evidenceData.transferReference || provisionalRef).trim());
       submitFormData.append("customerNote", evidenceData.customerNote.trim());
-      submitFormData.append("sendViaWhatsApp", isDirectWhatsApp || !receiptFile ? "true" : "false");
-
-      if (receiptFile) {
-        submitFormData.append("receipt", receiptFile);
-      }
+      submitFormData.append("receipt", receiptFile);
 
       const res = await fetch("/api/checkout/submit-manual-order", {
         method: "POST",
@@ -237,17 +236,10 @@ export default function CheckoutPage() {
 
       if (data.success && data.orderId) {
         clearCart();
-
-        // If user submitted without receipt file, open WhatsApp immediately
-        if (isDirectWhatsApp || !receiptFile) {
-          const waMsg = `Hello Sialkot Cricket Kits,\n\nI have submitted Order #${data.orderId}.\nCustomer: ${formData.fullName}\nTotal: £${grandTotal}\nAmount Due: £${depositDueNow}\nRef: ${evidenceData.transferReference || provisionalRef}\n\nI am attaching my payment receipt screenshot here. Please verify.`;
-          window.open(whatsappUrl(waMsg), "_blank");
-        }
-
         router.push(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
       } else {
         setErrorMessage(
-          data.error || "Failed to submit order. Please try again or reach out on WhatsApp."
+          data.error || "Failed to submit order. Please check your uploaded receipt and try again."
         );
         setIsSubmitting(false);
       }
@@ -1001,73 +993,54 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* WhatsApp alternative upload option */}
-                <div style={{ marginBottom: 20 }}>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      cursor: "pointer",
-                      fontSize: ".82rem",
-                      color: "#94a3b8",
-                      lineHeight: 1.4,
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--border)",
-                      padding: "10px 14px",
-                      borderRadius: 8,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={sendProofViaWhatsApp}
-                      onChange={(e) => {
-                        setSendProofViaWhatsApp(e.target.checked);
-                        if (e.target.checked) setReceiptFile(null);
-                      }}
-                      style={{ accentColor: "#22c55e", width: 16, height: 16 }}
-                    />
-                    <span>
-                      💬 <em>I prefer to send my payment screenshot directly via WhatsApp after submitting order</em>
-                    </span>
-                  </label>
-                </div>
-
                 {errorMessage && (
                   <div className="checkout-error" role="alert" style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid #ef4444", borderRadius: 8, color: "#f87171", fontSize: ".84rem" }}>
                     {errorMessage}
                   </div>
                 )}
 
-                {/* Primary Submit Button (Always clickable) */}
+                {/* Mandatory Payment Receipt Submit Button */}
                 <button
                   type="button"
-                  onClick={() => handleSubmitManualOrder(undefined, sendProofViaWhatsApp || !receiptFile)}
+                  onClick={() => handleSubmitManualOrder()}
                   className="checkout-primary-cta"
-                  style={{ width: "100%", opacity: isSubmitting ? 0.75 : 1, cursor: isSubmitting ? "wait" : "pointer" }}
-                  disabled={isSubmitting}
+                  style={{
+                    width: "100%",
+                    opacity: !receiptFile || isSubmitting ? 0.7 : 1,
+                    cursor: !receiptFile ? "not-allowed" : isSubmitting ? "wait" : "pointer",
+                    background: !receiptFile
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
+                    color: !receiptFile ? "var(--text-muted)" : "#000",
+                    border: !receiptFile ? "1px solid var(--border)" : "none",
+                    fontWeight: 800,
+                    padding: "14px 20px",
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    fontSize: ".92rem",
+                    transition: "all .2s ease",
+                  }}
+                  disabled={!receiptFile || isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                      Submitting Order for Verification…
+                      <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+                      Uploading Receipt &amp; Submitting Order…
+                    </>
+                  ) : !receiptFile ? (
+                    <>
+                      <Lock size={16} />
+                      Upload Payment Receipt to Continue
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 size={16} />
-                      Submit Order for Payment Verification
+                      <CheckCircle2 size={18} />
+                      Submit Order for Verification
                     </>
                   )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSubmitManualOrder(undefined, true)}
-                  className="checkout-secondary-cta"
-                  style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80" }}
-                  disabled={isSubmitting}
-                >
-                  <MessageCircle size={16} /> Submit Order &amp; Confirm on WhatsApp
                 </button>
               </div>
             )}

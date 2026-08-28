@@ -76,7 +76,6 @@ export async function POST(request: Request) {
     let transferReference = (formData.get("transferReference") as string)?.trim();
     const customerNote = (formData.get("customerNote") as string)?.trim();
     const receiptFile = formData.get("receipt") as File | null;
-    const sendViaWhatsApp = formData.get("sendViaWhatsApp") === "true";
 
     // ── Input Validation ──
     if (!customerName) {
@@ -86,6 +85,32 @@ export async function POST(request: Request) {
     if (!customerPhone && !customerEmail) {
       return NextResponse.json(
         { success: false, error: "Please provide a valid WhatsApp/phone number or email." },
+        { status: 400 }
+      );
+    }
+
+    // ── Mandatory Payment Receipt Validation ──
+    if (!receiptFile || receiptFile.size === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A valid payment receipt screenshot or document is required. Please upload your transfer receipt to complete order submission.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { success: false, error: "Receipt file size exceeds the 8 MB limit. Please upload a smaller image or PDF." },
+        { status: 400 }
+      );
+    }
+
+    const fileExt = path.extname(receiptFile.name).toLowerCase();
+    if (!ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) || !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF." },
         { status: 400 }
       );
     }
@@ -153,58 +178,35 @@ export async function POST(request: Request) {
       : `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
     if (!transferReference) {
-      transferReference = sendViaWhatsApp ? `WA-${orderId}` : orderId;
+      transferReference = orderId;
     }
 
-    // ── Handle Receipt File ──
+    // ── Store Receipt File Securely ──
+    const fileBytes = await receiptFile.arrayBuffer();
+    const fileBuffer = Buffer.from(fileBytes);
+
+    if (!validateFileMagicBytes(fileBuffer, receiptFile.type)) {
+      return NextResponse.json(
+        { success: false, error: "File content does not match the expected image or PDF format." },
+        { status: 400 }
+      );
+    }
+
+    const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
     let receiptStoragePath = "";
-    let receiptOriginalName = "WhatsApp Submission Pending";
-    let receiptMimeType = "image/jpeg";
-    let receiptFileSize = 0;
-
-    if (receiptFile && receiptFile.size > 0) {
-      if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { success: false, error: "Receipt file size exceeds the 8 MB limit. Please upload a smaller image or PDF." },
-          { status: 400 }
-        );
-      }
-
-      const fileExt = path.extname(receiptFile.name).toLowerCase();
-      if (!ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) || !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)) {
-        return NextResponse.json(
-          { success: false, error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF." },
-          { status: 400 }
-        );
-      }
-
-      const fileBytes = await receiptFile.arrayBuffer();
-      const fileBuffer = Buffer.from(fileBytes);
-
-      if (!validateFileMagicBytes(fileBuffer, receiptFile.type)) {
-        return NextResponse.json(
-          { success: false, error: "File content does not match the expected image or PDF format." },
-          { status: 400 }
-        );
-      }
-
-      const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
-      try {
-        const privateDir = path.join(process.cwd(), "private_receipts");
-        await fs.mkdir(privateDir, { recursive: true });
-        const fullDiskPath = path.join(privateDir, safeUniqueName);
-        await fs.writeFile(fullDiskPath, fileBuffer);
-        receiptStoragePath = safeUniqueName;
-      } catch {
-        receiptStoragePath = `data:${receiptFile.type};base64,${fileBuffer.toString("base64")}`;
-      }
-
-      receiptOriginalName = receiptFile.name;
-      receiptMimeType = receiptFile.type;
-      receiptFileSize = receiptFile.size;
-    } else {
-      receiptStoragePath = "WhatsApp Evidence Verification Pending";
+    try {
+      const privateDir = path.join(process.cwd(), "private_receipts");
+      await fs.mkdir(privateDir, { recursive: true });
+      const fullDiskPath = path.join(privateDir, safeUniqueName);
+      await fs.writeFile(fullDiskPath, fileBuffer);
+      receiptStoragePath = safeUniqueName;
+    } catch {
+      receiptStoragePath = `data:${receiptFile.type};base64,${fileBuffer.toString("base64")}`;
     }
+
+    const receiptOriginalName = receiptFile.name;
+    const receiptMimeType = receiptFile.type;
+    const receiptFileSize = receiptFile.size;
 
     // Check for duplicate transfer reference across previous submissions
     const duplicateCheck = await checkDuplicateTransferReference(transferReference);
@@ -215,7 +217,7 @@ export async function POST(request: Request) {
       `Beneficiary Target: ALYAN WAZIR (UBL Bank)`,
       `Sender: ${senderName} (${senderCountry}) via ${provider}`,
       `Transfer Reference: ${transferReference}`,
-      sendViaWhatsApp ? `📱 [Customer sending receipt screenshot via WhatsApp]` : "",
+      `Payment Evidence: Attached & Uploaded to Private Storage (${receiptOriginalName})`,
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
         : "",
