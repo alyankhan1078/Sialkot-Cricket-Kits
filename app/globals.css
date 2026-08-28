@@ -1163,8 +1163,13 @@ h1, h2, h3, p { margin-top: 0; }
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: right center;
+    object-position: center center;
     display: block;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    filter: contrast(1.08) brightness(1.03) saturate(1.08);
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .cinematic-hero-overlay {
@@ -1172,11 +1177,11 @@ h1, h2, h3, p { margin-top: 0; }
     inset: 0;
     background: linear-gradient(
       90deg,
-      rgba(8, 9, 12, 0.96) 0%,
-      rgba(8, 9, 12, 0.90) 30%,
-      rgba(8, 9, 12, 0.65) 45%,
-      rgba(8, 9, 12, 0.20) 58%,
-      rgba(8, 9, 12, 0) 72%
+      rgba(8, 9, 12, 0.94) 0%,
+      rgba(8, 9, 12, 0.86) 28%,
+      rgba(8, 9, 12, 0.50) 45%,
+      rgba(8, 9, 12, 0.12) 60%,
+      rgba(8, 9, 12, 0) 75%
     );
     pointer-events: none;
   }
@@ -1210,8 +1215,8 @@ h1, h2, h3, p { margin-top: 0; }
   .cinematic-hero-media {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 10;
-    max-height: 280px;
+    aspect-ratio: 16 / 9;
+    max-height: 320px;
     overflow: hidden;
     background: #08090c;
   }
@@ -1226,8 +1231,11 @@ h1, h2, h3, p { margin-top: 0; }
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 85% center;
+    object-position: center center;
     display: block;
+    image-rendering: -webkit-optimize-contrast;
+    filter: contrast(1.08) brightness(1.03) saturate(1.08);
+    transform: translateZ(0);
   }
 
   .cinematic-hero-overlay {
