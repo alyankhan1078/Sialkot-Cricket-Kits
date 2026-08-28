@@ -394,37 +394,9 @@ export function ShopClient() {
           <h1 style={{ fontSize: "clamp(1.7rem, 3.5vw, 3rem)", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-.03em", lineHeight: 1.15, textTransform: "uppercase" }}>
             Shop Cricket Equipment.
           </h1>
-          <p style={{ color: "#cbd5e1", fontSize: ".95rem", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 600 }}>
+          <p style={{ color: "#cbd5e1", fontSize: ".95rem", lineHeight: 1.6, margin: "0", maxWidth: 600 }}>
             100+ championship match-grade articles handcrafted in Sialkot. Express tracked courier to UK, USA, Australia, New Zealand, Europe &amp; Pakistan.
           </p>
-          {/* Compact filter badges — on desktop hero */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }} className="shop-hero-badges">
-            {[
-              { label: "Grade 1+ English Willow", cat: "Grade 1+ English Willow", icon: <Award size={14} color="#f2a928" /> },
-              { label: "Tracked Express Courier", cat: null, icon: <Truck size={14} color="#60a5fa" /> },
-              { label: "Live Video Ping Demo", cat: "Bonafide Bats", icon: <Video size={14} color="#4ade80" /> },
-              { label: "Flexible Deposit", cat: null, icon: <ShieldCheck size={14} color="#f2a928" /> },
-            ].map(({ label, cat, icon }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  if (cat) { setCategory(cat); setQuery(""); }
-                  document.getElementById("catalogue-products")?.scrollIntoView({ behavior: "smooth" });
-                }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  minHeight: 40, background: "rgba(255,255,255,.07)",
-                  border: "1px solid rgba(255,255,255,.15)",
-                  backdropFilter: "blur(8px)", padding: "7px 13px",
-                  borderRadius: 8, fontSize: ".78rem", color: "#ffffff",
-                  cursor: "pointer", transition: "all .2s ease", fontWeight: 600,
-                }}
-              >
-                {icon} {label}
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 
