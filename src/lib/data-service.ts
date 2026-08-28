@@ -233,6 +233,10 @@ export interface DBOrder {
   providerTrackerId?: string;
   transactionRef?: string;
   webhookEventId?: string;
+  policiesAccepted?: boolean;
+  policyVersion?: string;
+  policyAcceptedAt?: string;
+  policyDocumentHash?: string;
   notes?: string;
   paidAt?: string;
   createdAt: string;

@@ -662,6 +662,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <h3>Explore &amp; Policies</h3>
           <Link href="/shop">Shop equipment</Link>
           <Link href="/custom-bat">Custom bat service</Link>
+          <Link href="/policies/international-agreement" style={{ color: "#f2a928", fontWeight: 600 }}>
+            🛡️ International Agreement
+          </Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/payment">Payment guidance</Link>
           <Link href="/privacy">Privacy Policy</Link>

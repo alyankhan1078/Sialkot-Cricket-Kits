@@ -89,6 +89,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Policy Agreement Acceptance Validation ──
+    const policiesAccepted = formData.get("policiesAccepted") === "true";
+    const policyVersion = (formData.get("policyVersion") as string)?.trim() || "1.0";
+    const policyAcceptedAt = new Date().toISOString();
+
+    if (!policiesAccepted) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You must read and accept the International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Agreement before submitting your order.",
+        },
+        { status: 400 }
+      );
+    }
+
     // ── Mandatory Payment Receipt Validation ──
     if (!receiptFile || receiptFile.size === 0) {
       return NextResponse.json(
@@ -218,6 +233,7 @@ export async function POST(request: Request) {
       `Sender: ${senderName} (${senderCountry}) via ${provider}`,
       `Transfer Reference: ${transferReference}`,
       `Payment Evidence: Attached & Uploaded to Private Storage (${receiptOriginalName})`,
+      `Policy Agreement: Version ${policyVersion} Accepted on ${policyAcceptedAt}`,
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
         : "",
@@ -249,6 +265,9 @@ export async function POST(request: Request) {
       amountPaid: 0, // Never set as paid upon upload!
       balanceRemaining,
       currency: "GBP",
+      policiesAccepted: true,
+      policyVersion,
+      policyAcceptedAt,
       paymentStatus: "payment_submitted",
       fulfilmentStatus: "new",
       status: "payment_submitted", // Customer-facing: "Payment Under Verification"

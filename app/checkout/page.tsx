@@ -40,7 +40,10 @@ import {
   UBL_CARD_GATEWAY_ENABLED,
   MAX_RECEIPT_FILE_SIZE_BYTES,
   ALLOWED_RECEIPT_EXTENSIONS,
+  ALLOWED_RECEIPT_MIME_TYPES,
 } from "@/src/lib/payment-config";
+import PolicyAgreementModal from "@/src/components/PolicyAgreementModal";
+import { POLICY_METADATA } from "@/src/lib/policy-agreement";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -89,6 +92,8 @@ export default function CheckoutPage() {
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [policiesAccepted, setPoliciesAccepted] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -161,7 +166,7 @@ export default function CheckoutPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Submit manual order with mandatory payment evidence
+  // Submit manual order with mandatory payment evidence and policy agreement
   const handleSubmitManualOrder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -187,6 +192,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!policiesAccepted) {
+      setErrorMessage("Please read and accept the International Shipping, Returns & Product Agreement before submitting your order.");
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -202,6 +212,8 @@ export default function CheckoutPage() {
       submitFormData.append("country", formData.country);
       submitFormData.append("deliveryInstructions", formData.deliveryInstructions.trim());
       submitFormData.append("depositPercent", String(depositPercent));
+      submitFormData.append("policiesAccepted", "true");
+      submitFormData.append("policyVersion", POLICY_METADATA.version);
 
       submitFormData.append(
         "items",
@@ -993,55 +1005,188 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {errorMessage && (
-                  <div className="checkout-error" role="alert" style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid #ef4444", borderRadius: 8, color: "#f87171", fontSize: ".84rem" }}>
-                    {errorMessage}
-                  </div>
-                )}
-
-                {/* Mandatory Payment Receipt Submit Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSubmitManualOrder()}
-                  className="checkout-primary-cta"
+                {/* ── CHANGE 3: Clear Policy Agreement Section ── */}
+                <div
                   style={{
-                    width: "100%",
-                    opacity: !receiptFile || isSubmitting ? 0.7 : 1,
-                    cursor: !receiptFile ? "not-allowed" : isSubmitting ? "wait" : "pointer",
-                    background: !receiptFile
-                      ? "rgba(255, 255, 255, 0.08)"
-                      : "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
-                    color: !receiptFile ? "var(--text-muted)" : "#000",
-                    border: !receiptFile ? "1px solid var(--border)" : "none",
-                    fontWeight: 800,
-                    padding: "14px 20px",
-                    borderRadius: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    fontSize: ".92rem",
-                    transition: "all .2s ease",
+                    marginTop: 22,
+                    marginBottom: 16,
+                    background: "rgba(0, 0, 0, 0.4)",
+                    border: policiesAccepted
+                      ? "1.5px solid rgba(34, 197, 94, 0.6)"
+                      : "1.5px solid rgba(242, 169, 40, 0.35)",
+                    borderRadius: 12,
+                    padding: "16px 18px",
+                    transition: "border-color .2s ease",
                   }}
-                  disabled={!receiptFile || isSubmitting}
                 >
-                  {isSubmitting ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".76rem", fontWeight: 700, color: "#f2a928", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                      <ShieldCheck size={16} /> Commercial &amp; Policy Agreement
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPolicyModalOpen(true)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#38bdf8",
+                        fontSize: ".82rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>Read International Shipping, Returns &amp; Product Agreement</span>
+                      <span>↗</span>
+                    </button>
+                  </div>
+
+                  {/* Native Accessible Checkbox with Blue Tick Indicator */}
+                  <label
+                    htmlFor="policy-agreement-checkbox"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      cursor: "pointer",
+                      fontSize: ".84rem",
+                      color: "#f1f5f9",
+                      lineHeight: 1.45,
+                      userSelect: "none",
+                    }}
+                  >
+                    <input
+                      id="policy-agreement-checkbox"
+                      type="checkbox"
+                      checked={policiesAccepted}
+                      onChange={(e) => setPoliciesAccepted(e.target.checked)}
+                      style={{
+                        accentColor: "#2563eb",
+                        width: 18,
+                        height: 18,
+                        marginTop: 2,
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>
+                      I confirm that I have read and agree to the <strong>International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Policies</strong>.
+                    </span>
+                  </label>
+
+                  <div style={{ fontSize: ".74rem", color: "#94a3b8", marginTop: 8, paddingLeft: 30 }}>
+                    🔒 Your order cannot be submitted until the payment receipt is uploaded and this agreement is accepted.
+                  </div>
+                </div>
+
+                {/* ── Dynamic User Guidance Box ── */}
+                {(() => {
+                  const canProceed = Boolean(receiptFile) && policiesAccepted === true && !isSubmitting;
+                  return (
                     <>
-                      <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-                      Uploading Receipt &amp; Submitting Order…
+                      <div
+                        style={{
+                          marginBottom: 16,
+                          padding: "10px 14px",
+                          borderRadius: 8,
+                          fontSize: ".82rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          background: canProceed
+                            ? "rgba(34, 197, 94, 0.12)"
+                            : !receiptFile && !policiesAccepted
+                            ? "rgba(255, 255, 255, 0.04)"
+                            : "rgba(242, 169, 40, 0.12)",
+                          border: canProceed
+                            ? "1px solid rgba(34, 197, 94, 0.35)"
+                            : !receiptFile && !policiesAccepted
+                            ? "1px solid var(--border)"
+                            : "1px solid rgba(242, 169, 40, 0.35)",
+                          color: canProceed
+                            ? "#4ade80"
+                            : !receiptFile && !policiesAccepted
+                            ? "#94a3b8"
+                            : "#fbbf24",
+                        }}
+                      >
+                        {canProceed ? (
+                          <>
+                            <CheckCircle2 size={16} color="#22c55e" />
+                            <span>Your order is ready to submit for verification.</span>
+                          </>
+                        ) : !receiptFile && !policiesAccepted ? (
+                          <>
+                            <Info size={16} color="#94a3b8" />
+                            <span>Upload your payment receipt and accept the policies to continue.</span>
+                          </>
+                        ) : receiptFile && !policiesAccepted ? (
+                          <>
+                            <AlertTriangle size={16} color="#fbbf24" />
+                            <span>Please read and accept the order policies to continue.</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud size={16} color="#fbbf24" />
+                            <span>Please upload your payment receipt to continue.</span>
+                          </>
+                        )}
+                      </div>
+
+                      {errorMessage && (
+                        <div className="checkout-error" role="alert" style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid #ef4444", borderRadius: 8, color: "#f87171", fontSize: ".84rem" }}>
+                          {errorMessage}
+                        </div>
+                      )}
+
+                      {/* ── CHANGE 1: Always Displayed Proceed Button ── */}
+                      <button
+                        type="button"
+                        onClick={() => handleSubmitManualOrder()}
+                        disabled={!canProceed}
+                        aria-disabled={!canProceed}
+                        className="checkout-primary-cta"
+                        style={{
+                          width: "100%",
+                          opacity: canProceed ? 1 : 0.65,
+                          cursor: canProceed ? "pointer" : isSubmitting ? "wait" : "not-allowed",
+                          background: canProceed
+                            ? "linear-gradient(135deg, #f2a928 0%, #d97706 100%)"
+                            : "#1e293b",
+                          color: canProceed ? "#000" : "#94a3b8",
+                          border: canProceed ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
+                          fontWeight: 800,
+                          padding: "15px 22px",
+                          borderRadius: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          fontSize: ".96rem",
+                          letterSpacing: ".02em",
+                          boxShadow: canProceed ? "0 6px 22px rgba(242, 169, 40, 0.35)" : "none",
+                          transition: "all .2s ease",
+                        }}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+                            Uploading Receipt &amp; Submitting Order…
+                          </>
+                        ) : (
+                          <>
+                            {canProceed ? <CheckCircle2 size={18} /> : <Lock size={16} />}
+                            Proceed for Verification
+                          </>
+                        )}
+                      </button>
                     </>
-                  ) : !receiptFile ? (
-                    <>
-                      <Lock size={16} />
-                      Upload Payment Receipt to Continue
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={18} />
-                      Submit Order for Verification
-                    </>
-                  )}
-                </button>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1111,6 +1256,14 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Policy Agreement Modal */}
+      <PolicyAgreementModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        onAccept={() => setPoliciesAccepted(true)}
+        isAccepted={policiesAccepted}
+      />
     </main>
   );
 }

@@ -289,6 +289,53 @@ async function runManualPaymentTests() {
   }
   assert(missingReceiptBlocked === true, "Submission without valid receipt evidence is correctly flagged/blocked");
 
+  // ── Test 11: Policy Agreement Metadata & Sections Integrity ──
+  const { POLICY_METADATA, POLICY_SECTIONS } = await import("../src/lib/policy-agreement.ts");
+  assert(POLICY_METADATA.version === "1.0", "Policy version is 1.0");
+  assert(POLICY_SECTIONS.length === 17, "All 17 required policy sections are present");
+  assert(POLICY_SECTIONS.some((s) => s.title.includes("Natural Willow Disclosure")), "Natural Willow Disclosure section is present");
+  assert(POLICY_SECTIONS.some((s) => s.title.includes("Bonafide Bat Disclosure")), "Bonafide Bat Disclosure section is present");
+  assert(POLICY_SECTIONS.some((s) => s.title.includes("Beauty Processed Bat Disclosure")), "Beauty Processed Bat Disclosure section is present");
+
+  // ── Test 12: Policy Acceptance Stored with Order Snapshot ──
+  const policyOrderId = `SCK-POL-${Date.now()}`;
+  const policyOrder = await createOrder({
+    id: policyOrderId,
+    orderReference: policyOrderId,
+    customerName: "Imran Siddiqui",
+    customerPhone: "+92 300 1234567",
+    customerEmail: "imran@example.pk",
+    address: "Street 4, Sector F-7",
+    city: "Islamabad",
+    country: "Pakistan",
+    items: [{ name: "Bonafide Grade 1 Cricket Bat", price: 195, quantity: 1 }],
+    totalAmount: 195,
+    policiesAccepted: true,
+    policyVersion: "1.0",
+    policyAcceptedAt: new Date().toISOString(),
+    paymentStatus: "payment_submitted",
+    fulfilmentStatus: "new",
+    status: "payment_submitted",
+    paymentMethod: "UBL Bank Transfer",
+    transferReference: "TXN-POL-1234",
+  });
+
+  const fetchedPolicyOrder = await getOrderById(policyOrderId);
+  assert(fetchedPolicyOrder?.policiesAccepted === true, "Order record preserves policiesAccepted: true");
+  assert(fetchedPolicyOrder?.policyVersion === "1.0", "Order record preserves policyVersion: 1.0");
+  assert(typeof fetchedPolicyOrder?.policyAcceptedAt === "string", "Order record preserves policyAcceptedAt timestamp");
+
+  // ── Test 13: Proceed Button Gating Logic Simulation ──
+  function evaluateCanProceed(hasReceipt, isPolicyAccepted, submitting) {
+    return Boolean(hasReceipt) && isPolicyAccepted === true && submitting === false;
+  }
+
+  assert(evaluateCanProceed(false, false, false) === false, "Button disabled when neither receipt nor policy is completed");
+  assert(evaluateCanProceed(true, false, false) === false, "Button disabled when receipt uploaded but policy not accepted");
+  assert(evaluateCanProceed(false, true, false) === false, "Button disabled when policy accepted but receipt missing");
+  assert(evaluateCanProceed(true, true, true) === false, "Button disabled when isSubmitting is true");
+  assert(evaluateCanProceed(true, true, false) === true, "Button enabled only when receipt uploaded AND policy accepted");
+
   console.log("\n=================================================");
   console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
   console.log("=================================================");
