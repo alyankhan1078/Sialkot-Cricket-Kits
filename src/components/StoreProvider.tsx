@@ -499,18 +499,19 @@ function CartDrawer() {
                 <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--orange)" }}>{formatPrice(depositDueNow)}</span>
               </div>
 
-              {/* Action Buttons: Checkout vs Continue Shopping */}
+              {/* Action Buttons: Continue Shopping & Proceed to Checkout */}
               <div className="cart-action-buttons-group">
-                {/* 1. Continue Shopping / Add More Products (Prominent secondary) */}
+                {/* 1. Continue Shopping / Add More (Colored matching CTA) */}
                 <button
                   type="button"
-                  className="cart-continue-shopping-btn"
+                  className="cart-continue-shopping-cta"
                   onClick={() => {
                     setCartOpen(false);
                     clearLastAddedItem();
                   }}
                 >
-                  <span>← Continue Shopping / Add More</span>
+                  <ShoppingBag size={16} />
+                  <span>Continue Shopping &amp; Add More</span>
                 </button>
 
                 {/* 2. Proceed to Checkout (Primary) */}
@@ -522,7 +523,7 @@ function CartDrawer() {
                     clearLastAddedItem();
                   }}
                 >
-                  <Lock size={15} />
+                  <Lock size={16} />
                   <span>Proceed to Checkout</span>
                 </Link>
               </div>
