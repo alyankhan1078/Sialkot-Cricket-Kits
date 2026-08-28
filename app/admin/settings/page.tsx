@@ -28,6 +28,9 @@ export default function AdminSettingsPage() {
     businessName: "Sialkot Cricket Kits",
     announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
     catalogueUrl: "/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf",
+    instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
+    facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
+    tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",
 
     // Bank details (UBL)
     bankName: "United Bank Limited (UBL)",
@@ -332,6 +335,41 @@ export default function AdminSettingsPage() {
               value={settings.catalogueUrl}
               onChange={(e) => setSettings({ ...settings, catalogueUrl: e.target.value })}
             />
+          </div>
+
+          <div style={{ margin: "1.25rem 0 0.5rem", borderTop: "1px solid var(--adm-border)", paddingTop: "1.25rem" }}>
+            <h3 style={{ fontSize: "1rem", color: "#fff", margin: "0 0 0.85rem" }}>Official Social Media Channels</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Instagram Profile URL</label>
+                <input
+                  className="admin-input"
+                  placeholder="https://www.instagram.com/..."
+                  value={settings.instagramUrl || ""}
+                  onChange={(e) => setSettings({ ...settings, instagramUrl: e.target.value })}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Facebook Page URL</label>
+                <input
+                  className="admin-input"
+                  placeholder="https://www.facebook.com/..."
+                  value={settings.facebookUrl || ""}
+                  onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>TikTok Profile URL</label>
+                <input
+                  className="admin-input"
+                  placeholder="https://www.tiktok.com/@..."
+                  value={settings.tiktokUrl || ""}
+                  onChange={(e) => setSettings({ ...settings, tiktokUrl: e.target.value })}
+                />
+              </div>
+            </div>
           </div>
 
           <button

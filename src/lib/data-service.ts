@@ -98,6 +98,9 @@ export interface DBSettings extends DBPaymentSettings {
   businessName: string;
   announcementText: string;
   catalogueUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  tiktokUrl: string;
 }
 
 export interface DBEnquiry {
@@ -210,6 +213,9 @@ let memorySettings: DBSettings = {
   businessName: "Sialkot Cricket Kits",
   announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
   catalogueUrl: "/catalogue/Sialkot-Cricket-Kits-Catalogue-2026.pdf",
+  instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
+  facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
+  tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",
 
   // Bank details (UBL)
   bankName: "United Bank Limited (UBL)",

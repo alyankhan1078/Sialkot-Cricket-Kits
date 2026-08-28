@@ -19,10 +19,26 @@ import {
   Download,
   Flame,
   ArrowRight,
+  Instagram,
+  Facebook,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { categoryOrder } from "@/src/data/products";
+
+// TikTok SVG Icon component
+const TikTokIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    style={{ display: "inline-block", verticalAlign: "middle" }}
+  >
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.86 4.43c.004-.004.008-.007.012-.011.05-.05.097-.102.142-.156.09-.107.172-.22.247-.338.077-.123.143-.252.199-.387.057-.14.1-.284.13-.432V9.06a8.16 8.16 0 0 0 5-1.74v-.63z" />
+  </svg>
+);
 
 interface CatalogueItem {
   name: string;
@@ -102,6 +118,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     announcementText:
       "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
     catalogueUrl: "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf",
+    instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
+    facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
+    tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",
   });
   const drawerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -511,6 +530,44 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             >
               💬 Chat on WhatsApp
             </a>
+            <div className="mobile-drawer-socials">
+              <span className="mobile-drawer-social-label">Follow &amp; Watch Live Videos:</span>
+              <div className="mobile-drawer-social-icons">
+                <a
+                  href={settings.instagramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mobile-soc-icon insta"
+                  aria-label="Follow Sialkot Cricket Kits on Instagram"
+                  tabIndex={menuOpen ? 0 : -1}
+                >
+                  <Instagram size={17} />
+                  <span>Instagram</span>
+                </a>
+                <a
+                  href={settings.facebookUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mobile-soc-icon fb"
+                  aria-label="Like Sialkot Cricket Kits on Facebook"
+                  tabIndex={menuOpen ? 0 : -1}
+                >
+                  <Facebook size={17} />
+                  <span>Facebook</span>
+                </a>
+                <a
+                  href={settings.tiktokUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mobile-soc-icon tt"
+                  aria-label="Watch Sialkot Cricket Kits on TikTok"
+                  tabIndex={menuOpen ? 0 : -1}
+                >
+                  <TikTokIcon size={16} />
+                  <span>TikTok</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -520,31 +577,99 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       {/* Footer — white/light */}
       <footer className="site-footer">
         <div className="footer-brand">
-          <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="" />
+          <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits Logo" />
           <div>
             <strong>{settings.businessName}</strong>
             <span>Cricket equipment crafted in Sialkot</span>
           </div>
+          {/* Social Media Link Badges under Brand */}
+          <div className="footer-brand-socials">
+            <a
+              href={settings.instagramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="footer-soc-badge insta"
+              aria-label="Instagram: @sialkotcricketkits"
+              title="Instagram: @sialkotcricketkits"
+            >
+              <Instagram size={17} />
+              <span>Instagram</span>
+            </a>
+            <a
+              href={settings.facebookUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="footer-soc-badge fb"
+              aria-label="Facebook: Sialkot Cricket Kits"
+              title="Facebook: Sialkot Cricket Kits"
+            >
+              <Facebook size={17} />
+              <span>Facebook</span>
+            </a>
+            <a
+              href={settings.tiktokUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="footer-soc-badge tt"
+              aria-label="TikTok: @sialkotcricketkits"
+              title="TikTok: @sialkotcricketkits"
+            >
+              <TikTokIcon size={15} />
+              <span>TikTok</span>
+            </a>
+          </div>
         </div>
+
         <div>
           <h3>Explore</h3>
           <Link href="/shop">Shop equipment</Link>
           <Link href="/custom-bat">Custom bat service</Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/payment">Payment guidance</Link>
+          <a href={settings.catalogueUrl || "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf"} download>
+            2026 PDF Catalogue
+          </a>
         </div>
+
         <div>
-          <h3>Contact</h3>
+          <h3>Follow &amp; Watch</h3>
+          <p style={{ fontSize: ".76rem", color: "var(--text-muted)", marginBottom: ".25rem", lineHeight: "1.4" }}>
+            Live bat ping videos, grain inspection &amp; customer dispatches:
+          </p>
+          <a
+            href={settings.instagramUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="footer-social-text-link"
+          >
+            <Instagram size={14} className="social-subicon insta" />
+            <span>Instagram (@sialkotcricketkits)</span>
+          </a>
+          <a
+            href={settings.facebookUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="footer-social-text-link"
+          >
+            <Facebook size={14} className="social-subicon fb" />
+            <span>Facebook Page</span>
+          </a>
+          <a
+            href={settings.tiktokUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="footer-social-text-link"
+          >
+            <TikTokIcon size={14} />
+            <span>TikTok (@sialkotcricketkits)</span>
+          </a>
+        </div>
+
+        <div>
+          <h3>Contact &amp; Factory</h3>
           <a href={`tel:${settings.contactPhone.replace(/\s+/g, "")}`}>{settings.contactPhone}</a>
           <a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>
           <p style={{ whiteSpace: "pre-line" }}>{settings.factoryAddress}</p>
-        </div>
-        <div>
-          <h3>Order support</h3>
-          <p>
-            Ask for current stock, original pictures, bat specifications, live ping videos and
-            international shipping charges before payment.
-          </p>
           <a
             className="footer-cta"
             href={whatsappUrl("Hello Sialkot Cricket Kits, I would like to discuss an order.")}
@@ -554,6 +679,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             Start a WhatsApp enquiry →
           </a>
         </div>
+
         <p className="footer-legal">
           Prices are in British Pounds (£ / GBP), excluding delivery, and remain subject to stock and
           specification confirmation. Product names and trademarks belong to their respective owners. ©{" "}
