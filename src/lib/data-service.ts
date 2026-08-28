@@ -46,14 +46,12 @@ export interface DBFaq {
 }
 
 export interface DBPaymentSettings {
-  // Safepay Pakistan Hosted Checkout (Primary Gateway)
-  safepayApiKey: string;
-  safepaySecretKey: string;
-  safepayWebhookSecret: string;
-  safepayEnvironment: "sandbox" | "production";
-  safepayEnabled: boolean;
+  // UBL Bank Detail Verification Lock
+  ublDetailsVerifiedByAdmin: boolean;
+  ublDetailsVerifiedAt?: string;
+  ublDetailsVerifiedBy?: string;
 
-  // Bank Account (UBL Settlement)
+  // Bank Account (UBL Settlement & Beneficiary ALYAN WAZIR)
   bankName: string;
   accountTitle: string;
   accountNumber: string;
@@ -90,6 +88,13 @@ export interface DBPaymentSettings {
   moneygramEnabled: boolean;
   worldRemitEnabled: boolean;
   taptapSendEnabled: boolean;
+
+  // Safepay Pakistan (Hosted Gateway)
+  safepayApiKey: string;
+  safepaySecretKey: string;
+  safepayWebhookSecret: string;
+  safepayEnvironment: "sandbox" | "production";
+  safepayEnabled: boolean;
 
   // Stripe Card Processing (Secondary/Legacy)
   stripePublishableKey: string;
@@ -132,8 +137,25 @@ export interface OrderItem {
   quantity: number;
 }
 
-export type OrderPaymentStatus =
+export type PaymentStatus =
   | "awaiting_payment"
+  | "payment_submitted"
+  | "payment_verified"
+  | "payment_rejected"
+  | "payment_reupload_requested"
+  | "refunded";
+
+export type FulfilmentStatus =
+  | "new"
+  | "processing"
+  | "packed"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+// Backward compatibility alias
+export type OrderPaymentStatus =
+  | PaymentStatus
   | "deposit_paid"
   | "paid"
   | "completed"
@@ -144,6 +166,41 @@ export type OrderPaymentStatus =
   | "shipping_quote_required"
   | "cancelled";
 
+export interface DBPaymentSubmission {
+  id: string;
+  orderId: string;
+  paymentMethod: string;
+  senderName: string;
+  senderCountry: string;
+  provider: string;
+  amountSent: number;
+  currencySent: string;
+  transferReference: string;
+  transferDate: string;
+  receiptStoragePath: string;
+  receiptOriginalName: string;
+  receiptMimeType: string;
+  receiptFileSize: number;
+  status: PaymentStatus;
+  customerNote?: string;
+  rejectionReason?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DBPaymentStatusHistory {
+  id: string;
+  paymentSubmissionId: string;
+  orderId: string;
+  oldStatus: PaymentStatus;
+  newStatus: PaymentStatus;
+  changedBy: string;
+  internalNote?: string;
+  createdAt: string;
+}
+
 export interface DBOrder {
   id: string;
   orderReference?: string;
@@ -151,6 +208,11 @@ export interface DBOrder {
   customerPhone?: string;
   customerEmail?: string;
   country: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  deliveryInstructions?: string;
   items: OrderItem[];
   subtotal?: number;
   shippingFee?: number;
@@ -161,9 +223,13 @@ export interface DBOrder {
   balanceRemaining?: number;
   currency?: string;
   amountInPkr?: number;
-  status: OrderPaymentStatus;
+  paymentStatus?: PaymentStatus;
+  fulfilmentStatus?: FulfilmentStatus;
+  status: OrderPaymentStatus; // Synced customer-facing status
   paymentMethod: string;
-  paymentProvider?: "safepay" | "stripe" | "bank" | "wallet" | "manual" | string;
+  paymentProvider?: "ubl_bank" | "remittance" | "safepay" | "stripe" | "cod" | "manual" | string;
+  paymentSubmissionId?: string;
+  transferReference?: string;
   providerTrackerId?: string;
   transactionRef?: string;
   webhookEventId?: string;
@@ -256,6 +322,11 @@ let memorySettings: DBSettings = {
   safepayWebhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET || "",
   safepayEnvironment: (process.env.SAFEPAY_ENVIRONMENT as any) || "sandbox",
   safepayEnabled: true,
+
+  // UBL Bank Detail Verification Lock
+  ublDetailsVerifiedByAdmin: true,
+  ublDetailsVerifiedAt: new Date().toISOString(),
+  ublDetailsVerifiedBy: "Administrator",
 
   // Bank details (UBL)
   bankName: "United Bank Limited (UBL)",
@@ -952,6 +1023,10 @@ export async function createOrder(
   const newOrder: DBOrder = {
     ...data,
     id,
+    orderReference: data.orderReference || id,
+    paymentStatus: data.paymentStatus || "awaiting_payment",
+    fulfilmentStatus: data.fulfilmentStatus || "new",
+    status: data.status || data.paymentStatus || "pending",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -974,6 +1049,198 @@ export async function deleteOrder(id: string): Promise<boolean> {
   const initialLength = memoryOrders.length;
   memoryOrders = memoryOrders.filter((o) => o.id !== id);
   return memoryOrders.length < initialLength;
+}
+
+// ─── Payment Submissions & Verification ──────────────────────────────────────
+let memoryPaymentSubmissions: DBPaymentSubmission[] = [];
+let memoryPaymentStatusHistory: DBPaymentStatusHistory[] = [];
+let nextSubmissionSeq = 1;
+let nextHistorySeq = 1;
+
+export async function createPaymentSubmission(
+  data: Omit<DBPaymentSubmission, "id" | "createdAt" | "updatedAt"> & { id?: string }
+): Promise<DBPaymentSubmission> {
+  const id = data.id || `psub_${Date.now()}_${String(nextSubmissionSeq++).padStart(3, "0")}`;
+  const submission: DBPaymentSubmission = {
+    ...data,
+    id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  memoryPaymentSubmissions.unshift(submission);
+
+  // Record initial history
+  memoryPaymentStatusHistory.unshift({
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: id,
+    orderId: data.orderId,
+    oldStatus: "awaiting_payment",
+    newStatus: data.status,
+    changedBy: data.senderName || "Customer",
+    internalNote: "Payment evidence submitted by customer",
+    createdAt: new Date().toISOString(),
+  });
+
+  return submission;
+}
+
+export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DBPaymentSubmission | null> {
+  return memoryPaymentSubmissions.find((p) => p.orderId === orderId) || null;
+}
+
+export async function getPaymentSubmissionById(id: string): Promise<DBPaymentSubmission | null> {
+  return memoryPaymentSubmissions.find((p) => p.id === id) || null;
+}
+
+export async function getPaymentSubmissions(options?: {
+  status?: string;
+  search?: string;
+  orderId?: string;
+}): Promise<DBPaymentSubmission[]> {
+  let list = [...memoryPaymentSubmissions];
+
+  if (options?.status && options.status !== "all") {
+    list = list.filter((p) => p.status === options.status);
+  }
+
+  if (options?.orderId) {
+    list = list.filter((p) => p.orderId === options.orderId);
+  }
+
+  if (options?.search) {
+    const q = options.search.toLowerCase();
+    list = list.filter(
+      (p) =>
+        p.orderId.toLowerCase().includes(q) ||
+        p.senderName.toLowerCase().includes(q) ||
+        p.transferReference.toLowerCase().includes(q) ||
+        p.provider.toLowerCase().includes(q)
+    );
+  }
+
+  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function verifyPaymentSubmission(
+  submissionId: string,
+  adminEmail: string,
+  note?: string
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; error?: string }> {
+  const index = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId);
+  if (index === -1) {
+    return { success: false, error: "Payment submission not found" };
+  }
+
+  const oldStatus = memoryPaymentSubmissions[index].status;
+  const nowStr = new Date().toISOString();
+
+  memoryPaymentSubmissions[index] = {
+    ...memoryPaymentSubmissions[index],
+    status: "payment_verified",
+    verifiedBy: adminEmail,
+    verifiedAt: nowStr,
+    updatedAt: nowStr,
+  };
+
+  const submission = memoryPaymentSubmissions[index];
+
+  // Update associated Order
+  await updateOrder(submission.orderId, {
+    paymentStatus: "payment_verified",
+    status: "payment_verified",
+    paidAt: nowStr,
+    amountPaid: submission.amountSent,
+    notes: `${memoryOrders.find(o => o.id === submission.orderId)?.notes || ""}\n[Admin Verified]: Payment verified in official UBL account by ${adminEmail} on ${new Date().toLocaleString()} (Ref: ${submission.transferReference})`
+  });
+
+  // Record audit history
+  memoryPaymentStatusHistory.unshift({
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: submission.id,
+    orderId: submission.orderId,
+    oldStatus,
+    newStatus: "payment_verified",
+    changedBy: adminEmail,
+    internalNote: note || "Verified by admin against official UBL bank records",
+    createdAt: nowStr,
+  });
+
+  return { success: true, submission };
+}
+
+export async function rejectPaymentSubmission(
+  submissionId: string,
+  adminEmail: string,
+  rejectionReason: string,
+  requestReupload: boolean = false
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; error?: string }> {
+  const index = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId);
+  if (index === -1) {
+    return { success: false, error: "Payment submission not found" };
+  }
+
+  const oldStatus = memoryPaymentSubmissions[index].status;
+  const newStatus: PaymentStatus = requestReupload ? "payment_reupload_requested" : "payment_rejected";
+  const nowStr = new Date().toISOString();
+
+  memoryPaymentSubmissions[index] = {
+    ...memoryPaymentSubmissions[index],
+    status: newStatus,
+    rejectionReason,
+    verifiedBy: adminEmail,
+    updatedAt: nowStr,
+  };
+
+  const submission = memoryPaymentSubmissions[index];
+
+  // Update Order
+  await updateOrder(submission.orderId, {
+    paymentStatus: newStatus,
+    status: newStatus,
+    notes: `${memoryOrders.find(o => o.id === submission.orderId)?.notes || ""}\n[Admin Review]: Payment rejected by ${adminEmail}. Reason: ${rejectionReason}`
+  });
+
+  // Record audit history
+  memoryPaymentStatusHistory.unshift({
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: submission.id,
+    orderId: submission.orderId,
+    oldStatus,
+    newStatus,
+    changedBy: adminEmail,
+    internalNote: `Rejected: ${rejectionReason}`,
+    createdAt: nowStr,
+  });
+
+  return { success: true, submission };
+}
+
+export async function getPaymentStatusHistory(submissionIdOrOrderId: string): Promise<DBPaymentStatusHistory[]> {
+  return memoryPaymentStatusHistory.filter(
+    (h) => h.paymentSubmissionId === submissionIdOrOrderId || h.orderId === submissionIdOrOrderId
+  );
+}
+
+export async function checkDuplicateTransferReference(
+  transferReference: string,
+  excludeOrderId?: string
+): Promise<{ isDuplicate: boolean; matchedOrders: string[] }> {
+  if (!transferReference || !transferReference.trim()) {
+    return { isDuplicate: false, matchedOrders: [] };
+  }
+
+  const cleanRef = transferReference.trim().toLowerCase();
+  const matches = memoryPaymentSubmissions.filter(
+    (p) =>
+      p.transferReference.trim().toLowerCase() === cleanRef &&
+      (!excludeOrderId || p.orderId !== excludeOrderId)
+  );
+
+  return {
+    isDuplicate: matches.length > 0,
+    matchedOrders: matches.map((m) => m.orderId),
+  };
 }
 
 export async function getSalesStats(): Promise<SalesStats> {

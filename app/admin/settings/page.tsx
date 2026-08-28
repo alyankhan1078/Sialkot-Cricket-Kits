@@ -39,6 +39,11 @@ export default function AdminSettingsPage() {
     safepayEnvironment: "sandbox",
     safepayEnabled: true,
 
+    // UBL Bank Detail Verification Lock
+    ublDetailsVerifiedByAdmin: true,
+    ublDetailsVerifiedAt: new Date().toISOString(),
+    ublDetailsVerifiedBy: "Administrator",
+
     // Bank details (UBL)
     bankName: "United Bank Limited (UBL)",
     accountTitle: "ALYAN WAZIR",
@@ -394,7 +399,57 @@ export default function AdminSettingsPage() {
       {/* Tab 2: Payment Methods & Bank Accounts */}
       {activeTab === "payments" && (
         <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Safepay Pakistan Hosted Checkout (Primary Gateway) */}
+          {/* UBL Bank Details & Admin Verification Lock */}
+          <div className="admin-card" style={{ border: "1.5px solid rgba(242, 169, 40, 0.4)", background: "linear-gradient(135deg, rgba(242, 169, 40, 0.04) 0%, rgba(17, 24, 39, 0.8) 100%)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
+              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Building2 size={20} color="#f2a928" />
+                <span>Official UBL Beneficiary Bank Account (Centralized)</span>
+              </h2>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#4ade80", fontSize: "0.75rem", fontWeight: 700 }}>
+                <span>🔒 Beneficiary: ALYAN WAZIR</span>
+              </div>
+            </div>
+
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.85rem", marginBottom: "1rem", lineHeight: 1.5 }}>
+              All customer bank transfers and international remittances are deposited into the verified UBL account titled <strong>ALYAN WAZIR</strong>.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", background: "rgba(0,0,0,0.3)", padding: "14px", borderRadius: "10px", marginBottom: "1rem" }}>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Bank Name</small><strong style={{ color: "#fff" }}>United Bank Limited (UBL)</strong></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Beneficiary Title</small><strong style={{ color: "#f2a928" }}>ALYAN WAZIR</strong></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Account Number</small><code style={{ color: "#38bdf8", fontSize: ".9rem" }}>0881304929964</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>IBAN</small><code style={{ color: "#38bdf8", fontSize: ".9rem" }}>PK93UNIL0109000304929964</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>SWIFT / BIC</small><code style={{ color: "#fff" }}>UNILPKKA</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Branch Name</small><span style={{ color: "#fff" }}>0881 – Wana</span></div>
+            </div>
+
+            {/* Verification Lock Checkbox */}
+            <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "8px", padding: "12px 14px" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: ".82rem", color: "#4ade80", lineHeight: 1.4 }}>
+                <input
+                  type="checkbox"
+                  checked={settings.ublDetailsVerifiedByAdmin ?? true}
+                  onChange={(e) => setSettings({ ...settings, ublDetailsVerifiedByAdmin: e.target.checked })}
+                  style={{ marginTop: 2, accentColor: "#22c55e", width: 16, height: 16 }}
+                />
+                <span>
+                  <strong>Admin Verification Lock:</strong> I have verified these payment details against the UBL app, official bank statement or UBL Account Maintenance Certificate.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Future UBL Card Gateway Notice */}
+          <div className="admin-card" style={{ border: "1px dashed #334155" }}>
+            <h3 style={{ fontSize: ".98rem", margin: "0 0 6px", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+              <ShieldCheck size={16} color="#94a3b8" />
+              <span>Future UBL Internet Payment Gateway (IPG) Integration</span>
+            </h3>
+            <p style={{ color: "var(--adm-muted)", fontSize: ".82rem", margin: 0, lineHeight: 1.5 }}>
+              The architecture is prepared for the official UBL Internet Payment Gateway. Card checkout remains disabled (<code>UBL_CARD_GATEWAY_ENABLED = false</code>) until production merchant credentials are confirmed.
+            </p>
+          </div>
           <div className="admin-card" style={{ border: "1px solid rgba(34, 197, 94, 0.35)", background: "linear-gradient(135deg, rgba(34, 197, 94, 0.04) 0%, rgba(17, 24, 39, 0.8) 100%)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
               <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>

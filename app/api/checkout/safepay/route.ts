@@ -143,6 +143,8 @@ export async function POST(request: Request) {
       balanceRemaining: balanceRemainingGbp,
       currency: "GBP",
       amountInPkr,
+      paymentStatus: "awaiting_payment" as const,
+      fulfilmentStatus: "new" as const,
       status: "awaiting_payment" as const,
       paymentMethod: "Safepay Hosted Checkout (Cards / Raast / Wallets)",
       paymentProvider: "safepay" as const,

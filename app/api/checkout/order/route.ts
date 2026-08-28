@@ -63,6 +63,8 @@ export async function POST(request: Request) {
         quantity: Number(i.quantity) || 1,
       })),
       totalAmount: finalTotal,
+      paymentStatus: "awaiting_payment" as const,
+      fulfilmentStatus: "new" as const,
       status: "pending" as const,
       paymentMethod: paymentMethod || "Direct Website Order",
       notes: fullNotes,
