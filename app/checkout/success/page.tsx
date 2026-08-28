@@ -16,9 +16,11 @@ import {
   ArrowRight,
   FileText,
   AlertCircle,
+  Phone,
+  Globe,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
-import { whatsappUrl, generateOrderConfirmationWhatsAppMessage } from "@/src/lib/whatsapp";
+import { whatsappUrl } from "@/src/lib/whatsapp";
 import { UBL_PAYMENT_CONFIG, FACTORY_INFO } from "@/src/lib/payment-config";
 import type { DBOrder } from "@/src/lib/data-service";
 
@@ -52,305 +54,441 @@ function OrderSuccessContent() {
   };
 
   const whatsappConfirmationMsg = order
-    ? `Hello Sialkot Cricket Kits,\n\nI have submitted my order #${order.id}.\nTransfer Reference: ${order.transferReference || "Attached on site"}\nTotal: £${order.totalAmount}\nCustomer: ${order.customerName}\n\nPlease confirm when payment is verified. Thank you!`
+    ? `Hello Sialkot Cricket Kits,\n\nI have submitted my order #${order.id}.\nCustomer: ${order.customerName}\nTransfer Reference: ${order.transferReference || "Attached on site"}\nTotal Value: £${order.totalAmount}\nAmount Paid / Due: £${order.depositAmount || order.totalAmount}\n\nPlease confirm when payment is verified. Thank you!`
     : "Hello Sialkot Cricket Kits, I just submitted my order and payment evidence. Please check my transfer.";
 
   return (
-    <main className="order-success-page" style={{ maxWidth: 880, margin: "40px auto 80px", padding: "0 24px", color: "var(--text-primary)" }}>
-      {/* Top Hero Banner */}
-      <div
-        style={{
-          background: "#141922",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          padding: "36px 32px",
-          textAlign: "center",
-          marginBottom: 24,
-        }}
-      >
+    <>
+      {/* Global Print-specific CSS styles */}
+      <style jsx global>{`
+        @media print {
+          /* Hide all surrounding layout and website elements */
+          body, html {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .site-header,
+          .site-footer,
+          .announcement-bar,
+          .screen-only,
+          .order-success-hero,
+          .actions-bar,
+          nav,
+          footer {
+            display: none !important;
+          }
+          .order-success-page {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          #printable-invoice {
+            display: block !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+            padding: 24px !important;
+            margin: 0 auto !important;
+            width: 100% !important;
+            page-break-inside: avoid !important;
+          }
+          #printable-invoice * {
+            color: #0f172a !important;
+          }
+          #printable-invoice .invoice-brand-title {
+            color: #b45309 !important;
+          }
+          #printable-invoice .invoice-header-box {
+            border-bottom: 2px solid #0f172a !important;
+          }
+          #printable-invoice .invoice-table th {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+          }
+          #printable-invoice .invoice-table td {
+            border-bottom: 1px solid #e2e8f0 !important;
+          }
+          #printable-invoice .invoice-highlight {
+            color: #b45309 !important;
+            font-weight: 800 !important;
+          }
+          #printable-invoice .invoice-badge {
+            border: 1.5px solid #0f172a !important;
+            color: #0f172a !important;
+            background: #f8fafc !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+        }
+      `}</style>
+
+      <main className="order-success-page" style={{ maxWidth: 940, margin: "32px auto 80px", padding: "0 20px", color: "var(--text-primary)" }}>
+        {/* Screen Only Hero Card */}
         <div
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            background: "rgba(34, 197, 94, 0.15)",
-            color: "#22c55e",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 16,
-          }}
-        >
-          <CheckCircle2 size={42} />
-        </div>
-
-        <h1 style={{ fontSize: "2.1rem", color: "#fff", margin: "0 0 8px", fontWeight: 800 }}>
-          Order Submitted Successfully
-        </h1>
-
-        {/* Status Badge */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "rgba(242, 169, 40, 0.15)",
-              border: "1.5px solid rgba(242, 169, 40, 0.4)",
-              padding: "8px 18px",
-              borderRadius: 999,
-              color: "#f2a928",
-              fontWeight: 800,
-              fontSize: ".95rem",
-            }}
-          >
-            Order Reference: #{orderId || "SCK-CONFIRMED"}
-          </div>
-
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "rgba(56, 189, 248, 0.15)",
-              border: "1px solid rgba(56, 189, 248, 0.4)",
-              padding: "8px 16px",
-              borderRadius: 999,
-              color: "#38bdf8",
-              fontSize: ".85rem",
-              fontWeight: 700,
-            }}
-          >
-            <Clock size={16} /> PAYMENT UNDER VERIFICATION
-          </div>
-        </div>
-
-        {/* Official Expected Review Message */}
-        <div
-          style={{
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 12,
-            padding: "16px 20px",
-            maxWidth: 680,
-            margin: "18px auto 0",
-            fontSize: ".92rem",
-            color: "#cbd5e1",
-            lineHeight: 1.6,
-          }}
-        >
-          Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account (<strong>ALYAN WAZIR</strong>). We will notify you after verification. Please keep your order reference for future communication.
-        </div>
-
-        {/* Actions Bar */}
-        <div style={{ marginTop: 24, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <a
-            href={whatsappUrl(whatsappConfirmationMsg)}
-            target="_blank"
-            rel="noreferrer"
-            className="button primary"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#22c55e",
-              color: "#000",
-              fontWeight: 700,
-              padding: "10px 20px",
-              borderRadius: 10,
-              textDecoration: "none",
-              fontSize: ".88rem",
-            }}
-          >
-            <MessageCircle size={18} /> Confirm Order on WhatsApp
-          </a>
-
-          <button
-            type="button"
-            onClick={handlePrint}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#1e293b",
-              border: "1px solid #334155",
-              color: "#fff",
-              fontWeight: 600,
-              padding: "10px 18px",
-              borderRadius: 10,
-              cursor: "pointer",
-              fontSize: ".88rem",
-            }}
-          >
-            <Printer size={16} /> Print / Save Invoice
-          </button>
-
-          <Link
-            href="/shop"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-              fontWeight: 600,
-              padding: "10px 16px",
-              borderRadius: 10,
-              textDecoration: "none",
-              fontSize: ".88rem",
-            }}
-          >
-            <ShoppingBag size={16} /> Continue Shopping
-          </Link>
-        </div>
-      </div>
-
-      {/* Invoice & Order Breakdown */}
-      {order && (
-        <div
-          id="printable-invoice"
+          className="screen-only order-success-hero"
           style={{
             background: "#141922",
             border: "1px solid rgba(255, 255, 255, 0.08)",
             borderRadius: 16,
-            padding: 32,
-            marginBottom: 24,
+            padding: "32px 24px",
+            textAlign: "center",
+            marginBottom: 28,
           }}
         >
-          {/* Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, borderBottom: "1px solid #2d3748", paddingBottom: 20, flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <strong style={{ fontSize: "1.2rem", color: "#fff", display: "block" }}>{FACTORY_INFO.factoryName}</strong>
-              <span style={{ color: "var(--text-muted)", fontSize: ".82rem", display: "block" }}>Sialkot Cricket Kits · Handcrafted Cricket Equipment</span>
-              <span style={{ color: "var(--text-muted)", fontSize: ".78rem", display: "block" }}>{FACTORY_INFO.fullAddress}</span>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "rgba(34, 197, 94, 0.15)",
+              color: "#22c55e",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 14,
+            }}
+          >
+            <CheckCircle2 size={36} />
+          </div>
+
+          <h1 style={{ fontSize: "1.9rem", color: "#fff", margin: "0 0 6px", fontWeight: 800 }}>
+            Order Submitted Successfully
+          </h1>
+
+          {/* Status Badge */}
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "14px 0" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(242, 169, 40, 0.15)",
+                border: "1.5px solid rgba(242, 169, 40, 0.4)",
+                padding: "6px 16px",
+                borderRadius: 999,
+                color: "#f2a928",
+                fontWeight: 800,
+                fontSize: ".9rem",
+              }}
+            >
+              Order Ref: #{orderId || "SCK-CONFIRMED"}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <strong style={{ color: "var(--primary)", fontSize: "1rem", display: "block" }}>INVOICE #{order.id}</strong>
-              <span style={{ color: "var(--text-muted)", fontSize: ".82rem", display: "block" }}>Date: {new Date(order.createdAt).toLocaleDateString()}</span>
+
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(56, 189, 248, 0.15)",
+                border: "1px solid rgba(56, 189, 248, 0.4)",
+                padding: "6px 14px",
+                borderRadius: 999,
+                color: "#38bdf8",
+                fontSize: ".82rem",
+                fontWeight: 700,
+              }}
+            >
+              <Clock size={15} /> PAYMENT UNDER VERIFICATION
             </div>
           </div>
 
-          {/* Customer & Payment Info Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, background: "rgba(0,0,0,0.3)", padding: 18, borderRadius: 10, marginBottom: 24 }}>
-            <div>
-              <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".06em", display: "block", marginBottom: 4 }}>
-                Customer &amp; Delivery Destination
-              </span>
-              <strong style={{ color: "#fff", fontSize: ".95rem", display: "block" }}>{order.customerName}</strong>
-              {order.customerPhone && <span style={{ color: "#cbd5e1", fontSize: ".82rem", display: "block" }}>📱 {order.customerPhone}</span>}
-              {order.customerEmail && <span style={{ color: "#cbd5e1", fontSize: ".82rem", display: "block" }}>✉️ {order.customerEmail}</span>}
-              <span style={{ color: "#cbd5e1", fontSize: ".82rem", display: "block", marginTop: 4 }}>
-                📍 {order.address ? `${order.address}, ` : ""}{order.city ? `${order.city}, ` : ""}{order.country}
-              </span>
-            </div>
+          <p style={{ color: "#cbd5e1", fontSize: ".88rem", maxWidth: 640, margin: "12px auto 0", lineHeight: 1.5 }}>
+            Thank you. Your order and transfer details have been submitted. Our team will verify the funds in the UBL account (<strong>ALYAN WAZIR</strong>) and notify you upon verification.
+          </p>
 
-            <div>
-              <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".06em", display: "block", marginBottom: 4 }}>
-                Payment Submission Details
-              </span>
-              <strong style={{ color: "#f2a928", fontSize: ".98rem", display: "block" }}>{order.paymentMethod}</strong>
-              <span style={{ color: "#cbd5e1", fontSize: ".82rem", display: "block" }}>
-                Beneficiary: <strong>{UBL_PAYMENT_CONFIG.beneficiaryFullName} (UBL)</strong>
-              </span>
-              {order.transferReference && (
-                <span style={{ color: "#38bdf8", fontSize: ".82rem", display: "block", fontFamily: "monospace", marginTop: 2 }}>
-                  Transfer Ref: {order.transferReference}
-                </span>
-              )}
-              <span style={{ color: "#fbbf24", fontSize: ".82rem", display: "block", fontWeight: 700, marginTop: 4 }}>
-                Status: Payment Under Verification
-              </span>
-            </div>
+          {/* Actions Bar */}
+          <div className="actions-bar" style={{ marginTop: 22, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+            <a
+              href={whatsappUrl(whatsappConfirmationMsg)}
+              target="_blank"
+              rel="noreferrer"
+              className="button primary"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#22c55e",
+                color: "#000",
+                fontWeight: 700,
+                padding: "10px 18px",
+                borderRadius: 10,
+                textDecoration: "none",
+                fontSize: ".86rem",
+              }}
+            >
+              <MessageCircle size={17} /> Confirm Order on WhatsApp
+            </a>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
+                border: "none",
+                color: "#000",
+                fontWeight: 700,
+                padding: "10px 20px",
+                borderRadius: 10,
+                cursor: "pointer",
+                fontSize: ".86rem",
+                boxShadow: "0 4px 14px rgba(242, 169, 40, 0.3)",
+              }}
+            >
+              <Printer size={17} /> Print / Save Official Invoice (PDF)
+            </button>
+
+            <Link
+              href="/shop"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+                fontWeight: 600,
+                padding: "10px 16px",
+                borderRadius: 10,
+                textDecoration: "none",
+                fontSize: ".86rem",
+              }}
+            >
+              <ShoppingBag size={15} /> Continue Shopping
+            </Link>
           </div>
-
-          {/* Items Table */}
-          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #334155", textAlign: "left", color: "#94a3b8", fontSize: ".78rem", textTransform: "uppercase" }}>
-                <th style={{ padding: "8px 0" }}>Item Description</th>
-                <th style={{ padding: "8px 0", textAlign: "center" }}>Qty</th>
-                <th style={{ padding: "8px 0", textAlign: "right" }}>Price</th>
-                <th style={{ padding: "8px 0", textAlign: "right" }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((it, idx) => (
-                <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: ".88rem", color: "#cbd5e1" }}>
-                  <td style={{ padding: "12px 0", color: "#fff", fontWeight: 500 }}>{it.name}</td>
-                  <td style={{ padding: "12px 0", textAlign: "center" }}>{it.quantity}</td>
-                  <td style={{ padding: "12px 0", textAlign: "right" }}>{formatPrice(it.price)}</td>
-                  <td style={{ padding: "12px 0", textAlign: "right", color: "#f2a928", fontWeight: 600 }}>
-                    {formatPrice(it.price * it.quantity)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} style={{ padding: "14px 0 4px", textAlign: "right", fontSize: ".9rem", color: "#94a3b8" }}>
-                  Subtotal:
-                </td>
-                <td style={{ padding: "14px 0 4px", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 600 }}>
-                  {formatPrice(order.subtotal || order.totalAmount)}
-                </td>
-              </tr>
-              {order.shippingFee !== undefined && (
-                <tr>
-                  <td colSpan={3} style={{ padding: "4px 0", textAlign: "right", fontSize: ".9rem", color: "#94a3b8" }}>
-                    Tracked Courier ({order.country}):
-                  </td>
-                  <td style={{ padding: "4px 0", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 600 }}>
-                    {formatPrice(order.shippingFee)}
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <td colSpan={3} style={{ padding: "12px 0 0", textAlign: "right", fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
-                  Total Order Value:
-                </td>
-                <td style={{ padding: "12px 0 0", textAlign: "right", fontSize: "1.35rem", fontWeight: 800, color: "#f2a928" }}>
-                  {formatPrice(order.totalAmount)}
-                </td>
-              </tr>
-              {order.depositPercent && order.depositPercent < 100 && (
-                <>
-                  <tr>
-                    <td colSpan={3} style={{ padding: "6px 0 0", textAlign: "right", fontSize: ".86rem", color: "#4ade80", fontWeight: 600 }}>
-                      Advance Deposit Submitted ({order.depositPercent}%):
-                    </td>
-                    <td style={{ padding: "6px 0 0", textAlign: "right", fontSize: ".95rem", color: "#4ade80", fontWeight: 700 }}>
-                      {formatPrice(order.depositAmount || 0)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colSpan={3} style={{ padding: "4px 0 0", textAlign: "right", fontSize: ".86rem", color: "#f87171", fontWeight: 600 }}>
-                      Remaining Balance (Due Before Dispatch):
-                    </td>
-                    <td style={{ padding: "4px 0 0", textAlign: "right", fontSize: ".95rem", color: "#f87171", fontWeight: 700 }}>
-                      {formatPrice(order.balanceRemaining || 0)}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tfoot>
-          </table>
-
-          {order.notes && (
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid #334155", padding: "12px 16px", borderRadius: 8, fontSize: ".82rem", color: "#cbd5e1", whiteSpace: "pre-line" }}>
-              <strong style={{ color: "#f2a928", display: "block", marginBottom: 4 }}>Order &amp; Evidence Notes:</strong>
-              {order.notes}
-            </div>
-          )}
         </div>
-      )}
-    </main>
+
+        {/* ── OFFICIAL PRINTABLE INVOICE DOCUMENT ── */}
+        {order ? (
+          <div
+            id="printable-invoice"
+            style={{
+              background: "#111722",
+              border: "1.5px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: 16,
+              padding: "36px 36px 28px",
+              marginBottom: 30,
+              boxShadow: "0 12px 36px rgba(0,0,0,0.4)",
+            }}
+          >
+            {/* 1. Header with Logo & Brand Information */}
+            <div className="invoice-header-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid rgba(255,255,255,0.12)", paddingBottom: 22, marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <img
+                  src="/assets/brand/sialkot-cricket-kits-logo.png"
+                  alt="Sialkot Cricket Kits"
+                  style={{ width: 62, height: 62, objectFit: "contain", background: "#fff", padding: 4, borderRadius: 10 }}
+                />
+                <div>
+                  <h2 className="invoice-brand-title" style={{ fontSize: "1.35rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: ".06em", color: "#f2a928", margin: "0 0 4px" }}>
+                    SIALKOT CRICKET KITS
+                  </h2>
+                  <span style={{ fontSize: ".82rem", color: "#cbd5e1", display: "block", fontWeight: 600 }}>
+                    {FACTORY_INFO.factoryName} · Master Cricket Equipment Manufacturers
+                  </span>
+                  <span style={{ fontSize: ".76rem", color: "#94a3b8", display: "block", marginTop: 2 }}>
+                    📍 {FACTORY_INFO.fullAddress}
+                  </span>
+                  <div style={{ display: "flex", gap: 14, marginTop: 4, fontSize: ".74rem", color: "#94a3b8" }}>
+                    <span>📱 WhatsApp: +92 327 5756188</span>
+                    <span>✉️ sialkotcricketkits@gmail.com</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#fff", letterSpacing: ".05em" }}>
+                  OFFICIAL INVOICE
+                </div>
+                <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f2a928", fontFamily: "monospace", marginTop: 2 }}>
+                  #{order.id}
+                </div>
+                <div style={{ fontSize: ".78rem", color: "#94a3b8", marginTop: 4 }}>
+                  Issue Date: <strong>{new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong>
+                </div>
+                <div className="invoice-badge" style={{ display: "inline-block", marginTop: 8, background: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", color: "#fbbf24", padding: "4px 10px", borderRadius: 6, fontSize: ".74rem", fontWeight: 800, textTransform: "uppercase" }}>
+                  Status: {order.paymentStatus === "payment_verified" ? "Payment Verified" : "Payment Under Verification"}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Customer & Payment Information Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, background: "rgba(0,0,0,0.35)", padding: 18, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginBottom: 26 }}>
+              {/* Left Column: Customer & Delivery Details */}
+              <div>
+                <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, display: "block", marginBottom: 6 }}>
+                  DELIVERY DESTINATION &amp; CUSTOMER
+                </span>
+                <strong style={{ color: "#fff", fontSize: "1.05rem", display: "block", marginBottom: 4 }}>
+                  {order.customerName}
+                </strong>
+                {order.customerPhone && (
+                  <div style={{ color: "#cbd5e1", fontSize: ".82rem", display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <span>📱</span> <span>{order.customerPhone}</span>
+                  </div>
+                )}
+                {order.customerEmail && (
+                  <div style={{ color: "#cbd5e1", fontSize: ".82rem", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <span>✉️</span> <span>{order.customerEmail}</span>
+                  </div>
+                )}
+                <div style={{ color: "#cbd5e1", fontSize: ".82rem", lineHeight: 1.4, marginTop: 4 }}>
+                  <span>📍</span> {order.address ? `${order.address}, ` : ""}{order.city ? `${order.city}, ` : ""}{order.state ? `${order.state}, ` : ""}{order.postalCode ? `${order.postalCode}, ` : ""}{order.country}
+                </div>
+                {order.deliveryInstructions && (
+                  <div style={{ color: "#94a3b8", fontSize: ".76rem", fontStyle: "italic", marginTop: 4 }}>
+                    Note: {order.deliveryInstructions}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Payment & UBL Bank Evidence */}
+              <div>
+                <span style={{ color: "#94a3b8", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, display: "block", marginBottom: 6 }}>
+                  PAYMENT &amp; BENEFICIARY SUMMARY
+                </span>
+                <strong style={{ color: "#f2a928", fontSize: ".96rem", display: "block", marginBottom: 4 }}>
+                  {order.paymentMethod}
+                </strong>
+                <div style={{ color: "#cbd5e1", fontSize: ".82rem", marginBottom: 2 }}>
+                  Beneficiary Name: <strong style={{ color: "#fff" }}>{UBL_PAYMENT_CONFIG.beneficiaryFullName} (UBL)</strong>
+                </div>
+                <div style={{ color: "#cbd5e1", fontSize: ".82rem", marginBottom: 2 }}>
+                  Account No: <code style={{ color: "#38bdf8", fontSize: ".84rem" }}>{UBL_PAYMENT_CONFIG.accountNumber}</code>
+                </div>
+                <div style={{ color: "#cbd5e1", fontSize: ".82rem", marginBottom: 2 }}>
+                  IBAN: <code style={{ color: "#38bdf8", fontSize: ".82rem" }}>{UBL_PAYMENT_CONFIG.iban}</code>
+                </div>
+                {order.transferReference && (
+                  <div style={{ color: "#38bdf8", fontSize: ".82rem", fontFamily: "monospace", marginTop: 4 }}>
+                    Transfer Reference: <strong>{order.transferReference}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Itemized Equipment Table */}
+            <table className="invoice-table" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 22 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #334155", textAlign: "left", color: "#94a3b8", fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".05em" }}>
+                  <th style={{ padding: "10px 8px" }}>#</th>
+                  <th style={{ padding: "10px 8px" }}>Item Description &amp; Specifications</th>
+                  <th style={{ padding: "10px 8px", textAlign: "center" }}>Qty</th>
+                  <th style={{ padding: "10px 8px", textAlign: "right" }}>Unit Price</th>
+                  <th style={{ padding: "10px 8px", textAlign: "right" }}>Total Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.items.map((it, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: ".88rem", color: "#cbd5e1" }}>
+                    <td style={{ padding: "12px 8px", color: "#94a3b8", fontSize: ".8rem" }}>{idx + 1}</td>
+                    <td style={{ padding: "12px 8px", color: "#fff", fontWeight: 600 }}>
+                      {it.name}
+                      {it.category && (
+                        <span style={{ display: "block", color: "#94a3b8", fontSize: ".74rem", fontWeight: 400 }}>
+                          Category: {it.category}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: "12px 8px", textAlign: "center", fontWeight: 600 }}>{it.quantity}</td>
+                    <td style={{ padding: "12px 8px", textAlign: "right" }}>{formatPrice(it.price)}</td>
+                    <td style={{ padding: "12px 8px", textAlign: "right", color: "#f2a928", fontWeight: 700 }}>
+                      {formatPrice(it.price * it.quantity)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={4} style={{ padding: "14px 8px 4px", textAlign: "right", fontSize: ".88rem", color: "#94a3b8" }}>
+                    Subtotal:
+                  </td>
+                  <td style={{ padding: "14px 8px 4px", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 700 }}>
+                    {formatPrice(order.subtotal || order.totalAmount)}
+                  </td>
+                </tr>
+                {order.shippingFee !== undefined && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "4px 8px", textAlign: "right", fontSize: ".88rem", color: "#94a3b8" }}>
+                      Tracked Courier ({order.country}):
+                    </td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontSize: ".95rem", color: "#fff", fontWeight: 700 }}>
+                      {formatPrice(order.shippingFee)}
+                    </td>
+                  </tr>
+                )}
+                <tr>
+                  <td colSpan={4} style={{ padding: "12px 8px 0", textAlign: "right", fontSize: "1.05rem", fontWeight: 800, color: "#fff" }}>
+                    Total Order Value:
+                  </td>
+                  <td className="invoice-highlight" style={{ padding: "12px 8px 0", textAlign: "right", fontSize: "1.3rem", fontWeight: 900, color: "#f2a928" }}>
+                    {formatPrice(order.totalAmount)}
+                  </td>
+                </tr>
+
+                {order.depositPercent && order.depositPercent < 100 && (
+                  <>
+                    <tr>
+                      <td colSpan={4} style={{ padding: "6px 8px 0", textAlign: "right", fontSize: ".85rem", color: "#4ade80", fontWeight: 700 }}>
+                        Advance Deposit ({order.depositPercent}%):
+                      </td>
+                      <td style={{ padding: "6px 8px 0", textAlign: "right", fontSize: ".95rem", color: "#4ade80", fontWeight: 800 }}>
+                        {formatPrice(order.depositAmount || 0)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} style={{ padding: "4px 8px 0", textAlign: "right", fontSize: ".85rem", color: "#f87171", fontWeight: 700 }}>
+                        Remaining Balance (Due Before Dispatch):
+                      </td>
+                      <td style={{ padding: "4px 8px 0", textAlign: "right", fontSize: ".95rem", color: "#f87171", fontWeight: 800 }}>
+                        {formatPrice(order.balanceRemaining || 0)}
+                      </td>
+                    </tr>
+                  </>
+                )}
+              </tfoot>
+            </table>
+
+            {/* 4. Notes & Factory Verification Footer */}
+            {order.notes && (
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", padding: "12px 14px", borderRadius: 8, fontSize: ".8rem", color: "#cbd5e1", marginBottom: 20, whiteSpace: "pre-line" }}>
+                <strong style={{ color: "#f2a928", display: "block", marginBottom: 3 }}>Order &amp; Evidence Notes:</strong>
+                {order.notes}
+              </div>
+            )}
+
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, fontSize: ".76rem", color: "#94a3b8" }}>
+              <div>
+                <span>🛡️ Official Order Receipt · <strong>Sialkot Cricket Kits</strong></span>
+                <span style={{ display: "block" }}>For ping videos &amp; dispatch tracking, WhatsApp: <strong>+92 327 5756188</strong></span>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span>Factory: Superior Cricket Factory, Model Town, Sialkot</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#fff" }}>
+            {loading ? "Loading invoice..." : "Order details not found."}
+          </div>
+        )}
+      </main>
+    </>
   );
 }
 
 export default function OrderSuccessPage() {
   return (
-    <Suspense fallback={<div style={{ padding: "60px 20px", textAlign: "center", color: "#fff" }}>Loading invoice details...</div>}>
+    <Suspense fallback={<div style={{ padding: "60px 20px", textAlign: "center", color: "#fff" }}>Loading invoice...</div>}>
       <OrderSuccessContent />
     </Suspense>
   );
