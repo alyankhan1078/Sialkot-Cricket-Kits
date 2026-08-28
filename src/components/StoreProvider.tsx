@@ -26,6 +26,14 @@ export type CartItem = {
   quantity: number;
 };
 
+export type AddedItemInfo = {
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+};
+
 type StoreContextValue = {
   cart: CartItem[];
   cartCount: number;
@@ -37,6 +45,8 @@ type StoreContextValue = {
   clearCart: () => void;
   favourites: string[];
   toggleFavourite: (productId: string) => void;
+  lastAddedItem: AddedItemInfo | null;
+  clearLastAddedItem: () => void;
 };
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -48,6 +58,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favourites, setFavourites] = useState<string[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState<AddedItemInfo | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -86,6 +97,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addToCart = (productId: string, quantity = 1) => {
+    const prod = products.find((p) => p.id === productId);
+    if (prod) {
+      setLastAddedItem({
+        productId: prod.id,
+        name: prod.name,
+        image: prod.image,
+        price: prod.price,
+        quantity,
+      });
+    }
+
     setCart((current) => {
       const existing = current.find((item) => item.productId === productId);
       if (existing) {
@@ -98,6 +120,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return [...current, { productId, quantity }];
     });
     setCartOpen(true);
+  };
+
+  const clearLastAddedItem = () => {
+    setLastAddedItem(null);
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -118,6 +144,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setCart([]);
+    setLastAddedItem(null);
   };
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
@@ -135,6 +162,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         clearCart,
         favourites,
         toggleFavourite,
+        lastAddedItem,
+        clearLastAddedItem,
       }}
     >
       {children}
@@ -150,7 +179,16 @@ export function useStore() {
 }
 
 function CartDrawer() {
-  const { cart, isCartOpen, setCartOpen, updateQuantity, removeFromCart, clearCart } = useStore();
+  const {
+    cart,
+    isCartOpen,
+    setCartOpen,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    lastAddedItem,
+    clearLastAddedItem,
+  } = useStore();
   const [selectedCountry, setSelectedCountry] = useState("United Kingdom");
 
   const lines = cart.flatMap((item) => {
@@ -162,8 +200,7 @@ function CartDrawer() {
   const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
   const shippingCalculation = calculateShippingFee(selectedCountry, totalItemCount);
   const grandTotal = subtotal + shippingCalculation.shippingFee;
-  // Default deposit is 50%
-  const depositDueNow = Math.round((grandTotal * 0.5) * 100) / 100;
+  const depositDueNow = Math.round(grandTotal * 0.5 * 100) / 100;
 
   // WhatsApp message for the cart
   const cartMessage = `Hello Sialkot Cricket Kits,\n\nI would like to order:\n\n${lines
@@ -178,7 +215,10 @@ function CartDrawer() {
       <button
         className="cart-backdrop"
         aria-label="Close cart"
-        onClick={() => setCartOpen(false)}
+        onClick={() => {
+          setCartOpen(false);
+          clearLastAddedItem();
+        }}
       />
       <aside
         className="cart-drawer"
@@ -202,7 +242,10 @@ function CartDrawer() {
           </div>
           <button
             className="icon-button"
-            onClick={() => setCartOpen(false)}
+            onClick={() => {
+              setCartOpen(false);
+              clearLastAddedItem();
+            }}
             aria-label="Close cart"
           >
             <X size={18} />
@@ -227,6 +270,83 @@ function CartDrawer() {
           <>
             {/* Scrollable content */}
             <div style={{ flex: 1, overflowY: "auto", padding: "0 1.1rem" }}>
+              {/* Just Added Confirmation Hero Box */}
+              {lastAddedItem && (
+                <div className="cart-just-added-box">
+                  <div className="cart-just-added-top">
+                    <div className="cart-just-added-badge">
+                      <span className="check-dot">✓</span>
+                      <span>Added to your cart!</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="cart-continue-chip"
+                      onClick={() => {
+                        setCartOpen(false);
+                        clearLastAddedItem();
+                      }}
+                    >
+                      ← Keep Shopping
+                    </button>
+                  </div>
+                  <div className="cart-just-added-details">
+                    <img src={lastAddedItem.image} alt={lastAddedItem.name} />
+                    <div>
+                      <strong>{lastAddedItem.name}</strong>
+                      <div className="cart-just-added-meta">
+                        <span>Qty: {lastAddedItem.quantity}</span>
+                        <span className="sep">·</span>
+                        <span className="price">{formatPrice(lastAddedItem.price)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Category Add Shortcuts */}
+              <div className="cart-quick-categories">
+                <div className="cart-quick-categories-label">
+                  <span>Add more equipment from catalogue:</span>
+                </div>
+                <div className="cart-quick-category-pills">
+                  <Link
+                    href="/shop?category=Beauty%20Processed%20Bats"
+                    className="cart-category-pill"
+                    onClick={() => setCartOpen(false)}
+                  >
+                    🏏 Bats
+                  </Link>
+                  <Link
+                    href="/shop?category=Batting%20Pads"
+                    className="cart-category-pill"
+                    onClick={() => setCartOpen(false)}
+                  >
+                    🛡️ Pads
+                  </Link>
+                  <Link
+                    href="/shop?category=Batting%20Gloves"
+                    className="cart-category-pill"
+                    onClick={() => setCartOpen(false)}
+                  >
+                    🧤 Gloves
+                  </Link>
+                  <Link
+                    href="/shop?category=Kit%20%26%20Duffle%20Bags"
+                    className="cart-category-pill"
+                    onClick={() => setCartOpen(false)}
+                  >
+                    🎒 Bags
+                  </Link>
+                  <Link
+                    href="/shop"
+                    className="cart-category-pill all"
+                    onClick={() => setCartOpen(false)}
+                  >
+                    ⚡ All (140+)
+                  </Link>
+                </div>
+              </div>
+
               {/* Cart items */}
               <div className="cart-lines" style={{ paddingTop: ".5rem" }}>
                 {lines.map(({ product, quantity }) => (
@@ -277,9 +397,13 @@ function CartDrawer() {
                 <label
                   htmlFor="cart-country"
                   style={{
-                    display: "block", fontSize: ".7rem", fontWeight: 700,
-                    color: "var(--text-secondary)", textTransform: "uppercase",
-                    letterSpacing: ".08em", marginBottom: ".4rem"
+                    display: "block",
+                    fontSize: ".7rem",
+                    fontWeight: 700,
+                    color: "var(--text-secondary)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".08em",
+                    marginBottom: ".4rem",
                   }}
                 >
                   <Truck size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4, color: "var(--gold)" }} />
@@ -303,8 +427,12 @@ function CartDrawer() {
                 </select>
                 {/* Shipping info */}
                 <div style={{
-                  marginTop: ".5rem", display: "flex", justifyContent: "space-between",
-                  alignItems: "center", fontSize: ".78rem", color: "var(--text-secondary)"
+                  marginTop: ".5rem",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontSize: ".78rem",
+                  color: "var(--text-secondary)",
                 }}>
                   <span>
                     Tracked courier delivery · {shippingCalculation.destination.estimatedDelivery}
@@ -312,9 +440,13 @@ function CartDrawer() {
                 </div>
                 {totalItemCount > 1 && (
                   <div style={{
-                    marginTop: ".35rem", fontSize: ".74rem", color: "#0d5e38",
-                    background: "var(--success-light)", padding: ".35rem .6rem",
-                    borderRadius: 6, fontWeight: 600
+                    marginTop: ".35rem",
+                    fontSize: ".74rem",
+                    color: "#0d5e38",
+                    background: "var(--success-light)",
+                    padding: ".35rem .6rem",
+                    borderRadius: 6,
+                    fontWeight: 600,
                   }}>
                     Combined shipping — you save {formatPrice(shippingCalculation.totalSaved)}!
                   </div>
@@ -351,11 +483,14 @@ function CartDrawer() {
 
               {/* Pay today highlight */}
               <div style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 padding: ".6rem .8rem",
                 background: "var(--accent-light)",
                 border: "1px solid rgba(242,169,40,.25)",
-                borderRadius: 8, marginTop: ".15rem"
+                borderRadius: 8,
+                marginTop: ".15rem",
               }}>
                 <div>
                   <div style={{ fontSize: ".76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Pay today (50% deposit)</div>
@@ -364,16 +499,33 @@ function CartDrawer() {
                 <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--orange)" }}>{formatPrice(depositDueNow)}</span>
               </div>
 
-              {/* Checkout CTA */}
-              <Link
-                href="/checkout"
-                className="checkout-primary-cta"
-                onClick={() => setCartOpen(false)}
-                style={{ marginTop: ".35rem" }}
-              >
-                <Lock size={15} />
-                Proceed to Checkout
-              </Link>
+              {/* Action Buttons: Checkout vs Continue Shopping */}
+              <div className="cart-action-buttons-group">
+                {/* 1. Continue Shopping / Add More Products (Prominent secondary) */}
+                <button
+                  type="button"
+                  className="cart-continue-shopping-btn"
+                  onClick={() => {
+                    setCartOpen(false);
+                    clearLastAddedItem();
+                  }}
+                >
+                  <span>← Continue Shopping / Add More</span>
+                </button>
+
+                {/* 2. Proceed to Checkout (Primary) */}
+                <Link
+                  href="/checkout"
+                  className="checkout-primary-cta"
+                  onClick={() => {
+                    setCartOpen(false);
+                    clearLastAddedItem();
+                  }}
+                >
+                  <Lock size={15} />
+                  <span>Proceed to Checkout</span>
+                </Link>
+              </div>
 
               {/* WhatsApp secondary */}
               <a
@@ -385,11 +537,11 @@ function CartDrawer() {
                 💬 Order via WhatsApp
               </a>
 
-              {/* Clear cart — visually minimal */}
+              {/* Clear cart */}
               <button
                 className="text-button"
                 onClick={clearCart}
-                style={{ fontSize: ".72rem", color: "var(--text-muted)", paddingBlock: ".35rem" }}
+                style={{ fontSize: ".72rem", color: "var(--text-muted)", paddingBlock: ".25rem" }}
               >
                 Remove all items
               </button>

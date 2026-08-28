@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, MessageCircle, Minus, Plus, ShoppingCart, Video } from "lucide-react";
+import { Check, Heart, MessageCircle, Minus, Plus, ShoppingCart, Video } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { formatPrice, type Product } from "@/src/data/products";
 import { productMessage, whatsappUrl } from "@/src/lib/whatsapp";
@@ -12,7 +12,14 @@ export function ProductDetailsClient({ product }: { product: Product }) {
   const gallery = product.images?.length ? product.images : [product.image];
   const [activeImage, setActiveImage] = useState(gallery[0]);
   const { addToCart, favourites, toggleFavourite } = useStore();
+  const [isJustAdded, setIsJustAdded] = useState(false);
   const favourite = favourites.includes(product.id);
+
+  const handleAdd = () => {
+    addToCart(product.id, quantity);
+    setIsJustAdded(true);
+    setTimeout(() => setIsJustAdded(false), 1600);
+  };
 
   return (
     <section className="product-detail">
@@ -45,7 +52,14 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           <label><span>Delivery country (optional)</span><input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="e.g. United Kingdom" /></label>
         </div>
         <div className="detail-actions">
-          <button className="button primary" onClick={() => addToCart(product.id, quantity)}><ShoppingCart size={18} /> Add to cart</button>
+          <button
+            className={`button primary ${isJustAdded ? "is-added" : ""}`}
+            onClick={handleAdd}
+            style={isJustAdded ? { background: "#166534" } : undefined}
+          >
+            {isJustAdded ? <Check size={18} /> : <ShoppingCart size={18} />}
+            <span>{isJustAdded ? "✓ Added to Cart!" : "Add to cart"}</span>
+          </button>
           <a className="button whatsapp" href={whatsappUrl(productMessage(product, quantity, country))} target="_blank" rel="noreferrer"><MessageCircle size={18} /> Order on WhatsApp</a>
           <button className={`button favourite${favourite ? " active" : ""}`} onClick={() => toggleFavourite(product.id)}><Heart size={18} fill={favourite ? "currentColor" : "none"} /> {favourite ? "Saved" : "Save"}</button>
         </div>
