@@ -13,12 +13,38 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const product = await getProductById(id);
   if (!product) return { title: "Product not found | Sialkot Cricket Kits" };
-  const description = `${product.name} — ${formatPrice(product.price)}. View current catalogue stock and enquire through Sialkot Cricket Kits.`;
+
+  const title = product.seoTitle || `${product.name} | Sialkot Cricket Kits`;
+  const description =
+    product.seoDescription ||
+    product.shortDescription ||
+    `${product.name} available at Sialkot Cricket Kits for £${product.price}. Handcrafted in Sialkot with worldwide tracked delivery.`;
+  const canonicalUrl = `https://sialkotcricketkits.co.uk/product/${product.id}`;
+  const images = product.image ? [product.image] : ["/assets/brand/sialkot-cricket-kits-logo.png"];
+
   return {
-    title: `${product.name} | Sialkot Cricket Kits`,
+    title,
     description,
-    openGraph: { title: product.name, description, images: [product.image] },
-    twitter: { card: "summary_large_image", title: product.name, description, images: [product.image] },
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: "Sialkot Cricket Kits",
+      images: images.map((url) => ({
+        url,
+        alt: product.imageAlt || product.name,
+      })),
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images,
+    },
   };
 }
 
@@ -38,8 +64,37 @@ export default async function ProductPage({ params }: PageProps) {
     stock: product.stock,
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image: product.image,
+    description: product.shortDescription || product.description,
+    sku: product.id,
+    brand: {
+      "@type": "Brand",
+      name: "Sialkot Cricket Kits",
+    },
+    offers: {
+      "@type": "Offer",
+      url: `https://sialkotcricketkits.co.uk/product/${product.id}`,
+      priceCurrency: "GBP",
+      price: product.price,
+      availability:
+        String(product.stock) === "0" ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+      seller: {
+        "@type": "Organization",
+        name: "Sialkot Cricket Kits",
+      },
+    },
+  };
+
   return (
     <main className="product-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="breadcrumb">
         <Link href="/shop">
           <ArrowLeft size={16} /> Back to shop

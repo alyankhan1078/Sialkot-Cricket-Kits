@@ -17,6 +17,11 @@ export const categoryOrder = [
 
 export type Category = (typeof categoryOrder)[number];
 
+export type ProductSpecification = {
+  label: string;
+  value: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -28,9 +33,20 @@ export type Product = {
   image: string;
   images?: string[];
   description: string;
+  shortDescription: string;
+  openingStatement: string;
+  highlights: string[];
+  bestFor: string;
+  specifications: ProductSpecification[];
+  seoTitle: string;
+  seoDescription: string;
+  imageAlt: string;
+  disclosureType: "beauty_processed" | "bonafide" | "junior" | "natural_willow" | "none";
   featured?: boolean;
   isBestSeller?: boolean;
 };
+
+import { PRODUCT_CONTENT_MAP } from "./product-content";
 
 const item = (number: number) => `/assets/products/item-${String(number).padStart(3, "0")}.webp`;
 const batImage = "/assets/products/bat-collection.webp";
@@ -291,7 +307,8 @@ const product = (
   extras: Partial<Omit<Product, "id" | "category" | "name" | "price" | "stock" | "image">> = {},
 ): Product => {
   const id = `${slugify(category)}-${slugify(name)}`;
-  const defaultDesc = productDescriptions[id] || `Current ${name} listing from the approved Sialkot Cricket Kits 2026 catalogue. Contact us to confirm availability and delivery.`;
+  const content = PRODUCT_CONTENT_MAP[id];
+  const defaultDesc = content?.description || productDescriptions[id] || `Handcrafted ${name} from Sialkot Cricket Kits.`;
   return {
     id,
     category,
@@ -300,6 +317,24 @@ const product = (
     stock,
     image,
     description: extras.description || defaultDesc,
+    shortDescription: extras.shortDescription || content?.shortDescription || `${name} — match-ready cricket equipment handcrafted in Sialkot with worldwide tracked delivery.`,
+    openingStatement: extras.openingStatement || content?.openingStatement || `Experience authentic Sialkot craftsmanship with the ${name}.`,
+    highlights: extras.highlights || content?.highlights || [
+      `Official ${name} from Sialkot Cricket Kits`,
+      `Handcrafted in Sialkot, Pakistan`,
+      `Worldwide tracked courier delivery available`,
+    ],
+    bestFor: extras.bestFor || content?.bestFor || "Competitive cricket matchplay and training sessions",
+    specifications: extras.specifications || content?.specifications || [
+      { label: "Product Name", value: name },
+      { label: "Category", value: category },
+      { label: "Origin", value: "Sialkot, Pakistan" },
+      { label: "Delivery", value: "Worldwide Tracked Courier" },
+    ],
+    seoTitle: extras.seoTitle || content?.seoTitle || `${name} | Sialkot Cricket Kits`,
+    seoDescription: extras.seoDescription || content?.seoDescription || `Buy ${name} at Sialkot Cricket Kits. Match-ready cricket equipment with worldwide delivery.`,
+    imageAlt: extras.imageAlt || content?.imageAlt || `${name} - ${category} from Sialkot Cricket Kits`,
+    disclosureType: extras.disclosureType || content?.disclosureType || "none",
     ...extras,
   };
 };

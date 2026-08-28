@@ -20,10 +20,14 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="product-card">
+    <article className="product-card" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="product-image-wrap">
         <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}>
-          <img src={product.image} alt={`${product.name} available from Sialkot Cricket Kits`} loading="lazy" />
+          <img
+            src={product.image}
+            alt={product.imageAlt || `${product.name} from Sialkot Cricket Kits`}
+            loading="lazy"
+          />
         </Link>
         <button
           className={`favourite-button${favourite ? " active" : ""}`}
@@ -38,10 +42,32 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="product-badge">Featured</span>
         ) : null}
       </div>
-      <div className="product-card-body">
+      <div className="product-card-body" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
         <span className="product-category">{product.category}</span>
         <h3><Link href={`/product/${product.id}`}>{product.name}</Link></h3>
-        <div className="stock-line"><span>{typeof product.stock === "number" ? `${product.stock} in stock` : product.stock}</span>{product.rightStock !== undefined && <small>RH {product.rightStock} · LH {product.leftStock}</small>}</div>
+
+        {/* Concise Short Description with 2-line clamp */}
+        <p
+          style={{
+            fontSize: ".78rem",
+            color: "var(--text-muted)",
+            lineHeight: 1.45,
+            margin: "4px 0 10px",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            minHeight: "2.35em",
+          }}
+        >
+          {product.shortDescription || `${product.name} handcrafted in Sialkot, Pakistan.`}
+        </p>
+
+        <div className="stock-line" style={{ marginTop: "auto" }}>
+          <span>{typeof product.stock === "number" ? `${product.stock} in stock` : product.stock}</span>
+          {product.rightStock !== undefined && <small>RH {product.rightStock} · LH {product.leftStock}</small>}
+        </div>
         <strong className="product-price">{formatPrice(product.price)}</strong>
         <div className="product-card-actions">
           <button

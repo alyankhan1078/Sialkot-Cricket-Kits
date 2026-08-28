@@ -12,6 +12,15 @@ export interface DBProduct {
   image: string;
   images?: string[];
   description: string;
+  shortDescription?: string;
+  openingStatement?: string;
+  highlights?: string[];
+  bestFor?: string;
+  specifications?: Array<{ label: string; value: string }>;
+  seoTitle?: string;
+  seoDescription?: string;
+  imageAlt?: string;
+  disclosureType?: "beauty_processed" | "bonafide" | "junior" | "natural_willow" | "none";
   featured: boolean;
   active: boolean;
   sortOrder: number;
@@ -286,6 +295,15 @@ let memoryProducts: DBProduct[] = initialProducts.map((p, index) => ({
   image: p.image,
   images: p.images,
   description: p.description,
+  shortDescription: p.shortDescription,
+  openingStatement: p.openingStatement,
+  highlights: p.highlights,
+  bestFor: p.bestFor,
+  specifications: p.specifications,
+  seoTitle: p.seoTitle,
+  seoDescription: p.seoDescription,
+  imageAlt: p.imageAlt,
+  disclosureType: p.disclosureType,
   featured: !!p.featured,
   active: true,
   sortOrder: index,
