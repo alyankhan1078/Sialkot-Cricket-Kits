@@ -659,11 +659,15 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <div>
-          <h3>Explore</h3>
+          <h3>Explore &amp; Policies</h3>
           <Link href="/shop">Shop equipment</Link>
           <Link href="/custom-bat">Custom bat service</Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/payment">Payment guidance</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms &amp; Conditions</Link>
+          <Link href="/refund-policy">Refund &amp; Returns</Link>
+          <Link href="/shipping-policy">Shipping Policy</Link>
           <a href={settings.catalogueUrl || "/Sialkot_Cricket_Kits_Product_Catalogue_2026.pdf"} download>
             2026 PDF Catalogue
           </a>

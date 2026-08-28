@@ -26,26 +26,38 @@ import type { DBOrder } from "@/src/lib/data-service";
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
+  const tracker = searchParams.get("tracker");
 
   const [order, setOrder] = useState<DBOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!orderId) {
+    if (!orderId && !tracker) {
       setLoading(false);
       return;
     }
 
-    fetch(`/api/checkout/order/${encodeURIComponent(orderId)}`)
+    const queryParams = new URLSearchParams();
+    if (orderId) queryParams.set("orderId", orderId);
+    if (tracker) queryParams.set("tracker", tracker);
+
+    fetch(`/api/checkout/verify?${queryParams.toString()}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
           setOrder(json.data);
+        } else if (orderId) {
+          // Fallback to standard order endpoint
+          return fetch(`/api/checkout/order/${encodeURIComponent(orderId)}`)
+            .then((r) => r.json())
+            .then((j) => {
+              if (j.success && j.data) setOrder(j.data);
+            });
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, tracker]);
 
   const handlePrint = () => {
     window.print();
@@ -166,7 +178,29 @@ function OrderSuccessContent() {
               <span style={{ color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 2 }}>Payment &amp; Destination</span>
               <strong style={{ color: "#f2a928", fontSize: "0.95rem", display: "block" }}>{order.paymentMethod}</strong>
               <span style={{ color: "#cbd5e1", fontSize: "0.82rem", display: "block" }}>Destination: {order.country}</span>
-              <span style={{ color: "#4ade80", fontSize: "0.82rem", display: "block", fontWeight: 600 }}>Status: Order Placed ({order.status.toUpperCase()})</span>
+              <span
+                style={{
+                  color:
+                    order.status === "deposit_paid" || order.status === "paid"
+                      ? "#4ade80"
+                      : "#f59e0b",
+                  fontSize: "0.84rem",
+                  display: "block",
+                  fontWeight: 700,
+                  marginTop: 4,
+                }}
+              >
+                {order.status === "deposit_paid"
+                  ? `✅ ${order.depositPercent || 50}% Advance Deposit Paid (${formatPrice(order.amountPaid || order.depositAmount || 0)}) · Balance (${formatPrice(order.balanceRemaining || 0)}) Due Before Dispatch`
+                  : order.status === "paid"
+                  ? `✅ Fully Paid (${formatPrice(order.totalAmount)})`
+                  : `Status: ${order.status.replace(/_/g, " ").toUpperCase()}`}
+              </span>
+              {order.transactionRef && (
+                <small style={{ color: "#94a3b8", fontSize: "0.74rem", display: "block", marginTop: 2 }}>
+                  Gateway Ref: {order.transactionRef}
+                </small>
+              )}
             </div>
           </div>
 

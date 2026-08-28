@@ -273,9 +273,13 @@ export default function AdminOrdersPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">All Statuses ({orders.length})</option>
+          <option value="deposit_paid">Deposit Paid</option>
+          <option value="paid">Fully Paid</option>
           <option value="completed">Completed</option>
           <option value="confirmed">Confirmed</option>
+          <option value="awaiting_payment">Awaiting Payment</option>
           <option value="pending">Pending</option>
+          <option value="payment_failed">Payment Failed</option>
           <option value="cancelled">Cancelled</option>
         </select>
 
@@ -303,8 +307,8 @@ export default function AdminOrdersPage() {
                   <th>Date</th>
                   <th>Customer Details</th>
                   <th>Items Purchased</th>
-                  <th>Total Price</th>
-                  <th>Status</th>
+                  <th>Amount / Deposit</th>
+                  <th>Payment Status</th>
                   <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
@@ -313,7 +317,14 @@ export default function AdminOrdersPage() {
                   <tr key={order.id}>
                     <td>
                       <strong style={{ color: "#fff" }}>{order.id}</strong>
-                      <small style={{ display: "block", color: "var(--adm-muted)" }}>{order.paymentMethod}</small>
+                      <small style={{ display: "block", color: "var(--adm-muted)", fontSize: "0.75rem" }}>
+                        {order.paymentProvider === "safepay" ? "🔒 Safepay" : order.paymentMethod}
+                      </small>
+                      {order.transactionRef && (
+                        <small style={{ display: "block", color: "#38bdf8", fontSize: "0.7rem", fontFamily: "monospace" }}>
+                          Ref: {order.transactionRef.slice(0, 14)}...
+                        </small>
+                      )}
                     </td>
                     <td>
                       <span style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
@@ -332,20 +343,54 @@ export default function AdminOrdersPage() {
                       </span>
                     </td>
                     <td>
-                      <strong style={{ color: "var(--adm-primary)", fontSize: "0.95rem" }}>
+                      <strong style={{ color: "var(--adm-primary)", fontSize: "0.95rem", display: "block" }}>
                         £ {order.totalAmount.toLocaleString("en-GB")}
                       </strong>
+                      {order.status === "deposit_paid" && (
+                        <small style={{ color: "#4ade80", fontSize: "0.75rem", display: "block" }}>
+                          Paid: £{order.amountPaid || order.depositAmount || 0} · Bal: £{order.balanceRemaining || 0}
+                        </small>
+                      )}
                     </td>
                     <td>
                       <select
                         value={order.status}
                         onChange={(e) => handleUpdateStatus(order.id, e.target.value as DBOrder["status"])}
                         className={`admin-badge admin-badge-${order.status}`}
-                        style={{ border: "none", outline: "none", cursor: "pointer", background: "inherit" }}
+                        style={{
+                          border: "none",
+                          outline: "none",
+                          cursor: "pointer",
+                          background:
+                            order.status === "deposit_paid"
+                              ? "rgba(34, 197, 94, 0.2)"
+                              : order.status === "paid" || order.status === "completed"
+                              ? "rgba(16, 185, 129, 0.2)"
+                              : order.status === "awaiting_payment"
+                              ? "rgba(245, 158, 11, 0.2)"
+                              : order.status === "payment_failed"
+                              ? "rgba(239, 68, 68, 0.2)"
+                              : "rgba(100, 116, 139, 0.2)",
+                          color:
+                            order.status === "deposit_paid" || order.status === "paid" || order.status === "completed"
+                              ? "#34d399"
+                              : order.status === "awaiting_payment"
+                              ? "#fbbf24"
+                              : order.status === "payment_failed"
+                              ? "#f87171"
+                              : "#cbd5e1",
+                          fontWeight: 700,
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                        }}
                       >
+                        <option value="deposit_paid" style={{ background: "#111c2e", color: "#34d399" }}>Deposit Paid</option>
+                        <option value="paid" style={{ background: "#111c2e", color: "#34d399" }}>Fully Paid</option>
                         <option value="completed" style={{ background: "#111c2e", color: "#34d399" }}>Completed</option>
                         <option value="confirmed" style={{ background: "#111c2e", color: "#60a5fa" }}>Confirmed</option>
+                        <option value="awaiting_payment" style={{ background: "#111c2e", color: "#fbbf24" }}>Awaiting Payment</option>
                         <option value="pending" style={{ background: "#111c2e", color: "#fbbf24" }}>Pending</option>
+                        <option value="payment_failed" style={{ background: "#111c2e", color: "#f87171" }}>Payment Failed</option>
                         <option value="cancelled" style={{ background: "#111c2e", color: "#f87171" }}>Cancelled</option>
                       </select>
                     </td>
@@ -480,15 +525,60 @@ export default function AdminOrdersPage() {
                     ))}
                     <tr style={{ background: "rgba(242, 169, 40, 0.05)" }}>
                       <td colSpan={3} style={{ textAlign: "right", fontWeight: 700 }}>
-                        Total Amount Paid:
+                        Total Order Value:
                       </td>
                       <td style={{ textAlign: "right", fontWeight: 800, color: "var(--adm-primary)", fontSize: "1.1rem" }}>
                         £ {selectedOrder.totalAmount.toLocaleString("en-GB")}
                       </td>
                     </tr>
+                    {selectedOrder.depositPercent && selectedOrder.depositPercent < 100 && (
+                      <>
+                        <tr style={{ background: "rgba(34, 197, 94, 0.05)" }}>
+                          <td colSpan={3} style={{ textAlign: "right", fontWeight: 700, color: "#4ade80" }}>
+                            {selectedOrder.depositPercent}% Advance Deposit ({selectedOrder.status === "deposit_paid" || selectedOrder.status === "paid" ? "Paid" : "Due"}):
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 800, color: "#4ade80" }}>
+                            £ {(selectedOrder.amountPaid || selectedOrder.depositAmount || 0).toLocaleString("en-GB")}
+                          </td>
+                        </tr>
+                        <tr style={{ background: "rgba(239, 68, 68, 0.05)" }}>
+                          <td colSpan={3} style={{ textAlign: "right", fontWeight: 700, color: "#f87171" }}>
+                            Remaining Balance (Due Before Dispatch):
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 800, color: "#f87171" }}>
+                            £ {(selectedOrder.balanceRemaining || 0).toLocaleString("en-GB")}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                    {selectedOrder.amountInPkr && (
+                      <tr style={{ background: "rgba(56, 189, 248, 0.05)" }}>
+                        <td colSpan={3} style={{ textAlign: "right", fontWeight: 600, color: "#38bdf8", fontSize: "0.82rem" }}>
+                          Safepay Gateway Amount (PKR):
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: 700, color: "#38bdf8", fontSize: "0.9rem" }}>
+                          Rs {selectedOrder.amountInPkr.toLocaleString("en-PK")}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
+
+              {selectedOrder.providerTrackerId && (
+                <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", padding: "0.75rem 1rem", borderRadius: "8px", fontSize: "0.82rem", marginBottom: "0.85rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <small style={{ color: "#94a3b8", display: "block" }}>Safepay Tracker Token</small>
+                    <code style={{ color: "#38bdf8", fontSize: "0.78rem" }}>{selectedOrder.providerTrackerId}</code>
+                  </div>
+                  {selectedOrder.transactionRef && (
+                    <div>
+                      <small style={{ color: "#94a3b8", display: "block" }}>Gateway Transaction Ref</small>
+                      <code style={{ color: "#4ade80", fontSize: "0.78rem" }}>{selectedOrder.transactionRef}</code>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {selectedOrder.notes && (
                 <div style={{ background: "#09101d", padding: "0.75rem 1rem", borderRadius: "8px", fontSize: "0.85rem" }}>

@@ -32,6 +32,13 @@ export default function AdminSettingsPage() {
     facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
     tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",
 
+    // Safepay Pakistan Hosted Checkout (Primary Gateway)
+    safepayApiKey: "",
+    safepaySecretKey: "",
+    safepayWebhookSecret: "",
+    safepayEnvironment: "sandbox",
+    safepayEnabled: true,
+
     // Bank details (UBL)
     bankName: "United Bank Limited (UBL)",
     accountTitle: "ALYAN WAZIR",
@@ -387,6 +394,71 @@ export default function AdminSettingsPage() {
       {/* Tab 2: Payment Methods & Bank Accounts */}
       {activeTab === "payments" && (
         <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* Safepay Pakistan Hosted Checkout (Primary Gateway) */}
+          <div className="admin-card" style={{ border: "1px solid rgba(34, 197, 94, 0.35)", background: "linear-gradient(135deg, rgba(34, 197, 94, 0.04) 0%, rgba(17, 24, 39, 0.8) 100%)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
+              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <ShieldCheck size={20} color="#22c55e" />
+                <span>Safepay Pakistan Hosted Checkout (Primary Gateway)</span>
+              </h2>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#4ade80", fontSize: "0.75rem", fontWeight: 700 }}>
+                <span>🏦 Direct UBL Settlement</span>
+              </div>
+            </div>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.85rem", marginBottom: "1rem", lineHeight: 1.5 }}>
+              Safepay processes Debit &amp; Credit Cards (Visa, Mastercard, PayPak, UnionPay), Raast, and Mobile Wallets with secure hosted checkout. All collected PKR funds settle directly to your verified UBL merchant bank account.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="admin-form-group">
+                <label>Environment Mode</label>
+                <select
+                  className="admin-select"
+                  value={settings.safepayEnvironment || "sandbox"}
+                  onChange={(e) => setSettings({ ...settings, safepayEnvironment: e.target.value as any })}
+                >
+                  <option value="sandbox">Sandbox / Test Mode (Recommended during setup)</option>
+                  <option value="production">Production / Live Payments (Requires verified Safepay account)</option>
+                </select>
+              </div>
+
+              <div className="admin-form-group">
+                <label>Safepay Public / API Key</label>
+                <input
+                  className="admin-input"
+                  placeholder="sec_..."
+                  value={settings.safepayApiKey || ""}
+                  onChange={(e) => setSettings({ ...settings, safepayApiKey: e.target.value })}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Safepay Secret Key (Server-side)</label>
+                <input
+                  type="password"
+                  className="admin-input"
+                  placeholder="sec_..."
+                  value={settings.safepaySecretKey || ""}
+                  onChange={(e) => setSettings({ ...settings, safepaySecretKey: e.target.value })}
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Safepay Webhook Secret</label>
+                <input
+                  type="password"
+                  className="admin-input"
+                  placeholder="whsec_..."
+                  value={settings.safepayWebhookSecret || ""}
+                  onChange={(e) => setSettings({ ...settings, safepayWebhookSecret: e.target.value })}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: "0.75rem", fontSize: "0.78rem", color: "#64748b" }}>
+              💡 Webhook URL to register in Safepay Merchant Dashboard: <code>https://sialkotcricketkits.co.uk/api/webhooks/safepay</code>
+            </div>
+          </div>
+
           {/* Card Processing / Stripe */}
           <div className="admin-card">
             <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>

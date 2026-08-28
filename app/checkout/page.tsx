@@ -27,12 +27,13 @@ import { whatsappUrl } from "@/src/lib/whatsapp";
 import { calculateShippingFee, SHIPPING_DESTINATIONS, getCountryFlag } from "@/src/lib/shipping";
 
 type PaymentMethodType =
-  | "card"
+  | "safepay"
   | "bank"
-  | "payoneer"
-  | "wise"
   | "pakistan"
-  | "remitly";
+  | "wise"
+  | "payoneer"
+  | "remitly"
+  | "card";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -43,13 +44,44 @@ const DEPOSIT_OPTIONS = [
   { percent: 30, label: "30% Minimum Deposit", sub: "Minimum to lock your slot in production", badge: "Min deposit" },
 ];
 
-const PAYMENT_METHODS: { id: PaymentMethodType; label: string; icon: React.ReactNode }[] = [
-  { id: "card", label: "Credit / Debit Card (Stripe)", icon: <CreditCard size={18} /> },
-  { id: "bank", label: "Bank Transfer (IBAN / SWIFT)", icon: <Building2 size={18} /> },
-  { id: "payoneer", label: "Payoneer", icon: <Wallet size={18} /> },
-  { id: "wise", label: "Wise International Transfer", icon: <Globe size={18} /> },
-  { id: "pakistan", label: "Pakistan Local (JazzCash / EasyPaisa / Raast)", icon: <Send size={18} /> },
-  { id: "remitly", label: "Remitly / Western Union / MoneyGram", icon: <Send size={18} /> },
+const PAYMENT_METHODS: { id: PaymentMethodType; label: string; sublabel?: string; badge?: string; icon: React.ReactNode }[] = [
+  {
+    id: "safepay",
+    label: "Debit / Credit Card & Bank (Safepay Pakistan)",
+    sublabel: "Visa, Mastercard, PayPak, UnionPay, Raast & Wallets (Direct Settlement to UBL)",
+    badge: "Recommended",
+    icon: <CreditCard size={18} />,
+  },
+  {
+    id: "bank",
+    label: "Direct Bank Transfer (UBL Pakistan / IBAN / SWIFT)",
+    sublabel: "Manual wire transfer directly to Sialkot Cricket Kits verified account",
+    icon: <Building2 size={18} />,
+  },
+  {
+    id: "pakistan",
+    label: "Pakistan Wallets (JazzCash / EasyPaisa / Raast)",
+    sublabel: "Instant mobile account transfer across Pakistan",
+    icon: <Send size={18} />,
+  },
+  {
+    id: "wise",
+    label: "Wise International Wire",
+    sublabel: "Direct international account transfer in GBP, USD, EUR, AUD, or CAD",
+    icon: <Globe size={18} />,
+  },
+  {
+    id: "payoneer",
+    label: "Payoneer International",
+    sublabel: "Global electronic bank & Payoneer-to-Payoneer transfer",
+    icon: <Wallet size={18} />,
+  },
+  {
+    id: "remitly",
+    label: "Remitly / Western Union / MoneyGram",
+    sublabel: "Cash pickup or express bank remittance from abroad",
+    icon: <Send size={18} />,
+  },
 ];
 
 const BANK_DETAILS = {
@@ -81,7 +113,7 @@ export default function CheckoutPage() {
     transactionRef: "",
   });
   const [depositPercent, setDepositPercent] = useState(50);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("safepay");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -127,6 +159,39 @@ export default function CheckoutPage() {
     setErrorMessage(null);
 
     try {
+      // 1. Safepay Hosted Checkout (Primary Gateway)
+      if (paymentMethod === "safepay") {
+        const res = await fetch("/api/checkout/safepay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: lines.map((l) => ({ id: l.product.id, name: l.product.name, category: l.product.category, price: l.product.price, quantity: l.quantity })),
+            customerName: formData.fullName,
+            customerEmail: formData.email,
+            customerPhone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+            country: formData.country,
+            depositPercent,
+            notes: formData.notes,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.url) {
+          clearCart();
+          window.location.href = data.url;
+          return;
+        } else {
+          setErrorMessage(data.error || "Failed to initialize secure Safepay checkout. Please try again or chat on WhatsApp.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 2. Legacy / Secondary Stripe Card Checkout
       if (paymentMethod === "card") {
         const res = await fetch("/api/checkout/stripe", {
           method: "POST",
@@ -147,8 +212,14 @@ export default function CheckoutPage() {
         });
         const data = await res.json();
         if (data.success && data.url) { clearCart(); window.location.href = data.url; return; }
+        else {
+          setErrorMessage(data.error || "Failed to process card payment.");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
+      // 3. Direct Order / Bank / Wallet Checkout
       const orderRes = await fetch("/api/checkout/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -547,6 +618,25 @@ export default function CheckoutPage() {
         </div>
 
         {/* Payment detail info */}
+        {paymentMethod === "safepay" && (
+          <div className="payment-info-box green" style={{ marginTop: ".75rem", background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <ShieldCheck size={18} color="#22c55e" />
+              <strong style={{ color: "#22c55e", fontSize: ".88rem" }}>Safepay Pakistan Hosted Checkout</strong>
+            </div>
+            <p style={{ margin: "0 0 .5rem", fontSize: ".8rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              You will be redirected to Safepay’s PCI-DSS compliant secure hosted checkout to pay your <strong>{depositPercent}% deposit ({formatPrice(depositDueNow)})</strong> using your Pakistani or International Debit/Credit Card, Raast, or Mobile Wallet.
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: ".74rem", color: "#64748b" }}>
+              <span>🔒 256-Bit SSL Encrypted</span>
+              <span>•</span>
+              <span>🏦 Direct Settlement to UBL</span>
+              <span>•</span>
+              <span>⚡ Instant Verification</span>
+            </div>
+          </div>
+        )}
+
         {paymentMethod === "bank" && (
           <div className="payment-info-box amber" style={{ marginTop: ".75rem" }}>
             <p style={{ margin: "0 0 .5rem", fontWeight: 700, fontSize: ".84rem" }}>Bank transfer details</p>
@@ -687,7 +777,22 @@ export default function CheckoutPage() {
         disabled={isSubmitting}
         style={{ pointerEvents: isSubmitting ? "none" : "auto", opacity: isSubmitting ? .7 : 1 }}
       >
-        {isSubmitting ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Processing…</> : <><Lock size={15} /> Place Order — Pay {formatPrice(depositDueNow)} today</>}
+        {isSubmitting ? (
+          <>
+            <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+            {paymentMethod === "safepay" ? "Redirecting to Safepay Secure Checkout…" : "Processing your order…"}
+          </>
+        ) : paymentMethod === "safepay" ? (
+          <>
+            <Lock size={15} />
+            Pay with Safepay — {depositPercent}% Deposit ({formatPrice(depositDueNow)})
+          </>
+        ) : (
+          <>
+            <Lock size={15} />
+            Place Order — Pay {formatPrice(depositDueNow)} today
+          </>
+        )}
       </button>
 
       <a

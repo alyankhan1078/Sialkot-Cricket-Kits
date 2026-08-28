@@ -46,7 +46,14 @@ export interface DBFaq {
 }
 
 export interface DBPaymentSettings {
-  // Bank Account
+  // Safepay Pakistan Hosted Checkout (Primary Gateway)
+  safepayApiKey: string;
+  safepaySecretKey: string;
+  safepayWebhookSecret: string;
+  safepayEnvironment: "sandbox" | "production";
+  safepayEnabled: boolean;
+
+  // Bank Account (UBL Settlement)
   bankName: string;
   accountTitle: string;
   accountNumber: string;
@@ -84,7 +91,7 @@ export interface DBPaymentSettings {
   worldRemitEnabled: boolean;
   taptapSendEnabled: boolean;
 
-  // Stripe Card Processing
+  // Stripe Card Processing (Secondary/Legacy)
   stripePublishableKey: string;
   stripeSecretKey: string;
   stripeEnabled: boolean;
@@ -125,17 +132,43 @@ export interface OrderItem {
   quantity: number;
 }
 
+export type OrderPaymentStatus =
+  | "awaiting_payment"
+  | "deposit_paid"
+  | "paid"
+  | "completed"
+  | "confirmed"
+  | "pending"
+  | "payment_failed"
+  | "payment_cancelled"
+  | "shipping_quote_required"
+  | "cancelled";
+
 export interface DBOrder {
   id: string;
+  orderReference?: string;
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
   country: string;
   items: OrderItem[];
+  subtotal?: number;
+  shippingFee?: number;
   totalAmount: number;
-  status: "completed" | "confirmed" | "pending" | "cancelled";
+  depositPercent?: number;
+  depositAmount?: number;
+  amountPaid?: number;
+  balanceRemaining?: number;
+  currency?: string;
+  amountInPkr?: number;
+  status: OrderPaymentStatus;
   paymentMethod: string;
+  paymentProvider?: "safepay" | "stripe" | "bank" | "wallet" | "manual" | string;
+  providerTrackerId?: string;
+  transactionRef?: string;
+  webhookEventId?: string;
   notes?: string;
+  paidAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -216,6 +249,13 @@ let memorySettings: DBSettings = {
   instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
   facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
   tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",
+
+  // Safepay Pakistan Hosted Checkout (Primary Gateway)
+  safepayApiKey: process.env.NEXT_PUBLIC_SAFEPAY_PUBLIC_KEY || process.env.SAFEPAY_API_KEY || "",
+  safepaySecretKey: process.env.SAFEPAY_SECRET_KEY || "",
+  safepayWebhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET || "",
+  safepayEnvironment: (process.env.SAFEPAY_ENVIRONMENT as any) || "sandbox",
+  safepayEnabled: true,
 
   // Bank details (UBL)
   bankName: "United Bank Limited (UBL)",
@@ -893,7 +933,15 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  return memoryOrders.find((o) => o.id === id) || null;
+  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
+}
+
+export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
+  return (
+    memoryOrders.find(
+      (o) => o.providerTrackerId === trackerId || o.id === trackerId || o.orderReference === trackerId
+    ) || null
+  );
 }
 
 export async function createOrder(
