@@ -23,22 +23,16 @@ export function CinematicHeroBanner({
     <section className="cinematic-hero" aria-label="Sialkot Cricket Kits Showcase">
       {/* Background Image Container with Desktop Gradient Overlay */}
       <div className="cinematic-hero-media">
-        <picture>
-          <source
-            type="image/webp"
-            srcSet="/assets/hero/sialkot-cricket-kits-homepage-hero.webp"
-          />
-          <img
-            src="/assets/hero/sialkot-cricket-kits-homepage-hero.png"
-            alt="Premium Cricket Equipment Crafted in Sialkot - Official Match Bats and Gear"
-            className="cinematic-hero-img"
-            width={1672}
-            height={941}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-          />
-        </picture>
+        <img
+          src="/assets/hero/sialkot-cricket-kits-homepage-hero.jpg"
+          alt="Premium Cricket Equipment Crafted in Sialkot - Official Match Bats and Gear"
+          className="cinematic-hero-img"
+          width={1920}
+          height={1080}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
         {/* Subtle vignette gradient on desktop to ensure pristine text contrast on the left without obscuring bats */}
         <div className="cinematic-hero-overlay" />
       </div>
