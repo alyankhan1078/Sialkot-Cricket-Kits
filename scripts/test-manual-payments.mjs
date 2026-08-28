@@ -37,7 +37,7 @@ async function runManualPaymentTests() {
 
   // ── Test 1: Centralized Business & Bank Configuration Integrity ──
   assert(BUSINESS_CONFIG.businessName === "Sialkot Cricket Kits", "Business name is strictly Sialkot Cricket Kits");
-  assert(BUSINESS_CONFIG.displayPhone === "+92 327 5756188", "Business phone is strictly +92 327 5756188");
+  assert(BUSINESS_CONFIG.displayPhone === "+92 323 1438214", "Business phone is strictly +92 323 1438214");
   assert(BUSINESS_CONFIG.primaryEmail === "sialkotcricketkits@gmail.com", "Business email is strictly sialkotcricketkits@gmail.com");
   assert(BUSINESS_CONFIG.fullAddress === "House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan", "Business address is House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan");
   assert(UBL_PAYMENT_CONFIG.beneficiaryFullName === "ALYAN WAZIR", "Beneficiary name is strictly ALYAN WAZIR");

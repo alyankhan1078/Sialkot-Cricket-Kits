@@ -263,6 +263,43 @@ export default function CheckoutPage() {
     .map((l, i) => `${i + 1}. ${l.product.name} (x${l.quantity}) — ${formatPrice(l.product.price)}`)
     .join("\n")}\n\nTotal: ${formatPrice(grandTotal)}\nDelivery to: ${formData.country}\nOrder Ref: ${provisionalRef}\nName: ${formData.fullName}\nPhone: ${formData.phone}\n\nPlease guide me with payment verification.`;
 
+  // Guard: Empty cart prevents checkout
+  if (lines.length === 0) {
+    return (
+      <main style={{ background: "var(--surface-alt)", minHeight: "100vh", paddingBottom: 80, color: "var(--text-primary)" }}>
+        <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: ".85rem clamp(1rem, 4vw, 4rem)" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: ".6rem", textDecoration: "none" }}>
+              <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" style={{ width: 38, height: 38, objectFit: "contain" }} />
+              <strong style={{ fontSize: ".82rem", textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text-primary)" }}>
+                Sialkot Cricket Kits
+              </strong>
+            </Link>
+          </div>
+        </header>
+
+        <div style={{ maxWidth: 580, margin: "70px auto", padding: "40px 24px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, textAlign: "center" }}>
+          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(242, 169, 40, 0.12)", color: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+            <ShoppingBag size={36} />
+          </div>
+          <h1 style={{ fontSize: "1.6rem", color: "#fff", margin: "0 0 10px", fontWeight: 800 }}>
+            Your Cart is Empty
+          </h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: ".92rem", lineHeight: 1.6, marginBottom: 28 }}>
+            You cannot proceed to checkout without selecting items. Please select equipment from our catalogue first.
+          </p>
+          <Link
+            href="/shop"
+            className="checkout-primary-cta"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", textDecoration: "none", fontSize: ".95rem" }}
+          >
+            <ShoppingBag size={18} /> Browse Equipment Catalogue
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={{ background: "var(--surface-alt)", minHeight: "100vh", paddingBottom: 80, color: "var(--text-primary)" }}>
       {/* Slim Header */}

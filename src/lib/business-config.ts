@@ -16,11 +16,11 @@ export const BUSINESS_CONFIG = {
   fullFactoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
 
   // Phone / WhatsApp
-  primaryPhone: "+92 327 5756188",
-  displayPhone: "+92 327 5756188",
-  whatsappRaw: "923275756188",
-  telLink: "tel:+923275756188",
-  whatsappLink: "https://wa.me/923275756188",
+  primaryPhone: "+92 323 1438214",
+  displayPhone: "+92 323 1438214",
+  whatsappRaw: "923231438214",
+  telLink: "tel:+923231438214",
+  whatsappLink: "https://wa.me/923231438214",
 
   // Email
   primaryEmail: "sialkotcricketkits@gmail.com",
