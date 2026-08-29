@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:next": "next dev --webpack",
     "build": "next build",
     "build:vite": "vite build",
     "start": "next start",

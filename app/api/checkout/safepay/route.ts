@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         : `Safepay Payment Plan: 100% Full Payment Upfront (£${grandTotalGbp} / Rs ${amountInPkr.toLocaleString("en-PK")})`,
       notes ? `Customer Notes: ${notes}` : "",
       address ? `Delivery Address: ${address}, ${city || ""}, ${state || ""} ${postalCode || ""}, ${shippingCountry}` : "",
-      `Tracked Courier: £${shippingFeeGbp} (${shippingCalc.destination.estimatedDelivery})`,
+      `Tracked Courier: £${shippingFeeGbp} (${shippingCalc.destination?.estimatedDelivery || "Standard Dispatch"})`,
     ]
       .filter(Boolean)
       .join("\n");

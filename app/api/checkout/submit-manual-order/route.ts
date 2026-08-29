@@ -8,6 +8,7 @@ import {
 } from "@/src/lib/data-service";
 import { calculateShippingFee } from "@/src/lib/shipping";
 import { isCountrySupported, resolveCountry } from "@/src/lib/countries";
+import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
 import {
   ALLOWED_RECEIPT_MIME_TYPES,
   ALLOWED_RECEIPT_EXTENSIONS,
@@ -53,30 +54,44 @@ export async function POST(request: Request) {
     const formData = await request.formData();
 
     // 1. Extract Customer & Delivery Info
-    const customerName = (formData.get("customerName") as string)?.trim();
-    const customerEmail = (formData.get("customerEmail") as string)?.trim();
-    const customerPhone = (formData.get("customerPhone") as string)?.trim();
-    const address = (formData.get("address") as string)?.trim();
-    const city = (formData.get("city") as string)?.trim();
-    const state = (formData.get("state") as string)?.trim();
-    const postalCode = (formData.get("postalCode") as string)?.trim();
-    const countryRaw = (formData.get("country") as string)?.trim();
-    const countryCodeRaw = (formData.get("countryCode") as string)?.trim();
-    const deliveryInstructions = (formData.get("deliveryInstructions") as string)?.trim();
+    const customerInput: CheckoutCustomerInput = {
+      fullName: (formData.get("customerName") as string)?.trim() || "",
+      email: (formData.get("customerEmail") as string)?.trim() || "",
+      phone: (formData.get("customerPhone") as string)?.trim() || "",
+      phoneDialCode: (formData.get("phoneDialCode") as string)?.trim() || "",
+      country: (formData.get("country") as string)?.trim() || "",
+      countryCode: (formData.get("countryCode") as string)?.trim() || "",
+      address: (formData.get("address") as string)?.trim() || "",
+      city: (formData.get("city") as string)?.trim() || "",
+      state: (formData.get("state") as string)?.trim() || "",
+      postalCode: (formData.get("postalCode") as string)?.trim() || "",
+      deliveryInstructions: (formData.get("deliveryInstructions") as string)?.trim() || "",
+    };
 
-    // ── Country Validation & Strict India Rejection ──
-    const countryValidation = isCountrySupported(countryRaw || countryCodeRaw);
-    if (!countryValidation.valid || !countryValidation.country) {
+    // ── Universal Customer Info Validation ──
+    const validation = validateCheckoutCustomerInfo(customerInput);
+    if (!validation.isValid) {
       return NextResponse.json(
         {
           success: false,
-          error: countryValidation.error || "Please select your destination country.",
+          errors: validation.errors,
+          error: Object.values(validation.errors)[0] || "Invalid customer or delivery details provided.",
         },
         { status: 400 }
       );
     }
-    const country = countryValidation.country.name;
-    const countryCode = countryValidation.country.code;
+
+    const customerName = validation.normalized.fullName;
+    const customerEmail = validation.normalized.email;
+    const customerPhone = validation.normalized.phoneE164;
+    const customerPhoneDisplay = validation.normalized.phoneDisplay;
+    const country = validation.normalized.country;
+    const countryCode = validation.normalized.countryCode;
+    const address = validation.normalized.address;
+    const city = validation.normalized.city;
+    const state = validation.normalized.state;
+    const postalCode = validation.normalized.postalCode;
+    const deliveryInstructions = validation.normalized.deliveryInstructions;
 
     // 2. Extract Items & Deposit
     const itemsRaw = formData.get("items") as string;
@@ -92,18 +107,6 @@ export async function POST(request: Request) {
     let transferReference = (formData.get("transferReference") as string)?.trim();
     const customerNote = (formData.get("customerNote") as string)?.trim();
     const receiptFile = formData.get("receipt") as File | null;
-
-    // ── Input Validation ──
-    if (!customerName) {
-      return NextResponse.json({ success: false, error: "Please enter your full name." }, { status: 400 });
-    }
-
-    if (!customerPhone && !customerEmail) {
-      return NextResponse.json(
-        { success: false, error: "Please provide a valid WhatsApp/phone number or email." },
-        { status: 400 }
-      );
-    }
 
     // ── Policy Agreement Acceptance Validation ──
     const policiesAccepted = formData.get("policiesAccepted") === "true";
@@ -133,7 +136,7 @@ export async function POST(request: Request) {
 
     if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { success: false, error: "Receipt file size exceeds the 8 MB limit. Please upload a smaller image or PDF." },
+        { success: false, error: "Receipt file size exceeds the 5 MB limit. Please upload a smaller image or PDF." },
         { status: 400 }
       );
     }

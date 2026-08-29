@@ -196,12 +196,12 @@ function OrderSuccessContent() {
                 fontWeight: 700,
               }}
             >
-              <Clock size={15} /> PAYMENT UNDER VERIFICATION
+              <Clock size={15} /> VERIFICATION PENDING
             </div>
           </div>
 
-          <p style={{ color: "#cbd5e1", fontSize: ".88rem", maxWidth: 640, margin: "12px auto 0", lineHeight: 1.5 }}>
-            Thank you. Your order and transfer evidence have been submitted. Our team in Sialkot will verify the funds against the UBL account (<strong>{UBL_PAYMENT_CONFIG.beneficiaryFullName}</strong>) and notify you upon verification.
+          <p style={{ color: "#cbd5e1", fontSize: ".92rem", maxWidth: 640, margin: "14px auto 0", lineHeight: 1.6, fontWeight: 500 }}>
+            Payment details submitted successfully. Your payment is currently being verified. We will confirm your order after verification.
           </p>
 
           {/* Actions Bar */}

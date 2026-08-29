@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useId } from "react";
+import { useState, useRef, useEffect, useId, useTransition } from "react";
 import {
   ChevronDown,
   Search,
@@ -44,6 +44,7 @@ export function CountrySelector({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [isPending, startTransition] = useTransition();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -57,9 +58,11 @@ export function CountrySelector({
     ? searchCountries(searchQuery)
     : null; // null means render grouped Popular + Remaining
 
-  // Close dropdown on click outside
+  // Safe outside click listener using click event to preserve target interactions
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    if (!isOpen) return;
+
+    function handleDocumentClick(event: MouseEvent | TouchEvent) {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
@@ -70,20 +73,19 @@ export function CountrySelector({
       }
     }
 
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("click", handleDocumentClick, true);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("click", handleDocumentClick, true);
     };
   }, [isOpen]);
 
   // Focus search input when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         searchInputRef.current?.focus();
-      }, 50);
+      }, 40);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -93,10 +95,9 @@ export function CountrySelector({
     setIsOpen(false);
     setSearchQuery("");
     setActiveIndex(-1);
-    triggerRef.current?.focus();
   };
 
-  // Keyboard navigation for trigger and search input
+  // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
 
@@ -108,7 +109,6 @@ export function CountrySelector({
       return;
     }
 
-    // Flat list of currently visible countries for indexing
     const currentList = filteredCountries
       ? filteredCountries
       : [...POPULAR_DESTINATIONS, ...REMAINING_COUNTRIES];
@@ -121,21 +121,10 @@ export function CountrySelector({
       triggerRef.current?.focus();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((prev) =>
-        prev < currentList.length - 1 ? prev + 1 : 0
-      );
-      // Scroll into view
-      scrollActiveOptionIntoView(
-        activeIndex < currentList.length - 1 ? activeIndex + 1 : 0
-      );
+      setActiveIndex((prev) => (prev < currentList.length - 1 ? prev + 1 : 0));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((prev) =>
-        prev > 0 ? prev - 1 : currentList.length - 1
-      );
-      scrollActiveOptionIntoView(
-        activeIndex > 0 ? activeIndex - 1 : currentList.length - 1
-      );
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : currentList.length - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < currentList.length) {
@@ -146,24 +135,14 @@ export function CountrySelector({
     }
   };
 
-  const scrollActiveOptionIntoView = (index: number) => {
-    if (!listboxRef.current) return;
-    const option = listboxRef.current.querySelector(
-      `[data-option-index="${index}"]`
-    );
-    if (option) {
-      option.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  };
-
   return (
     <div
       ref={containerRef}
-      className="country-selector-container"
+      className="country-selector-wrapper"
       style={{ position: "relative", width: "100%" }}
       onKeyDown={handleKeyDown}
     >
-      {/* Accessible Field Label */}
+      {/* Field Label */}
       <label
         id={labelId}
         htmlFor={componentId}
@@ -171,17 +150,34 @@ export function CountrySelector({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          fontSize: ".82rem",
+          justifyContent: "space-between",
+          fontSize: ".78rem",
           fontWeight: 700,
-          color: "#f1f5f9",
+          color: "#1e293b",
           textTransform: "uppercase",
           letterSpacing: ".06em",
           marginBottom: 6,
         }}
       >
-        <Globe size={15} color="var(--primary, #f2a928)" />
-        <span>DESTINATION COUNTRY *</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Globe size={14} color="#d97706" />
+          <span>DESTINATION COUNTRY</span>
+          <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>
+        </div>
+        {selectedCountry && !error && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              color: "#16a34a",
+              fontSize: ".72rem",
+              fontWeight: 700,
+            }}
+          >
+            <Check size={13} strokeWidth={2.5} /> Selected
+          </span>
+        )}
       </label>
 
       {/* Main Combobox Trigger Button */}
@@ -197,61 +193,76 @@ export function CountrySelector({
         aria-required="true"
         aria-invalid={Boolean(error)}
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev);
+          }
+        }}
         style={{
           width: "100%",
-          minHeight: 46,
-          padding: "10px 14px",
+          height: 52,
+          minHeight: 52,
+          padding: "0 14px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 10,
-          background: selectedCountry
-            ? "rgba(15, 23, 42, 0.85)"
-            : "rgba(15, 23, 42, 0.65)",
+          background: disabled ? "#f8fafc" : "#ffffff",
           border: error
             ? "1.5px solid #ef4444"
             : isOpen
             ? "1.5px solid var(--primary, #f2a928)"
-            : "1px solid rgba(255, 255, 255, 0.15)",
+            : selectedCountry
+            ? "1.5px solid #22c55e"
+            : "1.5px solid #cbd5e1",
           borderRadius: 8,
-          color: selectedCountry ? "#ffffff" : "#94a3b8",
-          fontSize: ".9rem",
+          color: selectedCountry ? "#0f172a" : "#94a3b8",
+          fontSize: "16px",
           textAlign: "left",
           cursor: disabled ? "not-allowed" : "pointer",
           outline: "none",
           boxShadow: isOpen
-            ? "0 0 0 3px rgba(242, 169, 40, 0.25)"
+            ? "0 0 0 3px rgba(242, 169, 40, 0.2)"
             : error
-            ? "0 0 0 3px rgba(239, 68, 68, 0.2)"
+            ? "0 0 0 3px rgba(239, 68, 68, 0.15)"
             : "none",
-          transition: "all 0.18s ease-in-out",
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          boxSizing: "border-box",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           {selectedCountry ? (
             <>
-              <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>
+              <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>
                 {selectedCountry.flag}
               </span>
-              <span style={{ fontWeight: 600, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {selectedCountry.name}
               </span>
               <span
                 style={{
-                  fontSize: ".74rem",
+                  fontSize: ".72rem",
                   fontWeight: 700,
-                  background: "rgba(255, 255, 255, 0.08)",
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
                   padding: "2px 6px",
                   borderRadius: 4,
-                  color: "#cbd5e1",
+                  color: "#475569",
                 }}
               >
                 {selectedCountry.code}
               </span>
             </>
           ) : (
-            <span style={{ color: "#94a3b8", fontWeight: 500, fontSize: ".9rem" }}>
+            <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: ".92rem" }}>
               Select your destination country
             </span>
           )}
@@ -265,18 +276,17 @@ export function CountrySelector({
                 e.stopPropagation();
                 onChange({ code: "", name: "", flag: "" });
                 setSearchQuery("");
-                triggerRef.current?.focus();
               }}
               style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "none",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
                 borderRadius: "50%",
                 width: 22,
                 height: 22,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#94a3b8",
+                color: "#64748b",
                 cursor: "pointer",
                 padding: 0,
               }}
@@ -288,7 +298,7 @@ export function CountrySelector({
           )}
           <ChevronDown
             size={18}
-            color={isOpen ? "var(--primary, #f2a928)" : "#94a3b8"}
+            color={isOpen ? "var(--primary, #f2a928)" : "#64748b"}
             style={{
               transform: isOpen ? "rotate(180deg)" : "none",
               transition: "transform 0.2s ease",
@@ -302,22 +312,14 @@ export function CountrySelector({
         <div
           id="country-error"
           role="alert"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 6,
-            fontSize: ".8rem",
-            color: "#f87171",
-            fontWeight: 500,
-          }}
+          className="checkout-field-error"
         >
-          <AlertCircle size={14} color="#ef4444" />
+          <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu (Crisp Light Theme) */}
       {isOpen && (
         <div
           style={{
@@ -326,45 +328,54 @@ export function CountrySelector({
             left: 0,
             right: 0,
             zIndex: 9999,
-            background: "#0f172a",
-            border: "1px solid rgba(242, 169, 40, 0.35)",
+            width: "100%",
+            maxWidth: "100%",
+            background: "#ffffff",
+            border: "1.5px solid #cbd5e1",
             borderRadius: 10,
-            boxShadow: "0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08)",
+            boxShadow:
+              "0 14px 36px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05)",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            maxHeight: 380,
+            maxHeight: 360,
+            boxSizing: "border-box",
           }}
         >
           {/* Search Header */}
           <div
             style={{
               padding: "10px 12px",
-              background: "rgba(15, 23, 42, 0.98)",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+              background: "#f8fafc",
+              borderBottom: "1px solid #e2e8f0",
               display: "flex",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <Search size={16} color="var(--primary, #f2a928)" />
+            <Search size={16} color="#d97706" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setActiveIndex(0);
+                const q = e.target.value;
+                startTransition(() => {
+                  setSearchQuery(q);
+                  setActiveIndex(0);
+                });
               }}
-              placeholder="Search by country, code, or alias (e.g. Dubai, England, USA)..."
+              placeholder="Search destination country or city (e.g. Dubai, England, USA)..."
               style={{
                 width: "100%",
-                background: "transparent",
-                border: "none",
+                background: "#ffffff",
+                border: "1px solid #cbd5e1",
+                borderRadius: 6,
                 outline: "none",
-                color: "#ffffff",
-                fontSize: ".88rem",
-                padding: "4px 0",
+                color: "#0f172a",
+                fontSize: "16px",
+                padding: "8px 10px",
+                boxSizing: "border-box",
               }}
               aria-label="Search destination countries"
             />
@@ -378,7 +389,7 @@ export function CountrySelector({
                 style={{
                   background: "transparent",
                   border: "none",
-                  color: "#94a3b8",
+                  color: "#64748b",
                   cursor: "pointer",
                   padding: 2,
                   display: "flex",
@@ -400,11 +411,11 @@ export function CountrySelector({
             aria-label="Available destination countries"
             style={{
               overflowY: "auto",
-              padding: "6px 0",
+              padding: "4px 0",
               flex: 1,
             }}
           >
-            {/* Case A: Filtered Results */}
+            {/* Filtered Search View */}
             {filteredCountries !== null ? (
               filteredCountries.length > 0 ? (
                 filteredCountries.map((c, index) => {
@@ -413,7 +424,6 @@ export function CountrySelector({
                   return (
                     <div
                       key={c.code}
-                      data-option-index={index}
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => handleSelect(c)}
@@ -425,26 +435,45 @@ export function CountrySelector({
                         justifyContent: "space-between",
                         cursor: "pointer",
                         background: isActive
-                          ? "rgba(242, 169, 40, 0.15)"
+                          ? "rgba(242, 169, 40, 0.12)"
                           : isSelected
-                          ? "rgba(34, 197, 94, 0.12)"
+                          ? "rgba(34, 197, 94, 0.08)"
                           : "transparent",
                         borderLeft: isActive
                           ? "3px solid var(--primary, #f2a928)"
+                          : isSelected
+                          ? "3px solid #22c55e"
                           : "3px solid transparent",
-                        transition: "background 0.12s ease",
+                        transition: "background 0.1s ease",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{c.flag}</span>
-                        <span style={{ fontSize: ".88rem", color: isSelected ? "#4ade80" : "#f1f5f9", fontWeight: isSelected ? 700 : 500 }}>
+                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>
+                          {c.flag}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: ".88rem",
+                            color: isSelected ? "#15803d" : "#1e293b",
+                            fontWeight: isSelected ? 700 : 500,
+                          }}
+                        >
                           {c.name}
                         </span>
-                        <span style={{ fontSize: ".72rem", color: "#94a3b8", background: "rgba(255, 255, 255, 0.05)", padding: "1px 5px", borderRadius: 3 }}>
+                        <span
+                          style={{
+                            fontSize: ".72rem",
+                            color: "#64748b",
+                            background: "#f1f5f9",
+                            border: "1px solid #e2e8f0",
+                            padding: "1px 5px",
+                            borderRadius: 3,
+                          }}
+                        >
                           {c.code}
                         </span>
                       </div>
-                      {isSelected && <Check size={16} color="#22c55e" />}
+                      {isSelected && <Check size={16} color="#16a34a" />}
                     </div>
                   );
                 })
@@ -453,35 +482,35 @@ export function CountrySelector({
                   style={{
                     padding: "24px 16px",
                     textAlign: "center",
-                    color: "#94a3b8",
+                    color: "#64748b",
                     fontSize: ".85rem",
                   }}
                 >
-                  <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#cbd5e1" }}>
+                  <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#1e293b" }}>
                     No matching destinations found
                   </p>
                   <span style={{ fontSize: ".78rem" }}>
-                    Please check the spelling or search using standard country names.
+                    Please check the spelling or search by country name or city alias.
                   </span>
                 </div>
               )
             ) : (
-              /* Case B: Grouped View (Popular Destinations + All Countries) */
+              /* Grouped View (Popular + Remaining) */
               <>
-                {/* 1. Popular Destinations Section */}
+                {/* 1. Popular Destinations */}
                 <div
                   style={{
                     padding: "6px 14px 4px",
                     fontSize: ".74rem",
                     fontWeight: 700,
-                    color: "var(--primary, #f2a928)",
+                    color: "#d97706",
                     textTransform: "uppercase",
                     letterSpacing: ".08em",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-                    background: "rgba(0, 0, 0, 0.2)",
+                    borderBottom: "1px solid #f1f5f9",
+                    background: "#f8fafc",
                   }}
                 >
                   <Sparkles size={13} />
@@ -494,7 +523,6 @@ export function CountrySelector({
                   return (
                     <div
                       key={c.code}
-                      data-option-index={index}
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => handleSelect(c)}
@@ -506,26 +534,45 @@ export function CountrySelector({
                         justifyContent: "space-between",
                         cursor: "pointer",
                         background: isActive
-                          ? "rgba(242, 169, 40, 0.15)"
+                          ? "rgba(242, 169, 40, 0.12)"
                           : isSelected
-                          ? "rgba(34, 197, 94, 0.12)"
+                          ? "rgba(34, 197, 94, 0.08)"
                           : "transparent",
                         borderLeft: isActive
                           ? "3px solid var(--primary, #f2a928)"
+                          : isSelected
+                          ? "3px solid #22c55e"
                           : "3px solid transparent",
-                        transition: "background 0.12s ease",
+                        transition: "background 0.1s ease",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{c.flag}</span>
-                        <span style={{ fontSize: ".88rem", color: isSelected ? "#4ade80" : "#f1f5f9", fontWeight: isSelected ? 700 : 500 }}>
+                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>
+                          {c.flag}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: ".88rem",
+                            color: isSelected ? "#15803d" : "#1e293b",
+                            fontWeight: isSelected ? 700 : 500,
+                          }}
+                        >
                           {c.name}
                         </span>
-                        <span style={{ fontSize: ".72rem", color: "#94a3b8", background: "rgba(255, 255, 255, 0.05)", padding: "1px 5px", borderRadius: 3 }}>
+                        <span
+                          style={{
+                            fontSize: ".72rem",
+                            color: "#64748b",
+                            background: "#f1f5f9",
+                            border: "1px solid #e2e8f0",
+                            padding: "1px 5px",
+                            borderRadius: 3,
+                          }}
+                        >
                           {c.code}
                         </span>
                       </div>
-                      {isSelected && <Check size={16} color="#22c55e" />}
+                      {isSelected && <Check size={16} color="#16a34a" />}
                     </div>
                   );
                 })}
@@ -536,16 +583,16 @@ export function CountrySelector({
                     padding: "8px 14px 4px",
                     fontSize: ".74rem",
                     fontWeight: 700,
-                    color: "#94a3b8",
+                    color: "#64748b",
                     textTransform: "uppercase",
                     letterSpacing: ".08em",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    marginTop: 6,
+                    borderTop: "1px solid #e2e8f0",
+                    borderBottom: "1px solid #f1f5f9",
+                    background: "#f8fafc",
+                    marginTop: 4,
                   }}
                 >
                   <Globe size={13} />
@@ -559,7 +606,6 @@ export function CountrySelector({
                   return (
                     <div
                       key={c.code}
-                      data-option-index={globalIdx}
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => handleSelect(c)}
@@ -571,26 +617,45 @@ export function CountrySelector({
                         justifyContent: "space-between",
                         cursor: "pointer",
                         background: isActive
-                          ? "rgba(242, 169, 40, 0.15)"
+                          ? "rgba(242, 169, 40, 0.12)"
                           : isSelected
-                          ? "rgba(34, 197, 94, 0.12)"
+                          ? "rgba(34, 197, 94, 0.08)"
                           : "transparent",
                         borderLeft: isActive
                           ? "3px solid var(--primary, #f2a928)"
+                          : isSelected
+                          ? "3px solid #22c55e"
                           : "3px solid transparent",
-                        transition: "background 0.12s ease",
+                        transition: "background 0.1s ease",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{c.flag}</span>
-                        <span style={{ fontSize: ".88rem", color: isSelected ? "#4ade80" : "#f1f5f9", fontWeight: isSelected ? 700 : 500 }}>
+                        <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>
+                          {c.flag}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: ".88rem",
+                            color: isSelected ? "#15803d" : "#1e293b",
+                            fontWeight: isSelected ? 700 : 500,
+                          }}
+                        >
                           {c.name}
                         </span>
-                        <span style={{ fontSize: ".72rem", color: "#94a3b8", background: "rgba(255, 255, 255, 0.05)", padding: "1px 5px", borderRadius: 3 }}>
+                        <span
+                          style={{
+                            fontSize: ".72rem",
+                            color: "#64748b",
+                            background: "#f1f5f9",
+                            border: "1px solid #e2e8f0",
+                            padding: "1px 5px",
+                            borderRadius: 3,
+                          }}
+                        >
                           {c.code}
                         </span>
                       </div>
-                      {isSelected && <Check size={16} color="#22c55e" />}
+                      {isSelected && <Check size={16} color="#16a34a" />}
                     </div>
                   );
                 })}

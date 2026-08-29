@@ -86,37 +86,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       // Safe migration: sanitize any legacy obsolete personal/test values in storage
       try {
-        const obsoleteKeywords = [
-          "awami",
-          "waziristan",
-          "wana swltd",
-          "03449832129",
-          "03499585519",
-          "alyankhan1078@gmail.com",
-          "aliyankhan10@gmail.com",
-          "29540",
-        ];
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const key = window.localStorage.key(i);
-          if (!key) continue;
-          const val = window.localStorage.getItem(key);
-          if (val) {
+        [CART_STORAGE_KEY, FAVOURITES_STORAGE_KEY, CURRENCY_STORAGE_KEY].forEach((k) => {
+          const val = window.localStorage.getItem(k);
+          if (val && typeof val === "string") {
             const lower = val.toLowerCase();
-            if (obsoleteKeywords.some((kw) => lower.includes(kw))) {
-              if (key === CART_STORAGE_KEY || key === FAVOURITES_STORAGE_KEY || key === CURRENCY_STORAGE_KEY) {
-                const sanitized = val
-                  .replace(/AWAMI KUTHAB KHANA[^",]*/gi, "House No. 207, Gulshan Street, Model Town")
-                  .replace(/SOUTH WAZIRISTAN[^",]*/gi, "Sialkot")
-                  .replace(/alyankhan1078@gmail\.com/gi, "sialkotcricketkits@gmail.com")
-                  .replace(/\+?92\s*344\s*9832129/gi, "+92 327 5756188")
-                  .replace(/\+?92\s*349\s*9585519/gi, "+92 327 5756188");
-                window.localStorage.setItem(key, sanitized);
-              } else {
-                window.localStorage.removeItem(key);
-              }
+            if (
+              lower.includes("awami") ||
+              lower.includes("waziristan") ||
+              lower.includes("alyankhan") ||
+              lower.includes("03449832129")
+            ) {
+              const sanitized = val
+                .replace(/AWAMI KUTHAB KHANA[^",]*/gi, "House No. 207, Gulshan Street, Model Town")
+                .replace(/SOUTH WAZIRISTAN[^",]*/gi, "Sialkot")
+                .replace(/alyankhan1078@gmail\.com/gi, "sialkotcricketkits@gmail.com")
+                .replace(/\+?92\s*344\s*9832129/gi, "+92 327 5756188")
+                .replace(/\+?92\s*349\s*9585519/gi, "+92 327 5756188");
+              window.localStorage.setItem(k, sanitized);
             }
           }
-        }
+        });
       } catch {}
 
       const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);

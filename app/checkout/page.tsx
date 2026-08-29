@@ -18,9 +18,11 @@ import {
   Truck,
   CheckCircle2,
   ChevronLeft,
+  ChevronDown,
   UploadCloud,
   FileText,
   AlertTriangle,
+  AlertCircle,
   Info,
   X,
   RefreshCw,
@@ -36,6 +38,7 @@ import {
   FACTORY_INFO,
   TRANSFER_CHANNELS,
   TRANSFER_CHANNELS_NOTICE,
+  PAYMENT_METHODS,
   PAYMENT_SECURITY_WARNING,
   UBL_CARD_GATEWAY_ENABLED,
   MAX_RECEIPT_FILE_SIZE_BYTES,
@@ -45,31 +48,79 @@ import {
 import PolicyAgreementModal from "@/src/components/PolicyAgreementModal";
 import { POLICY_METADATA } from "@/src/lib/policy-agreement";
 import { CountrySelector } from "@/src/components/CountrySelector";
-import { resolveCountry } from "@/src/lib/countries";
+import { PhoneInput } from "@/src/components/PhoneInput";
+import { CheckoutSelectorErrorBoundary } from "@/src/components/CheckoutSelectorErrorBoundary";
+import {
+  validateCheckoutCustomerInfo,
+  validateFullName,
+  validateEmail,
+  validateStreetAddress,
+  validateCity,
+  validateState,
+  validatePostalCode,
+} from "@/src/lib/validation";
+import { getAddressConfig } from "@/src/lib/address-config";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, clearCart, formatPrice, currency, setCurrency, currencies } = useStore();
 
   const [step, setStep] = useState<Step>(1);
+  const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
   // Step 1: Contact & Delivery Form (Starts completely empty with no country preselected)
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     phone: "",
+    phoneDialCode: "+92",
+    country: "",
+    countryCode: "",
     address: "",
     city: "",
     state: "",
     postalCode: "",
-    country: "",
-    countryCode: "",
     deliveryInstructions: "",
   });
 
-  const [countryError, setCountryError] = useState<string | null>(null);
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Real-time validation computation
+  const validationOutcome = validateCheckoutCustomerInfo(formData);
+  const canContinue = validationOutcome.isValid;
+  const addressConfig = getAddressConfig(formData.countryCode);
+
+  const handleFieldChange = (field: string, value: string) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
+    // If the field becomes valid while typing, immediately clear its error
+    const outcome = validateCheckoutCustomerInfo(updated);
+    if (!outcome.errors[field]) {
+      setFieldErrors((prev) => {
+        if (!prev[field]) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleFieldBlur = (field: string) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    const outcome = validateCheckoutCustomerInfo(formData);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (outcome.errors[field]) {
+        next[field] = outcome.errors[field];
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  };
 
   // Step 3: Payment Method
   const [paymentMethod, setPaymentMethod] = useState<"ubl_manual" | "cod">("ubl_manual");
@@ -80,11 +131,13 @@ export default function CheckoutPage() {
     () => `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
   );
 
-  // Step 5: Payment Evidence Form
+  // Step 4: Payment Method Selection & Evidence Form
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("Wise");
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [evidenceData, setEvidenceData] = useState({
     senderName: "",
     senderCountry: "",
-    provider: "Taptap Send",
+    provider: "Wise",
     amountSent: "",
     currencySent: "GBP",
     transferDate: new Date().toISOString().split("T")[0],
@@ -119,7 +172,7 @@ export default function CheckoutPage() {
       : Math.round(grandTotal * (depositPercent / 100) * 100) / 100;
   const balanceRemaining = Math.max(0, Math.round((grandTotal - depositDueNow) * 100) / 100);
 
-  // Auto-sync sender defaults when navigating to Step 5 or updating amounts
+  // Auto-sync sender defaults when navigating between steps or updating deposit
   useEffect(() => {
     setEvidenceData((prev) => ({
       ...prev,
@@ -129,7 +182,7 @@ export default function CheckoutPage() {
       amountSent: prev.amountSent || String(depositDueNow),
       transferReference: prev.transferReference || provisionalRef,
     }));
-  }, [formData, currency, depositDueNow, provisionalRef]);
+  }, [step, currency, depositDueNow, provisionalRef, formData.fullName, formData.country]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -142,7 +195,7 @@ export default function CheckoutPage() {
     setErrorMessage(null);
 
     if (file.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
-      setErrorMessage(`Receipt exceeds the 8 MB limit. Please select a smaller image or document.`);
+      setErrorMessage(`Receipt exceeds the 5 MB limit. Please select a smaller image or document.`);
       return;
     }
 
@@ -178,39 +231,58 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!formData.fullName.trim()) {
-      setErrorMessage("Please enter your Full Name.");
+    // Strict validation of customer and delivery details
+    const outcome = validateCheckoutCustomerInfo(formData);
+    if (!outcome.isValid) {
+      setFieldErrors(outcome.errors);
+      setTouchedFields({
+        fullName: true,
+        email: true,
+        phone: true,
+        country: true,
+        address: true,
+        city: true,
+        state: true,
+        postalCode: true,
+      });
+      setErrorMessage("Please complete all required contact and delivery fields with valid information.");
       setStep(1);
       return;
     }
 
-    if (!formData.phone.trim() && !formData.email.trim()) {
-      setErrorMessage("Please enter your WhatsApp / Phone number or Email.");
-      setStep(1);
+    if (!selectedPaymentMethod) {
+      setErrorMessage("Please select the payment service or transfer method you used.");
       return;
     }
 
-    if (!formData.country || !formData.country.trim()) {
-      setErrorMessage("Please select your destination country.");
-      setCountryError("Please select your destination country.");
-      setStep(1);
+    if (!evidenceData.senderName.trim()) {
+      setErrorMessage("Please enter the sender's full name.");
       return;
     }
 
-    if (formData.countryCode === "IN" || formData.country.toLowerCase().includes("india")) {
-      setErrorMessage("Delivery to the selected destination is currently unavailable.");
-      setCountryError("Delivery to the selected destination is currently unavailable.");
-      setStep(1);
+    if (!evidenceData.transferReference.trim()) {
+      setErrorMessage("Please enter your transaction / transfer reference number.");
       return;
     }
 
-    if (shippingCalc.requiresQuotation) {
-      setErrorMessage(`A delivery quotation is required for ${shippingCalc.countryName}. Please contact our support desk on WhatsApp to confirm shipping before submitting.`);
+    const amountNum = parseFloat(evidenceData.amountSent);
+    if (!amountNum || isNaN(amountNum) || amountNum <= 0) {
+      setErrorMessage("Please enter a valid amount paid greater than zero.");
       return;
     }
 
     if (!receiptFile) {
       setErrorMessage("Please upload your payment receipt screenshot or document before submitting your order.");
+      return;
+    }
+
+    if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+      setErrorMessage("Receipt exceeds the 5 MB limit. Please select a smaller image or document.");
+      return;
+    }
+
+    if (!paymentConfirmed) {
+      setErrorMessage("Please confirm that you have sent the payment to the official beneficiary details.");
       return;
     }
 
@@ -224,16 +296,18 @@ export default function CheckoutPage() {
 
     try {
       const submitFormData = new FormData();
-      submitFormData.append("customerName", formData.fullName.trim());
-      submitFormData.append("customerEmail", formData.email.trim());
-      submitFormData.append("customerPhone", formData.phone.trim());
-      submitFormData.append("address", formData.address.trim());
-      submitFormData.append("city", formData.city.trim());
-      submitFormData.append("state", formData.state.trim());
-      submitFormData.append("postalCode", formData.postalCode.trim());
-      submitFormData.append("country", formData.country.trim());
-      submitFormData.append("countryCode", formData.countryCode || "");
-      submitFormData.append("deliveryInstructions", formData.deliveryInstructions.trim());
+      submitFormData.append("customerName", outcome.normalized.fullName);
+      submitFormData.append("customerEmail", outcome.normalized.email);
+      submitFormData.append("customerPhone", outcome.normalized.phoneE164);
+      submitFormData.append("customerPhoneDisplay", outcome.normalized.phoneDisplay);
+      submitFormData.append("phoneDialCode", outcome.normalized.phoneDialCode);
+      submitFormData.append("address", outcome.normalized.address);
+      submitFormData.append("city", outcome.normalized.city);
+      submitFormData.append("state", outcome.normalized.state);
+      submitFormData.append("postalCode", outcome.normalized.postalCode);
+      submitFormData.append("country", outcome.normalized.country);
+      submitFormData.append("countryCode", outcome.normalized.countryCode);
+      submitFormData.append("deliveryInstructions", outcome.normalized.deliveryInstructions);
       submitFormData.append("depositPercent", String(depositPercent));
       submitFormData.append("policiesAccepted", "true");
       submitFormData.append("policyVersion", POLICY_METADATA.version);
@@ -252,9 +326,10 @@ export default function CheckoutPage() {
       );
 
       submitFormData.append("orderId", provisionalRef);
+      submitFormData.append("paymentMethod", selectedPaymentMethod);
       submitFormData.append("senderName", (evidenceData.senderName || formData.fullName).trim());
       submitFormData.append("senderCountry", (evidenceData.senderCountry || formData.country).trim());
-      submitFormData.append("provider", evidenceData.provider || "Bank Transfer");
+      submitFormData.append("provider", selectedPaymentMethod);
       submitFormData.append("amountSent", evidenceData.amountSent || String(depositDueNow));
       submitFormData.append("currencySent", evidenceData.currencySent || currency || "GBP");
       submitFormData.append("transferDate", evidenceData.transferDate || new Date().toISOString().split("T")[0]);
@@ -273,8 +348,22 @@ export default function CheckoutPage() {
         clearCart();
         router.push(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
       } else {
+        if (data.errors) {
+          setFieldErrors(data.errors);
+          setTouchedFields({
+            fullName: true,
+            email: true,
+            phone: true,
+            country: true,
+            address: true,
+            city: true,
+            state: true,
+            postalCode: true,
+          });
+          setStep(1);
+        }
         setErrorMessage(
-          data.error || "Failed to submit order. Please check your uploaded receipt and try again."
+          data.error || "Failed to submit order. Please check your information and try again."
         );
         setIsSubmitting(false);
       }
@@ -285,40 +374,203 @@ export default function CheckoutPage() {
     }
   };
 
-  // WhatsApp fallback message
-  const whatsappEnquiryMessage = `Hello Sialkot Cricket Kits,\n\nI would like to order:\n${lines
-    .map((l, i) => `${i + 1}. ${l.product.name} (x${l.quantity}) — ${formatPrice(l.product.price)}`)
-    .join("\n")}\n\nTotal: ${formatPrice(grandTotal)}\nDelivery to: ${formData.country}\nOrder Ref: ${provisionalRef}\nName: ${formData.fullName}\nPhone: ${formData.phone}\n\nPlease guide me with payment verification.`;
+  // Step labels mapping
+  const stepLabels: Record<Step, string> = {
+    1: "Contact & Delivery",
+    2: "Review Order",
+    3: "Payment Option",
+    4: "Transfer & Evidence",
+  };
 
-  // Guard: Empty cart prevents checkout
+  // Order summary content renderer (used for both mobile collapsible accordion and desktop sticky card)
+  const renderOrderSummaryContent = (isMobile = false) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Product Lines */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxHeight: isMobile ? 280 : 260,
+          overflowY: "auto",
+          paddingRight: 4,
+        }}
+      >
+        {lines.map((l) => (
+          <div
+            key={l.product.id}
+            className="checkout-product-line"
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+              <img
+                src={l.product.image}
+                alt={l.product.name}
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <span className="checkout-product-name">
+                  {l.product.name}
+                </span>
+                <span className="checkout-product-qty" style={{ display: "block" }}>
+                  Qty: {l.quantity} · {formatPrice(l.product.price)} each
+                </span>
+              </div>
+            </div>
+            <strong className="checkout-product-price">
+              {formatPrice(l.product.price * lineQuantity(l.quantity))}
+            </strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="order-summary-divider" />
+
+      {/* Subtotal */}
+      <div className="order-summary-line">
+        <span>Subtotal ({totalItemCount} item{totalItemCount !== 1 ? "s" : ""})</span>
+        <strong>{formatPrice(subtotal)}</strong>
+      </div>
+
+      {/* Delivery */}
+      <div className="order-summary-line">
+        <span>
+          {shippingCalc.hasDestination
+            ? `Tracked Courier (${shippingCalc.countryName})`
+            : "Tracked Courier: Select destination"}
+        </span>
+        <strong>
+          {shippingCalc.hasDestination
+            ? formatPrice(shippingCalc.shippingFee)
+            : "—"}
+        </strong>
+      </div>
+
+      {shippingCalc.requiresQuotation && (
+        <div
+          style={{
+            padding: "8px 12px",
+            background: "#fefce8",
+            border: "1px solid #fde047",
+            borderRadius: 8,
+            fontSize: ".76rem",
+            color: "#854d0e",
+            lineHeight: 1.4,
+          }}
+        >
+          ⚠️ A delivery quotation is required for {shippingCalc.countryName}. Our support team will confirm tracked courier charges.
+        </div>
+      )}
+
+      <div className="order-summary-divider" />
+
+      {/* Total Value */}
+      <div className="order-total-line">
+        <span className="label">Order Total</span>
+        <span className="value">
+          {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+        </span>
+      </div>
+
+      {/* Advance Deposit breakdown if deposit < 100 */}
+      {depositPercent < 100 && (
+        <div
+          style={{
+            padding: "10px 12px",
+            background: "rgba(34, 197, 94, 0.08)",
+            borderRadius: 8,
+            border: "1px solid rgba(34, 197, 94, 0.25)",
+            fontSize: ".8rem",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", color: "#15803d", fontWeight: 700 }}>
+            <span>Advance Deposit Due Now ({depositPercent}%):</span>
+            <span>{formatPrice(depositDueNow)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", fontSize: ".74rem", marginTop: 4 }}>
+            <span>Balance Due Before Dispatch:</span>
+            <span>{formatPrice(balanceRemaining)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Trust & Guarantee Box */}
+      <div
+        style={{
+          marginTop: 10,
+          paddingTop: 12,
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          fontSize: ".76rem",
+          color: "#64748b",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ShieldCheck size={15} color="#16a34a" style={{ flexShrink: 0 }} />
+          <span>Official Beneficiary: <strong>ALYAN WAZIR (UBL Bank)</strong></span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Truck size={15} color="#d97706" style={{ flexShrink: 0 }} />
+          <span>
+            {shippingCalc.hasDestination && shippingCalc.destination
+              ? `Estimated Delivery: ${shippingCalc.destination.estimatedDelivery}`
+              : "Tracked Courier Dispatch"}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Building2 size={15} color="#0284c7" style={{ flexShrink: 0 }} />
+          <span>Direct from Sialkot Manufacturing Hub, Pakistan</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Guard: Empty cart renders clean message
   if (lines.length === 0) {
     return (
-      <main style={{ background: "var(--surface-alt)", minHeight: "100vh", paddingBottom: 80, color: "var(--text-primary)" }}>
-        <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: ".85rem clamp(1rem, 4vw, 4rem)" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: ".6rem", textDecoration: "none" }}>
-              <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" style={{ width: 38, height: 38, objectFit: "contain" }} />
-              <strong style={{ fontSize: ".82rem", textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text-primary)" }}>
-                Sialkot Cricket Kits
-              </strong>
-            </Link>
-          </div>
-        </header>
+      <main className="checkout-page-wrapper">
+        <div className="checkout-security-banner">
+          <Lock size={14} color="#16a34a" />
+          <span>Secure Manual Transfer Checkout · Official Sialkot Factory Direct</span>
+        </div>
 
-        <div style={{ maxWidth: 580, margin: "70px auto", padding: "40px 24px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, textAlign: "center" }}>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(242, 169, 40, 0.12)", color: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-            <ShoppingBag size={36} />
+        <div
+          style={{
+            maxWidth: 540,
+            margin: "40px auto",
+            padding: "36px 20px",
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: 16,
+            textAlign: "center",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: "50%",
+              background: "rgba(242, 169, 40, 0.12)",
+              color: "var(--primary, #f2a928)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}
+          >
+            <ShoppingBag size={34} />
           </div>
-          <h1 style={{ fontSize: "1.6rem", color: "#fff", margin: "0 0 10px", fontWeight: 800 }}>
+          <h1 style={{ fontSize: "1.45rem", color: "#0f172a", margin: "0 0 10px", fontWeight: 800 }}>
             Your Cart is Empty
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: ".92rem", lineHeight: 1.6, marginBottom: 28 }}>
+          <p style={{ color: "#64748b", fontSize: ".9rem", lineHeight: 1.6, marginBottom: 24 }}>
             You cannot proceed to checkout without selecting items. Please select equipment from our catalogue first.
           </p>
           <Link
             href="/shop"
             className="checkout-primary-cta"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", textDecoration: "none", fontSize: ".95rem" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", textDecoration: "none", fontSize: ".92rem" }}
           >
             <ShoppingBag size={18} /> Browse Equipment Catalogue
           </Link>
@@ -328,35 +580,54 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main style={{ background: "var(--surface-alt)", minHeight: "100vh", paddingBottom: 80, color: "var(--text-primary)" }}>
-      {/* Slim Header */}
-      <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: ".85rem clamp(1rem, 4vw, 4rem)" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: ".6rem", textDecoration: "none" }}>
-            <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" style={{ width: 38, height: 38, objectFit: "contain" }} />
-            <strong style={{ fontSize: ".82rem", textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text-primary)" }}>
-              Sialkot Cricket Kits
-            </strong>
-          </Link>
+    <main className="checkout-page-wrapper">
+      {/* Sleek Security Assurance Bar */}
+      <div className="checkout-security-banner">
+        <Lock size={14} color="#16a34a" />
+        <span>256-Bit SSL Encrypted · Direct Factory Dispatch Checkout</span>
+      </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".76rem", color: "var(--text-muted)" }}>
-              <Lock size={14} color="#22c55e" />
-              <span>Secure Manual Transfer Checkout</span>
+      <div className="checkout-main-container">
+        {/* ── MOBILE PROGRESS INDICATOR (< 768px) ── */}
+        <div className="checkout-progress-mobile">
+          <div className="checkout-progress-mobile-header">
+            <div className="checkout-progress-mobile-info">
+              <span className="checkout-progress-mobile-step-badge">
+                Step {step} of 4
+              </span>
+              <span className="checkout-progress-mobile-title">
+                {stepLabels[step]}
+              </span>
             </div>
+            {step > 1 && (
+              <button
+                type="button"
+                onClick={() => setStep((step - 1) as Step)}
+                className="checkout-progress-mobile-back"
+              >
+                <ChevronLeft size={14} /> Back
+              </button>
+            )}
+          </div>
+          <div className="checkout-progress-mobile-track">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`checkout-progress-mobile-bar ${
+                  step === s ? "active" : step > s ? "completed" : ""
+                }`}
+              />
+            ))}
           </div>
         </div>
-      </header>
 
-      {/* Progress Steps Header */}
-      <div style={{ maxWidth: 1100, margin: "24px auto 0", padding: "0 20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginBottom: 30 }}>
+        {/* ── DESKTOP PROGRESS HEADER (≥ 768px) ── */}
+        <div className="checkout-progress-desktop">
           {[
             { s: 1, label: "Contact & Delivery" },
             { s: 2, label: "Review Order" },
-            { s: 3, label: "Payment Method" },
-            { s: 4, label: "Transfer Details" },
-            { s: 5, label: "Upload Evidence" },
+            { s: 3, label: "Payment Option" },
+            { s: 4, label: "Transfer & Evidence" },
           ].map(({ s, label }) => {
             const isActive = step === s;
             const isCompleted = step > s;
@@ -364,7 +635,9 @@ export default function CheckoutPage() {
               <button
                 key={s}
                 type="button"
-                onClick={() => { if (isCompleted) setStep(s as Step); }}
+                onClick={() => {
+                  if (isCompleted) setStep(s as Step);
+                }}
                 style={{
                   flex: 1,
                   background: "none",
@@ -380,22 +653,33 @@ export default function CheckoutPage() {
               >
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     borderRadius: "50%",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: ".82rem",
-                    fontWeight: 700,
-                    background: isCompleted ? "#22c55e" : isActive ? "var(--primary)" : "#1e293b",
-                    color: isCompleted || isActive ? "#000" : "#94a3b8",
+                    fontSize: ".84rem",
+                    fontWeight: 800,
+                    background: isCompleted
+                      ? "#22c55e"
+                      : isActive
+                      ? "var(--primary, #f2a928)"
+                      : "#e2e8f0",
+                    color: isCompleted || isActive ? "#0f172a" : "#64748b",
                     transition: "all .2s ease",
                   }}
                 >
-                  {isCompleted ? <Check size={16} color="#000" /> : s}
+                  {isCompleted ? <Check size={17} strokeWidth={2.5} color="#0f172a" /> : s}
                 </div>
-                <span style={{ fontSize: ".72rem", fontWeight: isActive ? 700 : 500, color: isActive ? "#fff" : "var(--text-muted)", textAlign: "center" }}>
+                <span
+                  style={{
+                    fontSize: ".76rem",
+                    fontWeight: isActive ? 800 : 600,
+                    color: isActive ? "#0f172a" : "#64748b",
+                    textAlign: "center",
+                  }}
+                >
                   {label}
                 </span>
               </button>
@@ -403,213 +687,619 @@ export default function CheckoutPage() {
           })}
         </div>
 
-        {/* Main Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
-          {/* Left Column: Multi-Step Flow */}
-          <div>
+        {/* ── MAIN CHECKOUT GRID (1 Col on Mobile, 2 Col on Desktop) ── */}
+        <div className="checkout-layout-grid">
+          {/* Left Column: Flow Cards + Mobile Collapsible Summary */}
+          <div style={{ width: "100%", minWidth: 0 }}>
+            {/* ── MOBILE COLLAPSIBLE ORDER SUMMARY (< 1024px) ── */}
+            <div className="checkout-mobile-summary-wrapper">
+              <button
+                type="button"
+                className="checkout-mobile-summary-toggle"
+                onClick={() => setIsMobileSummaryOpen((prev) => !prev)}
+                aria-expanded={isMobileSummaryOpen}
+                aria-label="Toggle Order Summary"
+              >
+                <div className="checkout-mobile-summary-toggle-left">
+                  <div className="checkout-mobile-summary-icon">
+                    <ShoppingBag size={17} />
+                  </div>
+                  <div className="checkout-mobile-summary-meta">
+                    <strong>Order Summary</strong>
+                    <span>
+                      {totalItemCount} item{totalItemCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="checkout-mobile-summary-toggle-right">
+                  <div className="checkout-mobile-summary-price">
+                    <span className="checkout-mobile-summary-price-label">
+                      Total
+                    </span>
+                    <strong className="checkout-mobile-summary-price-val">
+                      {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                    </strong>
+                  </div>
+                  <span className="checkout-mobile-summary-action">
+                    {isMobileSummaryOpen ? "Hide" : "Details"}
+                    <ChevronDown
+                      size={13}
+                      className={`checkout-mobile-summary-chevron ${isMobileSummaryOpen ? "rotate" : ""}`}
+                    />
+                  </span>
+                </div>
+              </button>
+
+              {isMobileSummaryOpen && (
+                <div className="checkout-mobile-summary-content">
+                  {renderOrderSummaryContent(true)}
+                </div>
+              )}
+            </div>
+
             {/* ── STEP 1: CONTACT & DELIVERY ── */}
             {step === 1 && (
-              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
-                <h2 style={{ fontSize: "1.2rem", margin: "0 0 4px", fontWeight: 700 }}>Step 1 — Contact &amp; Delivery Details</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: ".84rem", margin: "0 0 20px" }}>
+              <div className="checkout-card">
+                <h2 className="checkout-step-heading">
+                  Step 1 — Contact &amp; Delivery Details
+                </h2>
+                <p className="checkout-step-description">
                   Please enter your delivery destination and contact number for tracked dispatch updates.
                 </p>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Full Name *</label>
+                <div className="checkout-form-grid">
+                  {/* 1. Full Name */}
+                  <div style={{ position: "relative" }}>
+                    <label htmlFor="checkout-full-name" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>FULL NAME</span>
+                        <span style={{ color: "#ef4444" }}>*</span>
+                      </div>
+                      {validateFullName(formData.fullName).valid && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
                     <input
+                      id="checkout-full-name"
                       className="checkout-input"
                       type="text"
-                      placeholder="e.g. Imran Khan"
+                      required
+                      autoComplete="name"
+                      placeholder="e.g. Alyan Wazir / Imran Khan"
                       value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      onChange={(e) => handleFieldChange("fullName", e.target.value)}
+                      onBlur={() => handleFieldBlur("fullName")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      aria-invalid={Boolean(fieldErrors.fullName)}
+                      aria-describedby={fieldErrors.fullName ? "fullname-error" : undefined}
+                      style={{
+                        borderColor: fieldErrors.fullName
+                          ? "#ef4444"
+                          : validateFullName(formData.fullName).valid
+                          ? "#22c55e"
+                          : "#cbd5e1",
+                        boxShadow: fieldErrors.fullName ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
+                      }}
                     />
+                    {fieldErrors.fullName && (
+                      <div id="fullname-error" role="alert" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: ".82rem", color: "#ef4444", fontWeight: 600, wordBreak: "break-word" }}>
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                        <span>{fieldErrors.fullName}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="checkout-field-label">WhatsApp / Phone * (with country code)</label>
+                  {/* 2. Email Address */}
+                  <div style={{ position: "relative", width: "100%" }}>
+                    <label htmlFor="checkout-email" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>EMAIL ADDRESS</span>
+                        <span style={{ color: "#ef4444" }}>*</span>
+                      </div>
+                      {validateEmail(formData.email).valid && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
                     <input
-                      className="checkout-input"
-                      type="tel"
-                      placeholder="+44 7700 900123 / +92 300 1234567"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="checkout-field-label">Email Address (for official receipt)</label>
-                    <input
+                      id="checkout-email"
                       className="checkout-input"
                       type="email"
-                      placeholder="you@example.com"
+                      inputMode="email"
+                      autoComplete="email"
+                      required
+                      placeholder="e.g. name@example.com / customer@outlook.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <CountrySelector
-                      value={formData.country}
-                      onChange={(selected) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          country: selected.name,
-                          countryCode: selected.code,
-                        }));
-                        setCountryError(null);
-                        setErrorMessage(null);
+                      onChange={(e) => handleFieldChange("email", e.target.value)}
+                      onBlur={() => handleFieldBlur("email")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
                       }}
-                      error={countryError}
+                      aria-invalid={Boolean(fieldErrors.email)}
+                      aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                      style={{
+                        borderColor: fieldErrors.email
+                          ? "#ef4444"
+                          : validateEmail(formData.email).valid
+                          ? "#22c55e"
+                          : "#cbd5e1",
+                        boxShadow: fieldErrors.email ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
+                      }}
                     />
+                    {fieldErrors.email && (
+                      <div id="email-error" role="alert" className="checkout-field-error">
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{fieldErrors.email}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Street Address</label>
+                  {/* 3. Phone / WhatsApp with Calling Code Selector */}
+                  <div className="checkout-form-col-full">
+                    <CheckoutSelectorErrorBoundary fallbackTitle="Could not load phone calling code selector. Please try again.">
+                      <PhoneInput
+                        id="checkout-phone"
+                        value={formData.phone}
+                        dialCode={formData.phoneDialCode}
+                        onChange={(phoneVal, dialVal) => {
+                          const updated = { ...formData, phone: phoneVal, phoneDialCode: dialVal };
+                          setFormData(updated);
+                          if (touchedFields.phone || fieldErrors.phone) {
+                            const outcome = validateCheckoutCustomerInfo(updated);
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              if (outcome.errors.phone) next.phone = outcome.errors.phone;
+                              else delete next.phone;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={() => handleFieldBlur("phone")}
+                        error={fieldErrors.phone}
+                        isValid={Boolean(formData.phone.trim()) && !fieldErrors.phone}
+                      />
+                    </CheckoutSelectorErrorBoundary>
+                  </div>
+
+                  {/* 4. Destination Country Selector */}
+                  <div className="checkout-form-col-full">
+                    <CheckoutSelectorErrorBoundary fallbackTitle="Could not load destination country list. Please try again.">
+                      <CountrySelector
+                        value={formData.country}
+                        onChange={(selected) => {
+                          const updated = {
+                            ...formData,
+                            country: selected.name,
+                            countryCode: selected.code,
+                            state: "",
+                          };
+                          setFormData(updated);
+                          setTouchedFields((prev) => ({ ...prev, country: true }));
+                          const outcome = validateCheckoutCustomerInfo(updated);
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (outcome.errors.country) next.country = outcome.errors.country;
+                            else delete next.country;
+                            return next;
+                          });
+                          setErrorMessage(null);
+                        }}
+                        error={fieldErrors.country}
+                      />
+                    </CheckoutSelectorErrorBoundary>
+                  </div>
+
+                  {/* 5. Street Address */}
+                  <div className="checkout-form-col-full" style={{ position: "relative" }}>
+                    <label htmlFor="checkout-address" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>STREET ADDRESS</span>
+                        <span style={{ color: "#ef4444" }}>*</span>
+                      </div>
+                      {validateStreetAddress(formData.address).valid && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
                     <input
+                      id="checkout-address"
                       className="checkout-input"
                       type="text"
+                      required
+                      autoComplete="street-address"
                       placeholder="House/Apartment number, street, landmark"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      onChange={(e) => handleFieldChange("address", e.target.value)}
+                      onBlur={() => handleFieldBlur("address")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      aria-invalid={Boolean(fieldErrors.address)}
+                      aria-describedby={fieldErrors.address ? "address-error" : undefined}
+                      style={{
+                        borderColor: fieldErrors.address
+                          ? "#ef4444"
+                          : validateStreetAddress(formData.address).valid
+                          ? "#22c55e"
+                          : "#cbd5e1",
+                        boxShadow: fieldErrors.address ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
+                      }}
                     />
+                    {fieldErrors.address && (
+                      <div id="address-error" role="alert" className="checkout-field-error">
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{fieldErrors.address}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="checkout-field-label">City</label>
+                  {/* 6. City */}
+                  <div style={{ position: "relative", width: "100%" }}>
+                    <label htmlFor="checkout-city" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>CITY</span>
+                        <span style={{ color: "#ef4444" }}>*</span>
+                      </div>
+                      {validateCity(formData.city).valid && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
                     <input
+                      id="checkout-city"
                       className="checkout-input"
                       type="text"
-                      placeholder="e.g. London / Lahore"
+                      required
+                      autoComplete="address-level2"
+                      placeholder="e.g. London / Lahore / Dubai"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) => handleFieldChange("city", e.target.value)}
+                      onBlur={() => handleFieldBlur("city")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      aria-invalid={Boolean(fieldErrors.city)}
+                      aria-describedby={fieldErrors.city ? "city-error" : undefined}
+                      style={{
+                        borderColor: fieldErrors.city
+                          ? "#ef4444"
+                          : validateCity(formData.city).valid
+                          ? "#22c55e"
+                          : "#cbd5e1",
+                        boxShadow: fieldErrors.city ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
+                      }}
                     />
+                    {fieldErrors.city && (
+                      <div id="city-error" role="alert" className="checkout-field-error">
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{fieldErrors.city}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="checkout-field-label">State / Region / County</label>
-                    <input
-                      className="checkout-input"
-                      type="text"
-                      placeholder="e.g. Greater London / Punjab"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    />
+                  {/* 7. State / Region / County */}
+                  <div style={{ position: "relative", width: "100%" }}>
+                    <label htmlFor="checkout-state" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>{addressConfig.stateLabel.replace(" *", "")}</span>
+                        {addressConfig.requiresState ? (
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        ) : (
+                          <span style={{ color: "#64748b", fontWeight: 500, fontSize: ".72rem", textTransform: "none" }}>(Optional)</span>
+                        )}
+                      </div>
+                      {validateState(formData.state, formData.countryCode).valid && Boolean(formData.state?.trim()) && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
+                    {addressConfig.states && addressConfig.states.length > 0 ? (
+                      <select
+                        id="checkout-state"
+                        className="checkout-select"
+                        value={formData.state}
+                        onChange={(e) => handleFieldChange("state", e.target.value)}
+                        onBlur={() => handleFieldBlur("state")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.preventDefault();
+                        }}
+                        aria-invalid={Boolean(fieldErrors.state)}
+                        style={{
+                          borderColor: fieldErrors.state
+                            ? "#ef4444"
+                            : validateState(formData.state, formData.countryCode).valid && Boolean(formData.state)
+                            ? "#22c55e"
+                            : "#cbd5e1",
+                        }}
+                      >
+                        <option value="">Select {addressConfig.stateLabel.replace(" *", "")}</option>
+                        {addressConfig.states.map((s) => (
+                          <option key={s.code} value={s.name}>
+                            {s.name} ({s.code.replace("_US", "")})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="checkout-state"
+                        className="checkout-input"
+                        type="text"
+                        autoComplete="address-level1"
+                        placeholder="e.g. Greater London / Punjab"
+                        value={formData.state}
+                        onChange={(e) => handleFieldChange("state", e.target.value)}
+                        onBlur={() => handleFieldBlur("state")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.preventDefault();
+                        }}
+                        aria-invalid={Boolean(fieldErrors.state)}
+                        style={{
+                          borderColor: fieldErrors.state
+                            ? "#ef4444"
+                            : validateState(formData.state, formData.countryCode).valid && Boolean(formData.state?.trim())
+                            ? "#22c55e"
+                            : "#cbd5e1",
+                        }}
+                      />
+                    )}
+                    {fieldErrors.state && (
+                      <div role="alert" className="checkout-field-error">
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{fieldErrors.state}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="checkout-field-label">Postal / ZIP Code</label>
+                  {/* 8. Postal / ZIP Code */}
+                  <div style={{ position: "relative", width: "100%" }}>
+                    <label htmlFor="checkout-postal" className="checkout-field-label">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>{addressConfig.postalCodeLabel.replace(" *", "").replace(" (Optional)", "")}</span>
+                        {addressConfig.requiresPostalCode ? (
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        ) : (
+                          <span style={{ color: "#64748b", fontWeight: 500, fontSize: ".72rem", textTransform: "none" }}>(Optional)</span>
+                        )}
+                      </div>
+                      {validatePostalCode(formData.postalCode, formData.countryCode).valid && Boolean(formData.postalCode?.trim()) && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#16a34a", fontSize: ".72rem", fontWeight: 700 }}>
+                          <Check size={13} strokeWidth={2.5} /> Valid
+                        </span>
+                      )}
+                    </label>
                     <input
+                      id="checkout-postal"
                       className="checkout-input"
                       type="text"
-                      placeholder="e.g. SW1A 1AA / 51310"
+                      autoComplete="postal-code"
+                      placeholder={addressConfig.postalCodePlaceholder}
                       value={formData.postalCode}
-                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                      onChange={(e) => handleFieldChange("postalCode", e.target.value)}
+                      onBlur={() => handleFieldBlur("postalCode")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      aria-invalid={Boolean(fieldErrors.postalCode)}
+                      style={{
+                        borderColor: fieldErrors.postalCode
+                          ? "#ef4444"
+                          : validatePostalCode(formData.postalCode, formData.countryCode).valid && Boolean(formData.postalCode?.trim())
+                          ? "#22c55e"
+                          : "#cbd5e1",
+                      }}
                     />
+                    {fieldErrors.postalCode && (
+                      <div role="alert" className="checkout-field-error">
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{fieldErrors.postalCode}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="checkout-field-label">Delivery Notes (Optional)</label>
+                  {/* 9. Delivery Notes */}
+                  <div className="checkout-form-col-full">
+                    <label htmlFor="checkout-notes" className="checkout-field-label">
+                      <span>DELIVERY NOTES</span>
+                      <span style={{ color: "#64748b", fontWeight: 500, fontSize: ".72rem", textTransform: "none" }}>(Optional)</span>
+                    </label>
                     <input
+                      id="checkout-notes"
                       className="checkout-input"
                       type="text"
-                      placeholder="Leave with neighbor, ring buzzer, etc."
+                      maxLength={500}
+                      placeholder="Leave with neighbor, gate code, ring buzzer, etc."
                       value={formData.deliveryInstructions}
-                      onChange={(e) => setFormData({ ...formData, deliveryInstructions: e.target.value })}
+                      onChange={(e) => handleFieldChange("deliveryInstructions", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
                     />
                   </div>
                 </div>
 
+                {/* Step 1 Error Banner */}
+                {errorMessage && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 18,
+                      padding: "12px 16px",
+                      background: "rgba(239, 68, 68, 0.08)",
+                      border: "1.5px solid #ef4444",
+                      borderRadius: 8,
+                      color: "#dc2626",
+                      fontSize: ".85rem",
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                {/* Step 1 Continue Button */}
                 <button
                   type="button"
                   className="checkout-primary-cta"
-                  style={{ marginTop: 24, width: "100%" }}
                   onClick={() => {
-                    if (!formData.fullName.trim()) {
-                      setErrorMessage("Please enter your Full Name before proceeding.");
+                    setTouchedFields({
+                      fullName: true,
+                      email: true,
+                      phone: true,
+                      country: true,
+                      address: true,
+                      city: true,
+                      state: true,
+                      postalCode: true,
+                    });
+
+                    const outcome = validateCheckoutCustomerInfo(formData);
+                    if (!outcome.isValid) {
+                      setFieldErrors(outcome.errors);
+                      const missingFields = Object.keys(outcome.errors);
+                      const firstField = missingFields[0];
+                      const friendlyName =
+                        firstField === "fullName"
+                          ? "Full Name"
+                          : firstField === "email"
+                          ? "Email Address"
+                          : firstField === "phone"
+                          ? "Phone Number"
+                          : firstField === "country"
+                          ? "Destination Country"
+                          : firstField === "address"
+                          ? "Street Address"
+                          : firstField === "city"
+                          ? "City"
+                          : firstField === "state"
+                          ? addressConfig.stateLabel.replace(" *", "")
+                          : firstField === "postalCode"
+                          ? addressConfig.postalCodeLabel.replace(" *", "")
+                          : "required information";
+
+                      setErrorMessage(`Please complete ${friendlyName} (${outcome.errors[firstField]}) before proceeding.`);
+
+                      const targetId =
+                        firstField === "fullName"
+                          ? "checkout-full-name"
+                          : firstField === "email"
+                          ? "checkout-email"
+                          : firstField === "phone"
+                          ? "checkout-phone"
+                          : firstField === "address"
+                          ? "checkout-address"
+                          : firstField === "city"
+                          ? "checkout-city"
+                          : firstField === "state"
+                          ? "checkout-state"
+                          : firstField === "postalCode"
+                          ? "checkout-postal"
+                          : "checkout-country";
+                      const el = document.getElementById(targetId);
+                      if (el) {
+                        el.focus();
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
                       return;
                     }
-                    if (!formData.phone.trim() && !formData.email.trim()) {
-                      setErrorMessage("Please enter a WhatsApp/Phone number or Email.");
-                      return;
-                    }
-                    if (!formData.country || !formData.country.trim()) {
-                      setCountryError("Please select your destination country.");
-                      setErrorMessage("Please select your destination country.");
-                      return;
-                    }
-                    if (formData.countryCode === "IN" || formData.country.toLowerCase().includes("india")) {
-                      setCountryError("Delivery to the selected destination is currently unavailable.");
-                      setErrorMessage("Delivery to the selected destination is currently unavailable.");
-                      return;
-                    }
-                    setCountryError(null);
+
+                    setFieldErrors({});
                     setErrorMessage(null);
                     setStep(2);
                   }}
+                  style={{ marginTop: 22 }}
                 >
-                  Proceed to Review Order <ArrowRight size={16} />
+                  Proceed to Review Order <ArrowRight size={17} />
                 </button>
               </div>
             )}
 
             {/* ── STEP 2: REVIEW ORDER ── */}
             {step === 2 && (
-              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
+              <div className="checkout-card">
                 <button className="checkout-back-btn" type="button" onClick={() => setStep(1)}>
                   <ChevronLeft size={16} /> Back to Contact Details
                 </button>
 
-                <h2 style={{ fontSize: "1.2rem", margin: "12px 0 4px", fontWeight: 700 }}>Step 2 — Review Your Order</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: ".84rem", margin: "0 0 16px" }}>
+                <h2 className="checkout-step-heading">Step 2 — Review Your Order</h2>
+                <p className="checkout-step-description">
                   Verify your items and delivery destination before continuing to payment details.
                 </p>
 
-                <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.25)", padding: "10px 14px", borderRadius: 8, fontSize: ".82rem", color: "#f2a928", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                  <Info size={16} />
+                <div
+                  style={{
+                    background: "rgba(242, 169, 40, 0.08)",
+                    border: "1px solid rgba(242, 169, 40, 0.3)",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    fontSize: ".84rem",
+                    color: "#b45309",
+                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Info size={16} style={{ flexShrink: 0 }} />
                   <span>Provisional Order Reference: <strong>{provisionalRef}</strong></span>
                 </div>
 
                 {/* Items List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
                   {lines.map((line) => (
                     <div
                       key={line.product.id}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 14,
+                        gap: 12,
                         padding: "10px 12px",
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid var(--border)",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
                         borderRadius: 10,
                       }}
                     >
                       <img
                         src={line.product.image}
                         alt={line.product.name}
-                        style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, background: "#09101d" }}
+                        style={{ width: 48, height: 48, minWidth: 48, objectFit: "cover", borderRadius: 8, background: "#ffffff", border: "1px solid #cbd5e1" }}
                       />
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ fontSize: ".88rem", display: "block", color: "#fff" }}>{line.product.name}</strong>
-                        <span style={{ fontSize: ".76rem", color: "var(--text-muted)" }}>Category: {line.product.category} · Qty: {line.quantity}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong style={{ fontSize: ".88rem", display: "block", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {line.product.name}
+                        </strong>
+                        <span style={{ fontSize: ".76rem", color: "#64748b" }}>
+                          Qty: {line.quantity} · {formatPrice(line.product.price)} each
+                        </span>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <strong style={{ color: "var(--primary)", fontSize: ".92rem" }}>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <strong style={{ color: "#0f172a", fontSize: ".92rem" }}>
                           {formatPrice(line.product.price * line.quantity)}
                         </strong>
-                        <small style={{ display: "block", color: "var(--text-muted)", fontSize: ".72rem" }}>
-                          {formatPrice(line.product.price)} each
-                        </small>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Totals Summary */}
-                <div style={{ background: "rgba(0,0,0,0.25)", padding: 16, borderRadius: 10, marginBottom: 20 }}>
-                  <div className="order-summary-line"><span>Subtotal ({totalItemCount} items)</span><strong>{formatPrice(subtotal)}</strong></div>
+                <div style={{ background: "#f8fafc", padding: "14px 16px", borderRadius: 10, border: "1px solid #e2e8f0", marginBottom: 20 }}>
+                  <div className="order-summary-line">
+                    <span>Subtotal ({totalItemCount} items)</span>
+                    <strong>{formatPrice(subtotal)}</strong>
+                  </div>
                   <div className="order-summary-line">
                     <span>
                       {shippingCalc.hasDestination
@@ -623,7 +1313,7 @@ export default function CheckoutPage() {
                     </strong>
                   </div>
                   {shippingCalc.requiresQuotation && (
-                    <div style={{ marginTop: 6, padding: "6px 10px", background: "rgba(242, 169, 40, 0.1)", border: "1px solid rgba(242, 169, 40, 0.3)", borderRadius: 6, fontSize: ".76rem", color: "#fbbf24" }}>
+                    <div style={{ marginTop: 6, padding: "8px 10px", background: "#fefce8", border: "1px solid #fde047", borderRadius: 6, fontSize: ".76rem", color: "#854d0e" }}>
                       ⚠️ A delivery quotation is required for this destination.
                     </div>
                   )}
@@ -639,37 +1329,38 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="checkout-primary-cta"
-                  style={{ width: "100%" }}
                   onClick={() => setStep(3)}
                 >
-                  Select Payment Method <ArrowRight size={16} />
+                  Select Payment Option <ArrowRight size={17} />
                 </button>
               </div>
             )}
 
             {/* ── STEP 3: SELECT PAYMENT METHOD ── */}
             {step === 3 && (
-              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
+              <div className="checkout-card">
                 <button className="checkout-back-btn" type="button" onClick={() => setStep(2)}>
                   <ChevronLeft size={16} /> Back to Order Review
                 </button>
 
-                <h2 style={{ fontSize: "1.2rem", margin: "12px 0 4px", fontWeight: 700 }}>Step 3 — Select Payment Method</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: ".84rem", margin: "0 0 16px" }}>
-                  Choose manual bank wire or remittance. Card payments are currently handled via bank transfer until the official UBL card gateway is enabled.
+                <h2 className="checkout-step-heading">Step 3 — Select Payment Option</h2>
+                <p className="checkout-step-description">
+                  Choose 100% full payment or a 50% advance production deposit. Card payments are handled via bank transfer until the official UBL card gateway is enabled.
                 </p>
 
                 {/* Advance Deposit Option */}
                 <div style={{ marginBottom: 20 }}>
-                  <label className="checkout-field-label">Payment Option</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <label className="checkout-field-label">Choose Payment Plan</label>
+                  <div className="checkout-plans-grid">
                     <button
                       type="button"
                       onClick={() => setDepositPercent(100)}
                       className={`payment-method-option${depositPercent === 100 ? " selected" : ""}`}
                     >
                       <span className="payment-method-label">100% Full Payment</span>
-                      <small style={{ color: "var(--text-muted)", fontSize: ".74rem", display: "block" }}>Pay full amount upfront ({formatPrice(grandTotal)})</small>
+                      <small style={{ color: "#64748b", fontSize: ".76rem", display: "block", marginTop: 2 }}>
+                        Pay full amount upfront ({formatPrice(grandTotal)})
+                      </small>
                     </button>
 
                     <button
@@ -678,7 +1369,9 @@ export default function CheckoutPage() {
                       className={`payment-method-option${depositPercent === 50 ? " selected" : ""}`}
                     >
                       <span className="payment-method-label">50% Advance Deposit</span>
-                      <small style={{ color: "var(--text-muted)", fontSize: ".74rem", display: "block" }}>Pay {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} now, balance before dispatch</small>
+                      <small style={{ color: "#64748b", fontSize: ".76rem", display: "block", marginTop: 2 }}>
+                        Pay {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} now, balance before dispatch
+                      </small>
                     </button>
                   </div>
                 </div>
@@ -686,30 +1379,30 @@ export default function CheckoutPage() {
                 {/* Primary Payment Option Card */}
                 <div
                   style={{
-                    border: "2px solid var(--primary)",
+                    border: "2px solid #b45309",
                     background: "rgba(242, 169, 40, 0.05)",
                     borderRadius: 12,
-                    padding: 18,
+                    padding: 16,
                     marginBottom: 16,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <Building2 size={20} color="var(--primary)" />
-                    <strong style={{ fontSize: "1rem", color: "#fff" }}>
-                      Bank Transfer / International Money Transfer
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <Building2 size={20} color="#b45309" />
+                    <strong style={{ fontSize: ".98rem", color: "#0f172a" }}>
+                      Bank Wire / International Remittance (Wise, Remitly, etc.)
                     </strong>
-                    <span className="deposit-option-badge" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", marginLeft: "auto" }}>
+                    <span style={{ background: "rgba(34, 197, 94, 0.15)", color: "#15803d", fontSize: ".72rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, marginLeft: "auto" }}>
                       Recommended
                     </span>
                   </div>
-                  <p style={{ fontSize: ".84rem", color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
+                  <p style={{ fontSize: ".84rem", color: "#475569", lineHeight: 1.5, margin: 0 }}>
                     Transfer the final order amount using our verified UBL bank details. After completing your transfer via mobile banking, Taptap Send, Remitly, Wise, or exchange, upload your receipt screenshot on the next step.
                   </p>
                 </div>
 
-                {/* Domestic COD Notice if applicable */}
+                {/* Domestic Pakistan COD Notice */}
                 {formData.country === "Pakistan" && (
-                  <div style={{ padding: 14, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 10, marginBottom: 16, fontSize: ".82rem", color: "var(--text-secondary)" }}>
+                  <div style={{ padding: 12, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, marginBottom: 16, fontSize: ".82rem", color: "#475569" }}>
                     💡 <em>For domestic Pakistan deliveries requiring partial advance verification, our team will coordinate on WhatsApp.</em>
                   </div>
                 )}
@@ -717,65 +1410,98 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="checkout-primary-cta"
-                  style={{ width: "100%", marginTop: 8 }}
                   onClick={() => setStep(4)}
                 >
-                  View UBL Bank Transfer Instructions <ArrowRight size={16} />
+                  View UBL Bank Transfer Instructions <ArrowRight size={17} />
                 </button>
               </div>
             )}
 
-            {/* ── STEP 4: PAYMENT INSTRUCTIONS ── */}
+            {/* ── STEP 4: PAYMENT INSTRUCTIONS & EVIDENCE UPLOAD ── */}
             {step === 4 && (
-              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
+              <div className="checkout-card">
                 <button className="checkout-back-btn" type="button" onClick={() => setStep(3)}>
-                  <ChevronLeft size={16} /> Back to Payment Method
+                  <ChevronLeft size={16} /> Back to Payment Option
                 </button>
 
-                <h2 style={{ fontSize: "1.2rem", margin: "12px 0 4px", fontWeight: 700 }}>Step 4 — UBL Beneficiary &amp; Transfer Instructions</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: ".84rem", margin: "0 0 16px" }}>
-                  Please complete your transfer to the official UBL account below. Enter your order reference in the payment description.
+                <h2 className="checkout-step-heading">
+                  Step 4 — Beneficiary &amp; Payment Verification
+                </h2>
+                <p className="checkout-step-description">
+                  Please complete your payment to the official UBL account below, select the payment service you used, and upload your transfer receipt for verification.
                 </p>
 
                 {/* Total Due Banner */}
-                <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1.5px solid rgba(34, 197, 94, 0.3)", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <div
+                  style={{
+                    background: "rgba(34, 197, 94, 0.08)",
+                    border: "1.5px solid rgba(34, 197, 94, 0.35)",
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    marginBottom: 18,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 12,
+                  }}
+                >
                   <div>
-                    <span style={{ fontSize: ".75rem", textTransform: "uppercase", color: "#94a3b8", display: "block" }}>
+                    <span style={{ fontSize: ".72rem", textTransform: "uppercase", color: "#64748b", fontWeight: 700, display: "block" }}>
                       Amount Due ({depositPercent}% {depositPercent < 100 ? "Deposit" : "Full"})
                     </span>
-                    <strong style={{ fontSize: "1.4rem", color: "#4ade80" }}>{formatPrice(depositDueNow)}</strong>
+                    <strong style={{ fontSize: "1.4rem", color: "#15803d", fontWeight: 800 }}>
+                      {formatPrice(depositDueNow)}
+                    </strong>
                     {balanceRemaining > 0 && (
-                      <small style={{ display: "block", color: "var(--text-muted)", fontSize: ".76rem" }}>
+                      <small style={{ display: "block", color: "#64748b", fontSize: ".74rem", marginTop: 2 }}>
                         Remaining balance ({formatPrice(balanceRemaining)}) due before dispatch.
                       </small>
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <span style={{ fontSize: ".72rem", textTransform: "uppercase", color: "#94a3b8", display: "block" }}>
+                    <span style={{ fontSize: ".7rem", textTransform: "uppercase", color: "#64748b", fontWeight: 700, display: "block" }}>
                       Your Transfer Reference
                     </span>
-                    <strong style={{ color: "var(--primary)", fontSize: "1rem", fontFamily: "monospace" }}>{provisionalRef}</strong>
+                    <strong style={{ color: "#b45309", fontSize: "1rem", fontFamily: "monospace", fontWeight: 800 }}>
+                      {provisionalRef}
+                    </strong>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(provisionalRef, "Order Ref")}
-                      style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: ".74rem", display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", marginTop: 2 }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#0284c7",
+                        cursor: "pointer",
+                        fontSize: ".76rem",
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginLeft: "auto",
+                        marginTop: 3,
+                        padding: 0,
+                      }}
                     >
-                      {copiedKey === "Order Ref" ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedKey === "Order Ref" ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
                       <span>{copiedKey === "Order Ref" ? "Ref copied!" : "Copy Ref"}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Official Disclosure Notice */}
-                <div style={{ background: "rgba(242, 169, 40, 0.08)", border: "1px solid rgba(242, 169, 40, 0.3)", borderRadius: 10, padding: 12, marginBottom: 18, fontSize: ".82rem", color: "#f2a928", lineHeight: 1.5 }}>
-                  <AlertTriangle size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-                  <strong>Important Beneficiary Notice:</strong> {UBL_PAYMENT_CONFIG.beneficiaryNotice}
-                </div>
-
-                {/* Centralized UBL Details Box */}
-                <div style={{ background: "rgba(0,0,0,0.35)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 20 }}>
-                  <h3 style={{ margin: "0 0 12px", fontSize: ".92rem", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
-                    <Building2 size={16} color="var(--primary)" />
+                {/* Centralized Official UBL Details Box */}
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1.5px solid #cbd5e1",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 18,
+                  }}
+                >
+                  <h3 style={{ margin: "0 0 12px", fontSize: ".95rem", color: "#0f172a", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Building2 size={18} color="#b45309" />
                     <span>Official UBL Beneficiary Details</span>
                   </h3>
 
@@ -796,13 +1522,15 @@ export default function CheckoutPage() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "8px 0",
-                        borderBottom: "1px solid rgba(255,255,255,0.06)",
-                        fontSize: ".84rem",
+                        borderBottom: "1px solid #e2e8f0",
+                        fontSize: ".82rem",
+                        flexWrap: "wrap",
+                        gap: 4,
                       }}
                     >
-                      <span style={{ color: "var(--text-secondary)", fontSize: ".8rem" }}>{label}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <strong style={{ color: "#fff", fontFamily: label === "IBAN" || label === "Account Number" || label === "SWIFT / BIC" ? "monospace" : "inherit" }}>
+                      <span style={{ color: "#64748b", fontSize: ".8rem", fontWeight: 600 }}>{label}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", wordBreak: "break-all" }}>
+                        <strong style={{ color: "#0f172a", fontFamily: label === "IBAN" || label === "Account Number" || label === "SWIFT / BIC" ? "monospace" : "inherit", fontSize: ".84rem" }}>
                           {val}
                         </strong>
                         <button
@@ -810,169 +1538,356 @@ export default function CheckoutPage() {
                           className="payment-info-copy"
                           onClick={() => copyToClipboard(val, label)}
                           aria-label={`Copy ${label}`}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 4,
+                            borderRadius: 4,
+                            color: "#0284c7",
+                            flexShrink: 0,
+                          }}
                         >
-                          {copiedKey === label ? <Check size={13} color="#22c55e" /> : <Copy size={13} />}
+                          {copiedKey === label ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Transfer Channels Box */}
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ fontSize: ".85rem", color: "#fff", margin: "0 0 6px" }}>Supported Transfer Providers</h4>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                    {TRANSFER_CHANNELS.map((ch) => (
-                      <span
-                        key={ch.id}
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid var(--border)",
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          fontSize: ".75rem",
-                          color: "#cbd5e1",
-                        }}
-                      >
-                        {ch.name}
-                      </span>
-                    ))}
-                  </div>
-                  <small style={{ color: "var(--text-muted)", fontSize: ".74rem", display: "block", lineHeight: 1.4 }}>
-                    {TRANSFER_CHANNELS_NOTICE}
-                  </small>
-                </div>
-
-                {/* Security Warning */}
-                <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)", borderRadius: 10, padding: 12, marginBottom: 24, fontSize: ".8rem", color: "#38bdf8", lineHeight: 1.4 }}>
-                  <ShieldCheck size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-                  {PAYMENT_SECURITY_WARNING}
-                </div>
-
-                <button
-                  type="button"
-                  className="checkout-primary-cta"
-                  style={{ width: "100%" }}
-                  onClick={() => setStep(5)}
+                {/* Important Notice */}
+                <div
+                  style={{
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    borderRadius: 10,
+                    padding: 12,
+                    marginBottom: 20,
+                    fontSize: ".82rem",
+                    color: "#92400e",
+                    lineHeight: 1.5,
+                    wordBreak: "break-word",
+                  }}
                 >
-                  I Have Transferred — Upload Payment Evidence <ArrowRight size={16} />
-                </button>
-              </div>
-            )}
+                  <AlertTriangle size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                  <strong>Important Notice:</strong> {UBL_PAYMENT_CONFIG.beneficiaryNotice}
+                </div>
 
-            {/* ── STEP 5: SUBMIT PAYMENT EVIDENCE ── */}
-            {step === 5 && (
-              <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24 }}>
-                <button className="checkout-back-btn" type="button" onClick={() => setStep(4)}>
-                  <ChevronLeft size={16} /> Back to Transfer Details
-                </button>
+                {/* ── Payment Method Selection Radio Group ── */}
+                <div style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a", margin: "0 0 4px" }}>
+                    How did you make your payment?
+                  </h3>
+                  <p style={{ color: "#64748b", fontSize: ".84rem", margin: "0 0 14px", lineHeight: 1.5 }}>
+                    Select the service or transfer method you used.
+                  </p>
 
-                <h2 style={{ fontSize: "1.2rem", margin: "12px 0 4px", fontWeight: 700 }}>Step 5 — Submit Payment Evidence</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: ".84rem", margin: "0 0 20px" }}>
-                  Attach your official receipt or screenshot. Uploading evidence will submit your order for <strong>Payment Under Verification</strong> status.
-                </p>
+                  <div
+                    role="radiogroup"
+                    aria-label="Payment method selection"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr",
+                      gap: 8,
+                    }}
+                  >
+                    {PAYMENT_METHODS.map((pm) => {
+                      const isSelected = selectedPaymentMethod === pm.name;
+                      const isWise = pm.id === "wise";
+                      return (
+                        <label
+                          key={pm.id}
+                          htmlFor={`payment-option-${pm.id}`}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            background: isSelected ? "rgba(34, 197, 94, 0.08)" : "#ffffff",
+                            border: isSelected
+                              ? "2px solid #16a34a"
+                              : "1.5px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "12px 14px",
+                            cursor: "pointer",
+                            boxShadow: isSelected
+                              ? "0 3px 12px rgba(34, 197, 94, 0.12)"
+                              : "0 1px 3px rgba(0, 0, 0, 0.02)",
+                            transition: "all .2s ease",
+                            width: "100%",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <input
+                                id={`payment-option-${pm.id}`}
+                                type="radio"
+                                name="selectedPaymentMethodRadio"
+                                value={pm.name}
+                                checked={isSelected}
+                                onChange={() => {
+                                  setSelectedPaymentMethod(pm.name);
+                                  setEvidenceData((prev) => ({ ...prev, provider: pm.name }));
+                                }}
+                                style={{
+                                  accentColor: "#16a34a",
+                                  width: 18,
+                                  height: 18,
+                                  cursor: "pointer",
+                                  margin: 0,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <div>
+                                <strong style={{ fontSize: ".9rem", color: "#0f172a", display: "block" }}>
+                                  {pm.name}
+                                </strong>
+                                {pm.badge && (
+                                  <span
+                                    style={{
+                                      fontSize: ".68rem",
+                                      fontWeight: 700,
+                                      color: isSelected ? "#15803d" : "#64748b",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {pm.badge}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  <div>
-                    <label className="checkout-field-label">Sender’s Full Name</label>
-                    <input
-                      className="checkout-input"
-                      type="text"
-                      placeholder="Name on bank/remittance account"
-                      value={evidenceData.senderName}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, senderName: e.target.value })}
-                    />
-                  </div>
+                            {isSelected && (
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  background: "rgba(34, 197, 94, 0.15)",
+                                  color: "#15803d",
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  fontSize: ".7rem",
+                                  fontWeight: 800,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <CheckCircle2 size={13} color="#16a34a" />
+                                <span>{isWise ? "Wise selected" : "Selected"}</span>
+                              </div>
+                            )}
+                          </div>
 
-                  <div>
-                    <label className="checkout-field-label">Country Payment Sent From</label>
-                    <input
-                      className="checkout-input"
-                      type="text"
-                      placeholder="e.g. United Kingdom, USA, UAE"
-                      value={evidenceData.senderCountry}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, senderCountry: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="checkout-field-label">Transfer Provider / Method</label>
-                    <select
-                      className="checkout-select"
-                      value={evidenceData.provider}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, provider: e.target.value })}
-                    >
-                      {TRANSFER_CHANNELS.map((ch) => (
-                        <option key={ch.id} value={ch.name}>
-                          {ch.name} ({ch.popularIn})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="checkout-field-label">Transfer / Reference Number</label>
-                    <input
-                      className="checkout-input"
-                      type="text"
-                      placeholder={provisionalRef}
-                      value={evidenceData.transferReference}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, transferReference: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="checkout-field-label">Amount Sent</label>
-                    <input
-                      className="checkout-input"
-                      type="number"
-                      step="any"
-                      placeholder={String(depositDueNow)}
-                      value={evidenceData.amountSent}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, amountSent: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="checkout-field-label">Currency Sent</label>
-                    <select
-                      className="checkout-select"
-                      value={evidenceData.currencySent}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, currencySent: e.target.value })}
-                    >
-                      {Object.values(currencies).map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Transfer Date</label>
-                    <input
-                      className="checkout-input"
-                      type="date"
-                      value={evidenceData.transferDate}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, transferDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="checkout-field-label">Customer Note / Special Specifications (Optional)</label>
-                    <textarea
-                      className="checkout-input"
-                      rows={2}
-                      placeholder="Bat weight preference, grain request, handle shape..."
-                      value={evidenceData.customerNote}
-                      onChange={(e) => setEvidenceData({ ...evidenceData, customerNote: e.target.value })}
-                    />
+                          <p style={{ margin: "6px 0 0 28px", fontSize: ".76rem", color: "#64748b", lineHeight: 1.4 }}>
+                            {pm.description}
+                          </p>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* ── File Upload Box ── */}
-                <div style={{ marginBottom: 20 }}>
-                  <label className="checkout-field-label">Payment Receipt / Screenshot Proof (Max 8 MB)</label>
+                {/* Provider Guidance Box */}
+                {selectedPaymentMethod === "Wise" ? (
+                  <div
+                    style={{
+                      background: "rgba(34, 197, 94, 0.08)",
+                      border: "1.5px solid rgba(34, 197, 94, 0.4)",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      marginBottom: 18,
+                      fontSize: ".84rem",
+                      color: "#166534",
+                      lineHeight: 1.5,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <CheckCircle2 size={20} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <strong style={{ display: "block", marginBottom: 2, fontSize: ".88rem" }}>
+                        Wise Selected
+                      </strong>
+                      You selected Wise. Please enter your transfer reference and attach the receipt screenshot below.
+                    </div>
+                  </div>
+                ) : selectedPaymentMethod ? (
+                  <div
+                    style={{
+                      background: "rgba(56, 189, 248, 0.08)",
+                      border: "1.5px solid rgba(56, 189, 248, 0.3)",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      marginBottom: 18,
+                      fontSize: ".84rem",
+                      color: "#0369a1",
+                      lineHeight: 1.5,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <Info size={20} color="#0284c7" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <strong style={{ display: "block", marginBottom: 2, fontSize: ".88rem" }}>
+                        {selectedPaymentMethod} Selected
+                      </strong>
+                      Please enter your transfer reference and attach the payment receipt below.
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* ── Payment Details Form ── */}
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 18,
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 14px", fontSize: ".92rem", fontWeight: 800, color: "#0f172a" }}>
+                    Payment Details Form
+                  </h4>
+
+                  <div className="checkout-form-grid">
+                    {/* Sender Name */}
+                    <div>
+                      <label className="checkout-field-label">
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>SENDER’S FULL NAME</span>
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        </div>
+                      </label>
+                      <input
+                        className="checkout-input"
+                        type="text"
+                        required
+                        placeholder="Name on bank / transfer account"
+                        value={evidenceData.senderName}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, senderName: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Country Payment Sent From */}
+                    <div>
+                      <label className="checkout-field-label">COUNTRY PAYMENT SENT FROM</label>
+                      <input
+                        className="checkout-input"
+                        type="text"
+                        placeholder="e.g. United Kingdom, USA, UAE"
+                        value={evidenceData.senderCountry}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, senderCountry: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Transfer Reference */}
+                    <div>
+                      <label className="checkout-field-label">
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>TRANSACTION / REFERENCE NUMBER</span>
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        </div>
+                      </label>
+                      <input
+                        className="checkout-input"
+                        type="text"
+                        required
+                        placeholder={
+                          PAYMENT_METHODS.find((p) => p.name === selectedPaymentMethod)?.referencePlaceholder ||
+                          provisionalRef
+                        }
+                        value={evidenceData.transferReference}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, transferReference: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Amount Paid */}
+                    <div>
+                      <label className="checkout-field-label">
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>AMOUNT PAID</span>
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        </div>
+                      </label>
+                      <input
+                        className="checkout-input"
+                        type="number"
+                        step="any"
+                        min="0.01"
+                        required
+                        placeholder={String(depositDueNow)}
+                        value={evidenceData.amountSent}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, amountSent: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Currency */}
+                    <div>
+                      <label className="checkout-field-label">
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>CURRENCY</span>
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        </div>
+                      </label>
+                      <select
+                        className="checkout-select"
+                        value={evidenceData.currencySent}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, currencySent: e.target.value })}
+                      >
+                        {["GBP", "USD", "EUR", "AED", "SAR", "AUD", "CAD", "PKR"].map((code) => (
+                          <option key={code} value={code}>
+                            {code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Payment Date */}
+                    <div>
+                      <label className="checkout-field-label">
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>PAYMENT DATE</span>
+                          <span style={{ color: "#ef4444" }}>*</span>
+                        </div>
+                      </label>
+                      <input
+                        className="checkout-input"
+                        type="date"
+                        required
+                        value={evidenceData.transferDate}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, transferDate: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Customer Note */}
+                    <div className="checkout-form-col-full">
+                      <label className="checkout-field-label">
+                        <span>CUSTOMER NOTE / SPECIAL SPECIFICATIONS</span>
+                        <span style={{ color: "#64748b", fontWeight: 500, fontSize: ".72rem", textTransform: "none" }}>(Optional)</span>
+                      </label>
+                      <textarea
+                        className="checkout-input"
+                        rows={2}
+                        placeholder="Bat weight preference, handle shape, or custom instructions..."
+                        value={evidenceData.customerNote}
+                        onChange={(e) => setEvidenceData({ ...evidenceData, customerNote: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Receipt Upload Box ── */}
+                <div style={{ marginBottom: 18 }}>
+                  <label className="checkout-field-label">
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span>PAYMENT RECEIPT / SCREENSHOT UPLOAD</span>
+                      <span style={{ color: "#ef4444" }}>*</span>
+                    </div>
+                    <span style={{ color: "#64748b", fontWeight: 500, fontSize: ".72rem", textTransform: "none" }}>Max 5 MB (JPG, PNG, PDF)</span>
+                  </label>
 
                   <input
                     ref={fileInputRef}
@@ -999,61 +1914,61 @@ export default function CheckoutPage() {
                       }}
                       onClick={() => fileInputRef.current?.click()}
                       style={{
-                        border: isDragOver ? "2px dashed var(--primary)" : "2px dashed #334155",
-                        background: isDragOver ? "rgba(242,169,40,0.08)" : "rgba(255,255,255,0.02)",
+                        border: isDragOver ? "2px dashed #16a34a" : "2px dashed #cbd5e1",
+                        background: isDragOver ? "rgba(34, 197, 94, 0.06)" : "#f8fafc",
                         borderRadius: 12,
-                        padding: "24px 16px",
+                        padding: "22px 14px",
                         textAlign: "center",
                         cursor: "pointer",
                         transition: "all .2s ease",
                       }}
                     >
-                      <UploadCloud size={36} color="var(--primary)" style={{ margin: "0 auto 8px", display: "block" }} />
-                      <strong style={{ fontSize: ".9rem", color: "#fff", display: "block" }}>
-                        Click to select or drag &amp; drop your receipt screenshot
+                      <UploadCloud size={34} color="#16a34a" style={{ margin: "0 auto 6px", display: "block" }} />
+                      <strong style={{ fontSize: ".88rem", color: "#0f172a", display: "block" }}>
+                        Tap to select or drop receipt screenshot
                       </strong>
-                      <span style={{ fontSize: ".76rem", color: "var(--text-muted)", display: "block", marginTop: 4 }}>
-                        Supports JPG, PNG, WEBP images or PDF document (up to 8 MB)
+                      <span style={{ fontSize: ".76rem", color: "#64748b", display: "block", marginTop: 2 }}>
+                        Supports JPG, PNG, WEBP images or PDF document
                       </span>
                     </div>
                   ) : (
                     <div
                       style={{
-                        background: "rgba(34, 197, 94, 0.06)",
-                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                        background: "rgba(34, 197, 94, 0.08)",
+                        border: "1.5px solid rgba(34, 197, 94, 0.4)",
                         borderRadius: 12,
-                        padding: 14,
+                        padding: 12,
                         display: "flex",
                         alignItems: "center",
-                        gap: 14,
+                        gap: 12,
                       }}
                     >
                       {receiptPreview ? (
                         <img
                           src={receiptPreview}
                           alt="Receipt Preview"
-                          style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
+                          style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 8, border: "1px solid #cbd5e1" }}
                         />
                       ) : (
-                        <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <FileText size={24} color="#38bdf8" />
+                        <div style={{ width: 50, height: 50, borderRadius: 8, background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <FileText size={24} color="#0284c7" />
                         </div>
                       )}
 
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <strong style={{ fontSize: ".86rem", color: "#fff", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <strong style={{ fontSize: ".86rem", color: "#0f172a", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {receiptFile.name}
                         </strong>
-                        <small style={{ color: "#4ade80", fontSize: ".75rem" }}>
-                          {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB · Attached &amp; ready
+                        <small style={{ color: "#16a34a", fontSize: ".74rem", fontWeight: 700 }}>
+                          {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB · Attached &amp; verified
                         </small>
                       </div>
 
                       <button
                         type="button"
                         onClick={removeFile}
-                        style={{ background: "rgba(239,68,68,0.15)", border: "none", color: "#f87171", padding: 6, borderRadius: 6, cursor: "pointer" }}
-                        title="Remove receipt"
+                        style={{ background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", padding: 8, borderRadius: 8, cursor: "pointer" }}
+                        title="Remove or replace receipt"
                       >
                         <X size={16} />
                       </button>
@@ -1061,23 +1976,60 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* ── CHANGE 3: Clear Policy Agreement Section ── */}
+                {/* ── Payment Confirmation & Commercial Agreement ── */}
                 <div
                   style={{
-                    marginTop: 22,
-                    marginBottom: 16,
-                    background: "rgba(0, 0, 0, 0.4)",
-                    border: policiesAccepted
+                    marginTop: 18,
+                    marginBottom: 18,
+                    background: "#f8fafc",
+                    border: paymentConfirmed && policiesAccepted
                       ? "1.5px solid rgba(34, 197, 94, 0.6)"
-                      : "1.5px solid rgba(242, 169, 40, 0.35)",
+                      : "1.5px solid #cbd5e1",
                     borderRadius: 12,
-                    padding: "16px 18px",
+                    padding: "14px 16px",
                     transition: "border-color .2s ease",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".76rem", fontWeight: 700, color: "#f2a928", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                      <ShieldCheck size={16} /> Commercial &amp; Policy Agreement
+                  {/* Checkbox 1: Payment Confirmation */}
+                  <label
+                    htmlFor="payment-confirmation-checkbox"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      cursor: "pointer",
+                      fontSize: ".84rem",
+                      color: "#0f172a",
+                      lineHeight: 1.45,
+                      userSelect: "none",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <input
+                      id="payment-confirmation-checkbox"
+                      type="checkbox"
+                      checked={paymentConfirmed}
+                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                      style={{
+                        accentColor: "#16a34a",
+                        width: 18,
+                        height: 18,
+                        marginTop: 2,
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>
+                      I confirm that I have sent the payment to the official beneficiary details shown above and that the information provided is correct.
+                    </span>
+                  </label>
+
+                  <div style={{ height: 1, background: "#e2e8f0", margin: "8px 0 12px" }} />
+
+                  {/* Checkbox 2: Policy Agreement */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".74rem", fontWeight: 700, color: "#b45309", textTransform: "uppercase" }}>
+                      <ShieldCheck size={15} /> Commercial Agreement
                     </div>
                     <button
                       type="button"
@@ -1085,32 +2037,27 @@ export default function CheckoutPage() {
                       style={{
                         background: "transparent",
                         border: "none",
-                        color: "#38bdf8",
-                        fontSize: ".82rem",
+                        color: "#0284c7",
+                        fontSize: ".8rem",
                         fontWeight: 700,
                         cursor: "pointer",
                         textDecoration: "underline",
                         padding: 0,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
                       }}
                     >
-                      <span>Read International Shipping, Returns &amp; Product Agreement</span>
-                      <span>↗</span>
+                      Read International Agreement ↗
                     </button>
                   </div>
 
-                  {/* Native Accessible Checkbox with Blue Tick Indicator */}
                   <label
                     htmlFor="policy-agreement-checkbox"
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: 12,
+                      gap: 10,
                       cursor: "pointer",
                       fontSize: ".84rem",
-                      color: "#f1f5f9",
+                      color: "#0f172a",
                       lineHeight: 1.45,
                       userSelect: "none",
                     }}
@@ -1121,7 +2068,7 @@ export default function CheckoutPage() {
                       checked={policiesAccepted}
                       onChange={(e) => setPoliciesAccepted(e.target.checked)}
                       style={{
-                        accentColor: "#2563eb",
+                        accentColor: "#16a34a",
                         width: 18,
                         height: 18,
                         marginTop: 2,
@@ -1133,110 +2080,124 @@ export default function CheckoutPage() {
                       I confirm that I have read and agree to the <strong>International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Policies</strong>.
                     </span>
                   </label>
-
-                  <div style={{ fontSize: ".74rem", color: "#94a3b8", marginTop: 8, paddingLeft: 30 }}>
-                    🔒 Your order cannot be submitted until the payment receipt is uploaded and this agreement is accepted.
-                  </div>
                 </div>
 
-                {/* ── Dynamic User Guidance Box ── */}
+                {/* Dynamic Submit Status & Action CTA */}
                 {(() => {
-                  const canProceed = Boolean(receiptFile) && policiesAccepted === true && !isSubmitting;
+                  const isAmountValid = parseFloat(evidenceData.amountSent) > 0;
+                  const isSenderValid = Boolean(evidenceData.senderName.trim());
+                  const isRefValid = Boolean(evidenceData.transferReference.trim());
+                  const isReceiptValid = Boolean(receiptFile) && (receiptFile?.size ?? 0) <= MAX_RECEIPT_FILE_SIZE_BYTES;
+                  const isMethodValid = Boolean(selectedPaymentMethod);
+                  const canSubmit =
+                    isMethodValid &&
+                    isSenderValid &&
+                    isRefValid &&
+                    isAmountValid &&
+                    isReceiptValid &&
+                    paymentConfirmed &&
+                    policiesAccepted &&
+                    !isSubmitting;
+
                   return (
                     <>
-                      <div
-                        style={{
-                          marginBottom: 16,
-                          padding: "10px 14px",
-                          borderRadius: 8,
-                          fontSize: ".82rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          background: canProceed
-                            ? "rgba(34, 197, 94, 0.12)"
-                            : !receiptFile && !policiesAccepted
-                            ? "rgba(255, 255, 255, 0.04)"
-                            : "rgba(242, 169, 40, 0.12)",
-                          border: canProceed
-                            ? "1px solid rgba(34, 197, 94, 0.35)"
-                            : !receiptFile && !policiesAccepted
-                            ? "1px solid var(--border)"
-                            : "1px solid rgba(242, 169, 40, 0.35)",
-                          color: canProceed
-                            ? "#4ade80"
-                            : !receiptFile && !policiesAccepted
-                            ? "#94a3b8"
-                            : "#fbbf24",
-                        }}
-                      >
-                        {canProceed ? (
-                          <>
-                            <CheckCircle2 size={16} color="#22c55e" />
-                            <span>Your order is ready to submit for verification.</span>
-                          </>
-                        ) : !receiptFile && !policiesAccepted ? (
-                          <>
-                            <Info size={16} color="#94a3b8" />
-                            <span>Upload your payment receipt and accept the policies to continue.</span>
-                          </>
-                        ) : receiptFile && !policiesAccepted ? (
-                          <>
-                            <AlertTriangle size={16} color="#fbbf24" />
-                            <span>Please read and accept the order policies to continue.</span>
-                          </>
-                        ) : (
-                          <>
-                            <UploadCloud size={16} color="#fbbf24" />
-                            <span>Please upload your payment receipt to continue.</span>
-                          </>
-                        )}
-                      </div>
-
-                      {errorMessage && (
-                        <div className="checkout-error" role="alert" style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid #ef4444", borderRadius: 8, color: "#f87171", fontSize: ".84rem" }}>
-                          {errorMessage}
+                      {!canSubmit && (
+                        <div
+                          style={{
+                            marginBottom: 14,
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            fontSize: ".8rem",
+                            background: "#fefce8",
+                            border: "1px solid #fde047",
+                            color: "#854d0e",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <Info size={16} color="#ca8a04" style={{ flexShrink: 0 }} />
+                          <span>
+                            {!isMethodValid
+                              ? "Please select a payment method above."
+                              : !isSenderValid
+                              ? "Please enter the sender's full name."
+                              : !isRefValid
+                              ? "Please enter the transfer reference number."
+                              : !isAmountValid
+                              ? "Please enter the amount paid (greater than 0)."
+                              : !isReceiptValid
+                              ? "Please attach your payment receipt (max 5 MB)."
+                              : !paymentConfirmed
+                              ? "Please check the box confirming payment was sent to the official UBL details."
+                              : !policiesAccepted
+                              ? "Please accept the commercial & policy agreement."
+                              : "Complete the required fields to submit for verification."}
+                          </span>
                         </div>
                       )}
 
-                      {/* ── CHANGE 1: Always Displayed Proceed Button ── */}
+                      {errorMessage && (
+                        <div
+                          className="checkout-error"
+                          role="alert"
+                          style={{
+                            marginBottom: 14,
+                            padding: "12px 14px",
+                            background: "#fef2f2",
+                            border: "1px solid #f87171",
+                            borderRadius: 8,
+                            color: "#b91c1c",
+                            fontSize: ".84rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
+                          <span>{errorMessage}</span>
+                        </div>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleSubmitManualOrder()}
-                        disabled={!canProceed}
-                        aria-disabled={!canProceed}
+                        disabled={!canSubmit}
+                        aria-disabled={!canSubmit}
                         className="checkout-primary-cta"
                         style={{
                           width: "100%",
-                          opacity: canProceed ? 1 : 0.65,
-                          cursor: canProceed ? "pointer" : isSubmitting ? "wait" : "not-allowed",
-                          background: canProceed
-                            ? "linear-gradient(135deg, #f2a928 0%, #d97706 100%)"
-                            : "#1e293b",
-                          color: canProceed ? "#000" : "#94a3b8",
-                          border: canProceed ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
+                          opacity: canSubmit ? 1 : 0.65,
+                          cursor: canSubmit ? "pointer" : isSubmitting ? "wait" : "not-allowed",
+                          background: canSubmit
+                            ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)"
+                            : "#94a3b8",
+                          color: "#ffffff",
                           fontWeight: 800,
-                          padding: "15px 22px",
+                          padding: "16px 20px",
                           borderRadius: 10,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 8,
-                          fontSize: ".96rem",
+                          gap: 10,
+                          fontSize: "1rem",
                           letterSpacing: ".02em",
-                          boxShadow: canProceed ? "0 6px 22px rgba(242, 169, 40, 0.35)" : "none",
+                          boxShadow: canSubmit ? "0 6px 20px rgba(22, 163, 74, 0.35)" : "none",
                           transition: "all .2s ease",
+                          border: "none",
                         }}
                       >
                         {isSubmitting ? (
                           <>
-                            <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-                            Uploading Receipt &amp; Submitting Order…
+                            <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
+                            <span>Uploading Receipt &amp; Submitting Order…</span>
                           </>
                         ) : (
                           <>
-                            {canProceed ? <CheckCircle2 size={18} /> : <Lock size={16} />}
-                            Proceed for Verification
+                            {canSubmit ? <CheckCircle2 size={20} /> : <Lock size={18} />}
+                            <span>Submit Payment for Verification</span>
                           </>
                         )}
                       </button>
@@ -1247,93 +2208,20 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Right Column: Order Summary Card */}
-          <div>
-            <div className="checkout-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 22, position: "sticky", top: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: ".98rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
-                  <ShoppingBag size={18} color="var(--primary)" />
+          {/* Right Column: Desktop Sticky Order Summary Card (≥ 1024px) */}
+          <div className="checkout-desktop-summary-wrapper">
+            <div className="checkout-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
+                  <ShoppingBag size={18} color="#b45309" />
                   <span>Order Summary</span>
                 </h3>
-                <span style={{ fontSize: ".76rem", color: "var(--text-muted)" }}>{totalItemCount} item{totalItemCount !== 1 ? "s" : ""}</span>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto", marginBottom: 16 }}>
-                {lines.map((l) => (
-                  <div key={l.product.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: ".82rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <img src={l.product.image} alt={l.product.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }} />
-                      <div>
-                        <span style={{ color: "#fff", display: "block", fontWeight: 500 }}>{l.product.name}</span>
-                        <small style={{ color: "var(--text-muted)" }}>Qty: {l.quantity}</small>
-                      </div>
-                    </div>
-                    <strong>{formatPrice(l.product.price * lineQuantity(l.quantity))}</strong>
-                  </div>
-                ))}
-              </div>
-
-              <div className="order-summary-divider" style={{ margin: "10px 0" }} />
-
-              <div className="order-summary-line" style={{ fontSize: ".82rem" }}>
-                <span>Subtotal</span>
-                <strong>{formatPrice(subtotal)}</strong>
-              </div>
-              <div className="order-summary-line" style={{ fontSize: ".82rem" }}>
-                <span>
-                  {shippingCalc.hasDestination
-                    ? `Delivery (${shippingCalc.countryName})`
-                    : "Delivery: Select destination"}
-                </span>
-                <strong>
-                  {shippingCalc.hasDestination
-                    ? formatPrice(shippingCalc.shippingFee)
-                    : "—"}
-                </strong>
-              </div>
-              {shippingCalc.requiresQuotation && (
-                <div style={{ marginTop: 6, padding: "6px 10px", background: "rgba(242, 169, 40, 0.1)", border: "1px solid rgba(242, 169, 40, 0.3)", borderRadius: 6, fontSize: ".76rem", color: "#fbbf24" }}>
-                  ⚠️ A delivery quotation is required for {shippingCalc.countryName}. Please confirm with our support team on WhatsApp.
-                </div>
-              )}
-              <div className="order-summary-divider" style={{ margin: "10px 0" }} />
-              <div className="order-total-line" style={{ fontSize: "1.05rem" }}>
-                <span className="label">Order Total</span>
-                <span className="value">
-                  {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                <span style={{ fontSize: ".76rem", color: "#64748b", fontWeight: 600 }}>
+                  {totalItemCount} item{totalItemCount !== 1 ? "s" : ""}
                 </span>
               </div>
 
-              {depositPercent < 100 && (
-                <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(34, 197, 94, 0.08)", borderRadius: 8, border: "1px solid rgba(34, 197, 94, 0.2)", fontSize: ".8rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#4ade80", fontWeight: 700 }}>
-                    <span>Advance Deposit Due Now ({depositPercent}%):</span>
-                    <span>{formatPrice(depositDueNow)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-muted)", fontSize: ".74rem", marginTop: 2 }}>
-                    <span>Balance Before Dispatch:</span>
-                    <span>{formatPrice(balanceRemaining)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Trust Box */}
-              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8, fontSize: ".76rem", color: "var(--text-muted)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <ShieldCheck size={14} color="#22c55e" />
-                  <span>Beneficiary: ALYAN WAZIR (UBL Bank)</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Truck size={14} color="var(--primary)" />
-                  <span>
-                    Tracked Courier: {shippingCalc.hasDestination && shippingCalc.destination ? shippingCalc.destination.estimatedDelivery : "Calculated after country selection"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Building2 size={14} color="#38bdf8" />
-                  <span>Factory Direct from Sialkot, Pakistan</span>
-                </div>
-              </div>
+              {renderOrderSummaryContent(false)}
             </div>
           </div>
         </div>

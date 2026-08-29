@@ -45,89 +45,117 @@ export const FACTORY_INFO = {
   primaryEmail: "sialkotcricketkits@gmail.com",
 };
 
-export interface TransferChannel {
+export interface PaymentMethodOption {
   id: string;
   name: string;
-  category: "remittance" | "bank" | "local";
+  category: "international" | "remittance" | "exchange" | "bank" | "local";
   popularIn: string;
+  badge?: string;
   description: string;
+  referencePlaceholder: string;
 }
 
-export const TRANSFER_CHANNELS: TransferChannel[] = [
+/**
+ * 10 Interactive Payment Methods for Checkout Single-Selection
+ */
+export const PAYMENT_METHODS: PaymentMethodOption[] = [
+  {
+    id: "wise",
+    name: "Wise",
+    category: "international",
+    popularIn: "Worldwide",
+    badge: "Low Fees · Bank Wire",
+    description: "Low-fee multi-currency bank wire in GBP, USD, EUR, AUD, CAD directly to our UBL account",
+    referencePlaceholder: "Wise transfer reference number / Wise account name",
+  },
   {
     id: "taptap",
     name: "Taptap Send",
     category: "remittance",
     popularIn: "UK, Europe, USA, Canada",
+    badge: "Fast Remittance",
     description: "Fast mobile remittance app with direct Pakistani bank deposits",
+    referencePlaceholder: "Taptap Send transaction reference ID",
   },
   {
     id: "remitly",
     name: "Remitly",
     category: "remittance",
     popularIn: "UK, USA, Australia, Europe, Canada",
+    badge: "Express Bank Deposit",
     description: "Express bank deposit directly to UBL account",
-  },
-  {
-    id: "wise",
-    name: "Wise",
-    category: "remittance",
-    popularIn: "Worldwide Bank Wire",
-    description: "Low-fee multi-currency bank wire in GBP, USD, EUR, AUD, CAD",
+    referencePlaceholder: "Remitly reference / tracking number (e.g. 2012345678)",
   },
   {
     id: "moneygram",
     name: "MoneyGram",
     category: "remittance",
     popularIn: "Worldwide",
+    badge: "Global Remittance",
     description: "Direct bank deposit or agency cash transfer",
+    referencePlaceholder: "8-digit MoneyGram reference number",
   },
   {
     id: "westernunion",
     name: "Western Union",
     category: "remittance",
     popularIn: "Worldwide",
+    badge: "Global Remittance",
     description: "Global bank account deposit to UBL Pakistan",
+    referencePlaceholder: "10-digit MTCN (Money Transfer Control Number)",
   },
   {
     id: "worldremit",
     name: "WorldRemit",
     category: "remittance",
     popularIn: "Worldwide",
+    badge: "Global Transfer",
     description: "Direct account transfer to Pakistani banks",
+    referencePlaceholder: "WorldRemit transaction number",
   },
   {
     id: "exchange",
-    name: "International Money Transfer through an exchange",
-    category: "remittance",
-    popularIn: "UAE, Saudi Arabia, Qatar, Oman, Kuwait, Bahrain",
-    description: "Al Ansari, Al Fardan, LuLu, UAE Exchange, Western Union branches",
+    name: "International Money Transfer through an Exchange",
+    category: "exchange",
+    popularIn: "UAE, Saudi Arabia, Qatar, Oman, Gulf",
+    badge: "Exchange Counter",
+    description: "Al Ansari, Al Fardan, LuLu, UAE Exchange, or local exchange house",
+    referencePlaceholder: "Exchange receipt number / branch transaction ID",
   },
   {
-    id: "intl_bank",
-    name: "International Money Transfer through a bank (SWIFT Wire)",
+    id: "swift_wire",
+    name: "International Bank Transfer — SWIFT Wire",
     category: "bank",
     popularIn: "All Global Banks",
+    badge: "Direct SWIFT Wire",
     description: "Direct international SWIFT transfer using IBAN & UNILPKKA BIC",
+    referencePlaceholder: "Bank wire reference / UTR transaction code",
   },
   {
     id: "ubl_direct",
-    name: "Direct UBL bank transfer",
+    name: "Direct UBL Bank Transfer",
     category: "local",
-    popularIn: "Pakistan (UBL Digital App / ATM / Branch)",
-    description: "Instant UBL to UBL account transfer with zero fee",
+    popularIn: "Pakistan",
+    badge: "Instant UBL to UBL",
+    description: "Instant UBL to UBL digital account transfer with zero fee",
+    referencePlaceholder: "UBL Digital transaction ID",
   },
   {
     id: "local_bank",
-    name: "Pakistani local bank transfer (IBFT / Raast / 1Link)",
+    name: "Pakistani Local Bank Transfer — IBFT / Raast / 1Link",
     category: "local",
-    popularIn: "Pakistan (HBL, Meezan, Alfalah, Standard Chartered, etc.)",
-    description: "Inter-bank funds transfer (IBFT) or Raast transfer",
+    popularIn: "Pakistan (HBL, Meezan, Alfalah, etc.)",
+    badge: "IBFT / Raast / 1Link",
+    description: "Inter-bank funds transfer (IBFT) or Raast transfer from any Pakistani bank",
+    referencePlaceholder: "Raast / IBFT transaction reference ID",
   },
 ];
 
+// Backward compatibility alias for legacy references
+export const TRANSFER_CHANNELS = PAYMENT_METHODS;
+
 export const TRANSFER_CHANNELS_NOTICE =
-  "Service availability, charges, exchange rates and transfer times depend on your country and selected provider. Please choose bank-account deposit where available and use the exact beneficiary details shown below.";
+  "Service availability, charges, exchange rates and transfer times depend on your country and selected provider. Please choose bank-account deposit where available and use the exact beneficiary details shown above.";
 
 /**
  * FUTURE UBL CARD GATEWAY PREPARATION:
@@ -136,7 +164,7 @@ export const TRANSFER_CHANNELS_NOTICE =
  */
 export const UBL_CARD_GATEWAY_ENABLED = false;
 
-export const MAX_RECEIPT_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
+export const MAX_RECEIPT_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB strictly as required
 export const ALLOWED_RECEIPT_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",

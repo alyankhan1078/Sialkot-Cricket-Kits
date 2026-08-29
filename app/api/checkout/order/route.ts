@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createOrder, getSettings } from "@/src/lib/data-service";
 import { sendOrderConfirmationEmail } from "@/src/lib/email";
 import { isCountrySupported } from "@/src/lib/countries";
+import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
 
 export async function POST(request: Request) {
   try {
@@ -21,21 +22,43 @@ export async function POST(request: Request) {
       notes,
     } = body;
 
-    if (!customerName || !items || !Array.isArray(items) || items.length === 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Please provide customer name and at least one item in cart." },
+        { success: false, error: "Please select at least one item in your cart before checking out." },
         { status: 400 }
       );
     }
 
-    const countryValidation = isCountrySupported(country || body.countryCode);
-    if (!countryValidation.valid || !countryValidation.country) {
+    const customerInput: CheckoutCustomerInput = {
+      fullName: customerName || "",
+      email: customerEmail || "",
+      phone: customerPhone || "",
+      phoneDialCode: body.phoneDialCode || "",
+      country: country || "",
+      countryCode: body.countryCode || "",
+      address: address || "",
+      city: city || "",
+      state: state || "",
+      postalCode: postalCode || "",
+      deliveryInstructions: notes || "",
+    };
+
+    const validation = validateCheckoutCustomerInfo(customerInput);
+    if (!validation.isValid) {
       return NextResponse.json(
-        { success: false, error: countryValidation.error || "Please select your destination country." },
+        {
+          success: false,
+          errors: validation.errors,
+          error: Object.values(validation.errors)[0] || "Invalid customer or delivery details provided.",
+        },
         { status: 400 }
       );
     }
-    const validatedCountry = countryValidation.country.name;
+
+    const validatedCustomerName = validation.normalized.fullName;
+    const validatedCustomerEmail = validation.normalized.email;
+    const validatedCustomerPhone = validation.normalized.phoneE164;
+    const validatedCountry = validation.normalized.country;
 
     const itemsSubtotal = items.reduce(
       (sum: number, item: any) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
@@ -61,10 +84,15 @@ export async function POST(request: Request) {
       .join("\n");
 
     const orderData = {
-      customerName,
-      customerEmail: customerEmail || undefined,
-      customerPhone: customerPhone || undefined,
+      customerName: validatedCustomerName,
+      customerEmail: validatedCustomerEmail,
+      customerPhone: validatedCustomerPhone,
       country: validatedCountry,
+      address: validation.normalized.address,
+      city: validation.normalized.city,
+      state: validation.normalized.state,
+      postalCode: validation.normalized.postalCode,
+      deliveryInstructions: validation.normalized.deliveryInstructions,
       items: items.map((i: any) => ({
         productId: i.id || i.productId,
         name: i.name,

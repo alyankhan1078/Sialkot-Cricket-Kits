@@ -528,27 +528,33 @@ export default function AdminOrdersPage() {
                                   ? "rgba(34, 197, 94, 0.2)"
                                   : sub.status === "payment_submitted"
                                   ? "rgba(245, 158, 11, 0.2)"
+                                  : sub.status === "payment_reupload_requested"
+                                  ? "rgba(56, 189, 248, 0.2)"
                                   : "rgba(239, 68, 68, 0.2)",
                               color:
                                 sub.status === "payment_verified"
                                   ? "#34d399"
                                   : sub.status === "payment_submitted"
                                   ? "#fbbf24"
+                                  : sub.status === "payment_reupload_requested"
+                                  ? "#38bdf8"
                                   : "#f87171",
                               fontWeight: 700,
                             }}
                           >
                             {sub.status === "payment_submitted"
-                              ? "Under Verification"
+                              ? "Verification Pending"
                               : sub.status === "payment_verified"
-                              ? "Verified"
+                              ? "Verified/Paid"
                               : sub.status === "payment_reupload_requested"
-                              ? "Re-upload Needed"
+                              ? "New Proof Requested"
+                              : sub.status === "awaiting_payment"
+                              ? "Not Submitted"
                               : "Rejected"}
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", gap: 6 }}>
+                          <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                             {sub.status === "payment_submitted" && (
                               <>
                                 <button
@@ -558,18 +564,34 @@ export default function AdminOrdersPage() {
                                     setShowVerifyModal(true);
                                   }}
                                   className="admin-btn"
-                                  style={{ background: "#22c55e", color: "#000", padding: "6px 12px", fontSize: ".78rem", fontWeight: 700 }}
+                                  style={{ background: "#22c55e", color: "#000", padding: "6px 10px", fontSize: ".76rem", fontWeight: 700 }}
+                                  title="Mark as Verified/Paid"
                                 >
-                                  Verify
+                                  Verify/Paid
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setSelectedSubmission(sub);
+                                    setRequestReupload(true);
+                                    setShowRejectModal(true);
+                                  }}
+                                  className="admin-btn admin-btn-secondary"
+                                  style={{ padding: "6px 8px", fontSize: ".76rem" }}
+                                  title="Request New Receipt"
+                                >
+                                  Request Receipt
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSubmission(sub);
+                                    setRequestReupload(false);
                                     setShowRejectModal(true);
                                   }}
                                   className="admin-btn"
-                                  style={{ background: "rgba(239, 68, 68, 0.2)", color: "#f87171", padding: "6px 10px", fontSize: ".78rem" }}
+                                  style={{ background: "rgba(239, 68, 68, 0.2)", color: "#f87171", padding: "6px 8px", fontSize: ".76rem" }}
+                                  title="Reject Payment Proof"
                                 >
                                   Reject
                                 </button>
@@ -904,8 +926,103 @@ export default function AdminOrdersPage() {
                 <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Email</span><strong>{selectedOrder.customerEmail || "—"}</strong></div>
                 <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Destination</span><strong>{selectedOrder.country}</strong></div>
                 <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Payment Method</span><strong>{selectedOrder.paymentMethod}</strong></div>
-                <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Payment Status</span><strong style={{ color: selectedOrder.paymentStatus === "payment_verified" ? "#4ade80" : "#fbbf24" }}>{selectedOrder.paymentStatus || selectedOrder.status}</strong></div>
+                <div>
+                  <span style={{ color: "var(--adm-muted)", display: "block" }}>Payment Status</span>
+                  <strong style={{
+                    color:
+                      selectedOrder.paymentStatus === "payment_verified"
+                        ? "#4ade80"
+                        : selectedOrder.paymentStatus === "payment_reupload_requested"
+                        ? "#38bdf8"
+                        : selectedOrder.paymentStatus === "payment_rejected"
+                        ? "#f87171"
+                        : "#fbbf24",
+                  }}>
+                    {selectedOrder.paymentStatus === "payment_submitted"
+                      ? "Verification Pending"
+                      : selectedOrder.paymentStatus === "payment_verified"
+                      ? "Verified/Paid"
+                      : selectedOrder.paymentStatus === "payment_reupload_requested"
+                      ? "New Proof Requested"
+                      : selectedOrder.paymentStatus === "awaiting_payment"
+                      ? "Not Submitted"
+                      : selectedOrder.paymentStatus || selectedOrder.status}
+                  </strong>
+                </div>
               </div>
+
+              {/* Payment Evidence Breakdown */}
+              {(() => {
+                const linkedSub = submissions.find((s) => s.orderId === selectedOrder.id);
+                if (!linkedSub) return null;
+                return (
+                  <div style={{ background: "rgba(0,0,0,0.3)", padding: 14, borderRadius: 10, marginBottom: 18, fontSize: ".84rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <h4 style={{ margin: 0, fontSize: ".88rem", color: "var(--adm-primary)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                        Payment Submission Details
+                      </h4>
+                      {linkedSub.status === "payment_submitted" && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSubmission(linkedSub);
+                              setShowVerifyModal(true);
+                            }}
+                            className="admin-btn"
+                            style={{ background: "#22c55e", color: "#000", padding: "4px 8px", fontSize: ".74rem", fontWeight: 700 }}
+                          >
+                            Verify/Paid
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSubmission(linkedSub);
+                              setRequestReupload(true);
+                              setShowRejectModal(true);
+                            }}
+                            className="admin-btn admin-btn-secondary"
+                            style={{ padding: "4px 8px", fontSize: ".74rem" }}
+                          >
+                            Request New Receipt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSubmission(linkedSub);
+                              setRequestReupload(false);
+                              setShowRejectModal(true);
+                            }}
+                            className="admin-btn"
+                            style={{ background: "rgba(239, 68, 68, 0.2)", color: "#f87171", padding: "4px 8px", fontSize: ".74rem" }}
+                          >
+                            Reject Proof
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Payment Method Used</span><strong>{linkedSub.provider || selectedOrder.paymentMethod}</strong></div>
+                      <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Sender's Name</span><strong>{linkedSub.senderName} ({linkedSub.senderCountry})</strong></div>
+                      <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Transfer Reference</span><strong style={{ color: "#f2a928", fontFamily: "monospace" }}>{linkedSub.transferReference}</strong></div>
+                      <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Amount &amp; Currency</span><strong style={{ color: "#4ade80" }}>{linkedSub.currencySent} {linkedSub.amountSent}</strong></div>
+                      <div><span style={{ color: "var(--adm-muted)", display: "block" }}>Payment Date</span><strong>{linkedSub.transferDate}</strong></div>
+                      <div>
+                        <span style={{ color: "var(--adm-muted)", display: "block" }}>Receipt File</span>
+                        <a
+                          href={`/api/admin/receipts/${linkedSub.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#38bdf8", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}
+                        >
+                          <FileText size={14} /> Open Receipt ({linkedSub.receiptOriginalName}) <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Items Table */}
               <h4 style={{ margin: "0 0 8px", fontSize: ".9rem" }}>Purchased Items</h4>
