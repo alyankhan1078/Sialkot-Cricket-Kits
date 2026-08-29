@@ -97,7 +97,7 @@ assert(CUSTOM_BAT_CONFIG.services.length === 3, "All 3 additional services are d
 
 // 10. Verify WhatsApp Message Generator WITH Laser Engraving
 const waMsgWithEngraving = generateCustomBatWhatsAppMessage({
-  name: "Alyan Wazir",
+  name: "Michael Clarke",
   country: "United Kingdom",
   size: "Adult / Short Handle",
   construction: "Bonafide",
@@ -107,7 +107,7 @@ const waMsgWithEngraving = generateCustomBatWhatsAppMessage({
   weight: "1180 g",
   profile: "Duckbill Profile",
   services: ["Professional Knocking-In & Oiling", "Custom Laser Name / Number Engraving", "Live Ping Video Approval"],
-  engravingText: "ALYAN WAZIR",
+  engravingText: "MICHAEL CLARKE",
   notes: "Thick 40mm edges please",
   advancePercent: 30,
   advanceAmount: 90,
@@ -118,13 +118,13 @@ assert(waMsgWithEngraving.includes("Custom Bat Enquiry"), "WhatsApp message cont
 assert(waMsgWithEngraving.includes("Bonafide"), "WhatsApp message contains construction");
 assert(waMsgWithEngraving.includes("£300"), "WhatsApp message contains total price");
 assert(waMsgWithEngraving.includes("30%"), "WhatsApp message contains advance percentage");
-assert(waMsgWithEngraving.includes('• *Laser Engraving Text:* "ALYAN WAZIR"'), "WhatsApp message contains exact engraving text");
+assert(waMsgWithEngraving.includes('• *Laser Engraving Text:* "MICHAEL CLARKE"'), "WhatsApp message contains exact engraving text");
 assert(waMsgWithEngraving.includes("£90 due now"), "WhatsApp message contains advance amount due now");
 assert(waMsgWithEngraving.includes("£210"), "WhatsApp message contains remaining balance");
 
 // 11. Verify WhatsApp Message Generator WITHOUT Laser Engraving
 const waMsgWithoutEngraving = generateCustomBatWhatsAppMessage({
-  name: "Alyan Wazir",
+  name: "Michael Clarke",
   country: "United Kingdom",
   size: "Adult / Short Handle",
   construction: "Bonafide",

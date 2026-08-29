@@ -75,7 +75,7 @@ export function ContactForm() {
             onKeyDown={(e) => {
               if (e.key === "Enter") e.preventDefault();
             }}
-            placeholder="e.g. Alyan Wazir"
+            placeholder="e.g. Michael Clarke"
           />
         </label>
         <label>

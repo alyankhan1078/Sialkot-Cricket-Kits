@@ -902,7 +902,7 @@ export function CustomBatConfigurator() {
                     id="config-customer-name"
                     type="text"
                     className="config-text-input"
-                    placeholder="e.g. Alyan Wazir"
+                    placeholder="e.g. Michael Clarke"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
@@ -1023,7 +1023,7 @@ export function CustomBatConfigurator() {
                                     handleConfirmEngraving();
                                   }
                                 }}
-                                placeholder="e.g. ALYAN WAZIR, AW 07, KING 18"
+                                placeholder="e.g. MICHAEL CLARKE, MC 07, VIPER 18"
                                 className={`config-text-input engraving-text-input ${
                                   engravingError ? "has-error" : ""
                                 }`}
