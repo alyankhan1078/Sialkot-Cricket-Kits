@@ -69,7 +69,7 @@ async function runManualPaymentTests() {
     updatedAt: new Date().toISOString(),
   };
   const sanitized = sanitizeOrderRecord(legacyTestOrder);
-  assert(sanitized.customerPhone === "+92 327 5756188", "Legacy order phone sanitized to official +92 327 5756188");
+  assert(sanitized.customerPhone === "+92 323 1438214", "Legacy order phone sanitized to official +92 323 1438214");
   assert(sanitized.customerEmail === "sialkotcricketkits@gmail.com", "Legacy order email sanitized to official sialkotcricketkits@gmail.com");
   assert(sanitized.address.includes("House No. 207, Gulshan Street"), "Legacy order address sanitized to official Sialkot address");
 
@@ -99,7 +99,7 @@ async function runManualPaymentTests() {
   assert(preserved.country === "Australia", "Genuine customer destination preserved dynamically");
 
   // ── Test 2: Receipt File Rules & Limits ──
-  assert(MAX_RECEIPT_FILE_SIZE_BYTES === 8 * 1024 * 1024, "Maximum receipt size is 8 MB");
+  assert(MAX_RECEIPT_FILE_SIZE_BYTES === 5 * 1024 * 1024, "Maximum receipt size is 5 MB");
   assert(ALLOWED_RECEIPT_EXTENSIONS.includes(".pdf") && ALLOWED_RECEIPT_EXTENSIONS.includes(".jpg"), "PDF and JPG are allowed receipt extensions");
   assert(ALLOWED_RECEIPT_MIME_TYPES.includes("application/pdf") && ALLOWED_RECEIPT_MIME_TYPES.includes("image/jpeg"), "PDF and JPEG MIME types are allowed");
 

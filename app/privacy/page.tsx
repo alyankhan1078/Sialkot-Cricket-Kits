@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
             For privacy inquiries or data requests, contact us at:<br />
             <strong>Sialkot Cricket Kits</strong><br />
             House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan<br />
-            WhatsApp: +92 327 5756188 · Email: sialkotcricketkits@gmail.com
+            WhatsApp: +92 323 1438214 · Email: sialkotcricketkits@gmail.com
           </p>
         </section>
       </div>

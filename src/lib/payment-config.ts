@@ -13,7 +13,7 @@ export const UBL_PAYMENT_CONFIG = {
   beneficiaryFirstName: "ALYAN",
   beneficiaryLastName: "WAZIR",
   beneficiaryFullName: "ALYAN WAZIR",
-  mobileNumber: "+92 327 5756188",
+  mobileNumber: "+92 323 1438214",
   accountNumber: "0881304929964",
   iban: "PK93UNIL0109000304929964",
   branchName: "0881 – Wana",

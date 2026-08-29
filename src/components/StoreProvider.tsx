@@ -109,8 +109,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 .replace(/AWAMI KUTHAB KHANA[^",]*/gi, "House No. 207, Gulshan Street, Model Town")
                 .replace(/SOUTH WAZIRISTAN[^",]*/gi, "Sialkot")
                 .replace(/alyankhan1078@gmail\.com/gi, "sialkotcricketkits@gmail.com")
-                .replace(/\+?92\s*344\s*9832129/gi, "+92 327 5756188")
-                .replace(/\+?92\s*349\s*9585519/gi, "+92 327 5756188");
+                .replace(/\+?92\s*344\s*9832129/gi, "+92 323 1438214")
+                .replace(/\+?92\s*349\s*9585519/gi, "+92 323 1438214")
+                .replace(/\+?92\s*327\s*5756188/gi, "+92 323 1438214");
               window.localStorage.setItem(k, sanitized);
             }
           }

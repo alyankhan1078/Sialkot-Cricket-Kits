@@ -102,7 +102,7 @@ async function runSync() {
 
     console.log('4. Syncing Site Settings...');
     const settingsPayload = [
-      { key: 'whatsapp_number', value: '+92 327 5756188', label: 'WhatsApp Support Number' },
+      { key: 'whatsapp_number', value: '+92 323 1438214', label: 'WhatsApp Support Number' },
       { key: 'contact_email', 'value': 'sialkotcricketkits@gmail.com', label: 'Contact Email Address' },
       { key: 'location', value: 'House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan', label: 'Factory & Store Location' },
       { key: 'currency', value: 'GBP', label: 'Store Currency' },

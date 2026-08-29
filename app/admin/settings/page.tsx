@@ -21,9 +21,9 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "payments" | "security">("general");
 
   const [settings, setSettings] = useState<DBSettings>({
-    whatsappNumber: "+92 327 5756188",
+    whatsappNumber: "+92 323 1438214",
     contactEmail: "sialkotcricketkits@gmail.com",
-    contactPhone: "+92 327 5756188",
+    contactPhone: "+92 323 1438214",
     factoryAddress: "Superior Cricket Factory, House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
     businessName: "Sialkot Cricket Kits",
     announcementText: "Worldwide delivery available · Live product & ping videos · Custom equipment from Sialkot",
@@ -54,19 +54,19 @@ export default function AdminSettingsPage() {
     bankEnabled: true,
 
     // Pakistani Wallets & Raast
-    raastId: "03275756188",
+    raastId: "03231438214",
     raastTitle: "ALYAN WAZIR",
     raastEnabled: true,
-    jazzcashNumber: "03275756188",
+    jazzcashNumber: "03231438214",
     jazzcashTitle: "ALYAN WAZIR",
     jazzcashEnabled: true,
-    nayapayNumber: "03275756188",
+    nayapayNumber: "03231438214",
     nayapayTitle: "ALYAN WAZIR",
     nayapayEnabled: true,
-    sadapayNumber: "03275756188",
+    sadapayNumber: "03231438214",
     sadapayTitle: "ALYAN WAZIR",
     sadapayEnabled: true,
-    easypaisaNumber: "03275756188",
+    easypaisaNumber: "03231438214",
     easypaisaTitle: "ALYAN WAZIR",
     easypaisaEnabled: true,
 
@@ -291,7 +291,7 @@ export default function AdminSettingsPage() {
               <label>WhatsApp Number (Primary Checkout)</label>
               <input
                 className="admin-input"
-                placeholder="+92 327 5756188"
+                placeholder="+92 323 1438214"
                 value={settings.whatsappNumber}
                 onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
                 required
@@ -624,7 +624,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.raastId || ""}
                   onChange={(e) => setSettings({ ...settings, raastId: e.target.value })}
-                  placeholder="03275756188"
+                  placeholder="03231438214"
                 />
               </div>
 
@@ -634,7 +634,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.jazzcashNumber || ""}
                   onChange={(e) => setSettings({ ...settings, jazzcashNumber: e.target.value })}
-                  placeholder="03275756188"
+                  placeholder="03231438214"
                 />
               </div>
 
@@ -644,7 +644,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.nayapayNumber || ""}
                   onChange={(e) => setSettings({ ...settings, nayapayNumber: e.target.value })}
-                  placeholder="03275756188"
+                  placeholder="03231438214"
                 />
               </div>
 
@@ -654,7 +654,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.sadapayNumber || ""}
                   onChange={(e) => setSettings({ ...settings, sadapayNumber: e.target.value })}
-                  placeholder="03275756188"
+                  placeholder="03231438214"
                 />
               </div>
 
@@ -664,7 +664,7 @@ export default function AdminSettingsPage() {
                   className="admin-input"
                   value={settings.easypaisaNumber || ""}
                   onChange={(e) => setSettings({ ...settings, easypaisaNumber: e.target.value })}
-                  placeholder="03275756188"
+                  placeholder="03231438214"
                 />
               </div>
 

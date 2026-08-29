@@ -59,7 +59,7 @@ assert.strictEqual(UBL_PAYMENT_CONFIG.beneficiaryFullName, "ALYAN WAZIR");
 assert.strictEqual(UBL_PAYMENT_CONFIG.accountNumber, "0881304929964");
 assert.strictEqual(UBL_PAYMENT_CONFIG.iban, "PK93UNIL0109000304929964");
 assert.strictEqual(UBL_PAYMENT_CONFIG.swiftBic, "UNILPKKA");
-assert.strictEqual(UBL_PAYMENT_CONFIG.mobileNumber, "+92 327 5756188");
+assert.strictEqual(UBL_PAYMENT_CONFIG.mobileNumber, "+92 323 1438214");
 assert.strictEqual(UBL_PAYMENT_CONFIG.paymentEmail, "sialkotcricketkits@gmail.com");
 console.log("  ✅ [PASS] 15. All official UBL beneficiary credentials verified");
 

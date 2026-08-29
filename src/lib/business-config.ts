@@ -44,7 +44,7 @@ export const BUSINESS_CONFIG = {
 // Default profile information for Alyan Wazir (replaces any obsolete legacy test profile)
 export const DEFAULT_ALIAN_PROFILE = {
   name: "ALYAN WAZIR",
-  phone: "+92 327 5756188",
+  phone: "+92 323 1438214",
   email: "sialkotcricketkits@gmail.com",
   address: "House No. 207, Gulshan Street, Model Town",
   city: "Sialkot",
@@ -71,6 +71,4 @@ export const OBSOLETE_LEGACY_PATTERNS = [
   "+92 344 9832129",
   "aliyankhan10@gmail.com",
   "alyankhan1078@gmail.com",
-  "+92 323 1438214",
-  "923231438214",
 ];

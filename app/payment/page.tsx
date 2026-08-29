@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 const acceptedInternationalMethods = [
   "Payoneer (B2B & Global Receiving in GBP, USD, EUR)",
-  "JazzCash / Nayapay / SadaPay / Raast / EasyPaisa (0327 5756188)",
+  "JazzCash / Nayapay / SadaPay / Raast / EasyPaisa (0323 1438214)",
   "Wise (TransferWise)",
   "TapTap Send",
   "Remitly",
@@ -156,7 +156,7 @@ export default function PaymentPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Mobile:</span>
-                  <strong style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>+92 327 5756188</strong>
+                  <strong style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>+92 323 1438214</strong>
                 </div>
               </div>
             </div>
@@ -274,12 +274,12 @@ export default function PaymentPage() {
               }}>
                 <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>JazzCash / Nayapay / SadaPay / Raast ID:</span>
-                  <strong style={{ color: "#fff", fontSize: "1rem" }}>0327 5756188</strong>
+                  <strong style={{ color: "#fff", fontSize: "1rem" }}>0323 1438214</strong>
                 </div>
 
                 <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>
                   <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block" }}>EasyPaisa Account:</span>
-                  <strong style={{ color: "#4ade80", fontSize: "1rem" }}>0327 5756188</strong>
+                  <strong style={{ color: "#4ade80", fontSize: "1rem" }}>0323 1438214</strong>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -380,7 +380,7 @@ export default function PaymentPage() {
           <div style={{ flex: 1, minWidth: 280 }}>
             <h3 style={{ fontSize: "1.2rem", margin: "0 0 8px", color: "#fff" }}>Official Payment Verification Guarantee</h3>
             <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.9rem", lineHeight: 1.6 }}>
-              Always verify recipient details with official accounts: <strong>Alyan Wazir</strong> / <strong>Superior Cricket Factory</strong> via WhatsApp at <strong>+92 327 5756188</strong> or <strong>sialkotcricketkits@gmail.com</strong>.
+              Always verify recipient details with official accounts: <strong>Alyan Wazir</strong> / <strong>Superior Cricket Factory</strong> via WhatsApp at <strong>+92 323 1438214</strong> or <strong>sialkotcricketkits@gmail.com</strong>.
               Upon receiving payment, our team provides an official invoice and live ping demonstration videos before worldwide courier dispatch.
             </p>
           </div>

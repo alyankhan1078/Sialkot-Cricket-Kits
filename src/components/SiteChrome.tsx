@@ -110,9 +110,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [catalogueDropdownOpen, setCatalogueDropdownOpen] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(true);
   const [settings, setSettings] = useState({
-    whatsappNumber: "+92 327 5756188",
+    whatsappNumber: "+92 323 1438214",
     contactEmail: "sialkotcricketkits@gmail.com",
-    contactPhone: "+92 327 5756188",
+    contactPhone: "+92 323 1438214",
     factoryAddress: "House No. 207, Gulshan Street, Model Town, Sialkot, Pakistan",
     businessName: "Sialkot Cricket Kits",
     announcementText:

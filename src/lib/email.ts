@@ -105,8 +105,8 @@ export function generateOrderConfirmationHtml(order: DBOrder): string {
           <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 14px; line-height: 1.5;">
             Our craftsmen will record and send a live WhatsApp video of your bat balance, straight grains, and ball ping demo before courier pickup.
           </p>
-          <a href="https://wa.me/923275756188?text=Hello%20Sialkot%20Cricket%20Kits,%20I%20am%20following%20up%20on%20my%20Order%20%23${order.id}" style="display: inline-block; background-color: #22c55e; color: #ffffff; font-weight: 700; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 13px;">
-            💬 Connect on WhatsApp (+92 327 5756188)
+          <a href="https://wa.me/923231438214?text=Hello%20Sialkot%20Cricket%20Kits,%20I%20am%20following%20up%20on%20my%20Order%20%23${order.id}" style="display: inline-block; background-color: #22c55e; color: #ffffff; font-weight: 700; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 13px;">
+            💬 Connect on WhatsApp (+92 323 1438214)
           </a>
         </div>
       </td>
