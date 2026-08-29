@@ -427,3 +427,40 @@ export function generateCustomBatWhatsAppMessage(config: {
 
   return lines.join("\n");
 }
+
+export const CUSTOM_BAT_STORAGE_KEY = "sialkot:custom-bat-order";
+
+export interface CustomBatOrder {
+  orderType: "custom-bat";
+  customer: {
+    name: string;
+    country: string;
+  };
+  bat: {
+    size: string;
+    sizeId: string;
+    playerCategory: "adult" | "junior";
+    constructionType: string;
+    qualityLevel: string;
+    selectedPrice: number;
+    handlePreference: string;
+    preferredWeight: string;
+    profile: string;
+    requirements: string;
+  };
+  services: {
+    knockingIn: boolean;
+    engraving: boolean;
+    engravingText: string;
+    livePingVideo: boolean;
+    selectedServiceNames: string[];
+  };
+  payment: {
+    advancePercentage: number;
+    orderValue: number;
+    amountDueNow: number;
+    remainingBalance: number;
+  };
+  customProductId: string;
+  createdAt: string;
+}

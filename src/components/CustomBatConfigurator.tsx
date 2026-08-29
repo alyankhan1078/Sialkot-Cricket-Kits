@@ -31,15 +31,17 @@ import { products } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import {
   CUSTOM_BAT_CONFIG,
+  CUSTOM_BAT_STORAGE_KEY,
   calculateAdvancePayment,
   generateCustomBatWhatsAppMessage,
   type CustomBatTier,
+  type CustomBatOrder,
 } from "@/src/lib/custom-bat-config";
 import { ALL_COUNTRIES } from "@/src/lib/countries";
 
 export function CustomBatConfigurator() {
   const router = useRouter();
-  const { addToCart, formatPrice, currency } = useStore();
+  const { addToCart, formatPrice, currency, setCartOpen } = useStore();
 
   // ── Step 1: Size & Category ──
   const [selectedSizeId, setSelectedSizeId] = useState<string>("adult-sh");
@@ -287,12 +289,50 @@ export function CustomBatConfigurator() {
       }
     }
 
-    setIsSubmitting(true);
-    setStatusNotice(null);
+    // Build structured CustomBatOrder object
+    const customOrder: CustomBatOrder = {
+      orderType: "custom-bat",
+      customer: {
+        name: customerName.trim(),
+        country: customerCountry.trim(),
+      },
+      bat: {
+        size: activeSize.name,
+        sizeId: selectedSizeId,
+        playerCategory: isJuniorSize ? "junior" : "adult",
+        constructionType: isJuniorSize
+          ? "Junior Willow"
+          : constructionMode === "budget"
+          ? "Recommended Budget Build"
+          : selectedConstruction,
+        qualityLevel: selectedTierLabel,
+        selectedPrice: selectedPrice,
+        handlePreference: handle,
+        preferredWeight: finalWeight,
+        profile: activeProfile.name,
+        requirements: specialNotes.trim(),
+      },
+      services: {
+        knockingIn: selectedServices.includes("knocking-in"),
+        engraving: isEngravingSelected,
+        engravingText: isEngravingSelected ? engravingText.trim() : "",
+        livePingVideo: selectedServices.includes("live-ping-video"),
+        selectedServiceNames,
+      },
+      payment: {
+        advancePercentage: advancePercent,
+        orderValue: selectedPrice,
+        amountDueNow: advanceAmount,
+        remainingBalance: remainingBalance,
+      },
+      customProductId,
+      createdAt: new Date().toISOString(),
+    };
 
-    // Save custom bat specs to localStorage so Checkout Review Order page can display it
+    // Save custom bat order to localStorage for seamless, refresh-safe checkout
     try {
       if (typeof window !== "undefined") {
+        window.localStorage.setItem(CUSTOM_BAT_STORAGE_KEY, JSON.stringify(customOrder));
         if (isEngravingSelected && engravingText.trim()) {
           window.localStorage.setItem(
             "sialkot-custom-bat-engraving",
@@ -341,15 +381,13 @@ export function CustomBatConfigurator() {
       }).catch(() => {});
     } catch {}
 
-    // 2. Add configured product to cart
+    // 2. Explicitly ensure Cart Drawer is closed so it NEVER overlays the checkout flow
     try {
-      addToCart(customProductId, 1);
-    } catch (err) {
-      console.error("Failed to add custom bat to cart:", err);
-    }
+      setCartOpen(false);
+    } catch {}
 
-    // 3. Navigate smoothly to checkout
-    router.push("/checkout");
+    // 3. Navigate directly to custom checkout
+    router.push("/checkout?source=custom");
   };
 
   // Dispatch WhatsApp enquiry directly

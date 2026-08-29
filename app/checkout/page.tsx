@@ -45,6 +45,7 @@ import {
   ALLOWED_RECEIPT_EXTENSIONS,
   ALLOWED_RECEIPT_MIME_TYPES,
 } from "@/src/lib/payment-config";
+import { CUSTOM_BAT_STORAGE_KEY, type CustomBatOrder } from "@/src/lib/custom-bat-config";
 import PolicyAgreementModal from "@/src/components/PolicyAgreementModal";
 import { POLICY_METADATA } from "@/src/lib/policy-agreement";
 import { CountrySelector } from "@/src/components/CountrySelector";
@@ -155,7 +156,8 @@ export default function CheckoutPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Custom Bat Engraving details from configurator
+  // Custom Bat Order & Engraving details from configurator
+  const [customBatOrder, setCustomBatOrder] = useState<CustomBatOrder | null>(null);
   const [customEngraving, setCustomEngraving] = useState<{
     text: string;
     size?: string;
@@ -166,6 +168,24 @@ export default function CheckoutPage() {
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
+        const savedOrder = window.localStorage.getItem(CUSTOM_BAT_STORAGE_KEY);
+        if (savedOrder) {
+          const parsedOrder: CustomBatOrder = JSON.parse(savedOrder);
+          if (parsedOrder && parsedOrder.payment && parsedOrder.payment.orderValue > 0) {
+            setCustomBatOrder(parsedOrder);
+            if (parsedOrder.payment.advancePercentage) {
+              setDepositPercent(parsedOrder.payment.advancePercentage);
+            }
+            if (parsedOrder.customer?.name) {
+              setFormData((prev) => ({
+                ...prev,
+                fullName: prev.fullName || parsedOrder.customer.name,
+                country: prev.country || parsedOrder.customer.country || "",
+              }));
+            }
+          }
+        }
+
         const saved = window.localStorage.getItem("sialkot-custom-bat-engraving");
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -179,13 +199,43 @@ export default function CheckoutPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const lines = cart.flatMap((item) => {
-    const product = products.find((p) => p.id === item.productId);
-    return product ? [{ ...item, product }] : [];
-  });
+  const isCustomOrder = Boolean(customBatOrder && customBatOrder.payment?.orderValue > 0);
 
-  const subtotal = lines.reduce((t, i) => t + i.product.price * i.quantity, 0);
-  const totalItemCount = lines.reduce((t, i) => t + i.quantity, 0);
+  const lines = isCustomOrder && customBatOrder
+    ? [
+        {
+          productId: customBatOrder.customProductId || "custom-bat-order",
+          quantity: 1,
+          product: {
+            id: customBatOrder.customProductId || "custom-bat-order",
+            name: `Custom Cricket Bat — ${customBatOrder.bat.constructionType} (${customBatOrder.bat.qualityLevel})`,
+            category: "Bespoke Custom Bat" as any,
+            price: customBatOrder.payment.orderValue,
+            stock: "Available" as const,
+            image: "/assets/products/bat-collection.webp",
+            description: `Size: ${customBatOrder.bat.size}, Handle: ${customBatOrder.bat.handlePreference}, Profile: ${customBatOrder.bat.profile}, Weight: ${customBatOrder.bat.preferredWeight}`,
+            shortDescription: "Custom manufactured English Willow bat",
+            openingStatement: "Custom Bat",
+            highlights: [],
+            bestFor: "All-round",
+            specifications: [],
+            seoTitle: "Custom Bat",
+            seoDescription: "Custom Bat",
+            imageAlt: "Custom Cricket Bat",
+            disclosureType: "none" as const,
+          },
+        },
+      ]
+    : cart.flatMap((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return product ? [{ ...item, product }] : [];
+      });
+
+  const subtotal = isCustomOrder && customBatOrder
+    ? customBatOrder.payment.orderValue
+    : lines.reduce((t, i) => t + i.product.price * i.quantity, 0);
+
+  const totalItemCount = isCustomOrder ? 1 : lines.reduce((t, i) => t + i.quantity, 0);
   const shippingCalc = calculateShippingFee(formData.country, totalItemCount);
   const grandTotal = subtotal + (shippingCalc.hasDestination ? shippingCalc.shippingFee : 0);
   const depositDueNow =
@@ -356,7 +406,22 @@ export default function CheckoutPage() {
       submitFormData.append("currencySent", evidenceData.currencySent || currency || "GBP");
       submitFormData.append("transferDate", evidenceData.transferDate || new Date().toISOString().split("T")[0]);
       submitFormData.append("transferReference", (evidenceData.transferReference || provisionalRef).trim());
-      submitFormData.append("customerNote", evidenceData.customerNote.trim());
+      const customNotes = isCustomOrder && customBatOrder
+        ? [
+            evidenceData.customerNote.trim(),
+            `--- CUSTOM BAT SPECIFICATIONS ---`,
+            `Size: ${customBatOrder.bat.size}`,
+            `Construction: ${customBatOrder.bat.constructionType} (${customBatOrder.bat.qualityLevel})`,
+            `Handle: ${customBatOrder.bat.handlePreference}`,
+            `Weight: ${customBatOrder.bat.preferredWeight}`,
+            `Profile: ${customBatOrder.bat.profile}`,
+            customBatOrder.services.selectedServiceNames.length > 0 ? `Services: ${customBatOrder.services.selectedServiceNames.join(", ")}` : null,
+            customBatOrder.services.engraving && customBatOrder.services.engravingText ? `Laser Engraving: "${customBatOrder.services.engravingText}"` : null,
+            customBatOrder.bat.requirements ? `Special Notes: ${customBatOrder.bat.requirements}` : null,
+          ].filter(Boolean).join("\n")
+        : evidenceData.customerNote.trim();
+
+      submitFormData.append("customerNote", customNotes);
       submitFormData.append("receipt", receiptFile);
 
       const res = await fetch("/api/checkout/submit-manual-order", {
@@ -367,7 +432,14 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (data.success && data.orderId) {
-        clearCart();
+        if (isCustomOrder) {
+          try {
+            window.localStorage.removeItem(CUSTOM_BAT_STORAGE_KEY);
+            window.localStorage.removeItem("sialkot-custom-bat-engraving");
+          } catch {}
+        } else {
+          clearCart();
+        }
         router.push(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
       } else {
         if (data.errors) {
@@ -418,51 +490,63 @@ export default function CheckoutPage() {
           paddingRight: 4,
         }}
       >
-        {lines.map((l) => (
-          <div
-            key={l.product.id}
-            className="checkout-product-line"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-              <img
-                src={l.product.image}
-                alt={l.product.name}
-              />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <span className="checkout-product-name">
-                  {l.product.name}
-                </span>
-                <span className="checkout-product-qty" style={{ display: "block" }}>
-                  Qty: {l.quantity} · {formatPrice(l.product.price)} each
-                </span>
-              </div>
-            </div>
-            <strong className="checkout-product-price">
-              {formatPrice(l.product.price * lineQuantity(l.quantity))}
-            </strong>
-          </div>
-        ))}
-
-        {customEngraving?.text && (
+        {isCustomOrder && customBatOrder ? (
           <div
             style={{
-              padding: "8px 10px",
-              background: "rgba(34, 197, 94, 0.08)",
-              border: "1px solid rgba(34, 197, 94, 0.3)",
+              padding: "10px 12px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
               borderRadius: 8,
-              fontSize: ".76rem",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 6,
+              fontSize: ".8rem",
             }}
           >
-            <div>
-              <span style={{ color: "#15803d", fontWeight: 700 }}>Laser Engraving:</span>{" "}
-              <strong style={{ color: "#0f172a" }}>&ldquo;{customEngraving.text}&rdquo;</strong>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <strong style={{ color: "#0f172a" }}>
+                Custom Bat — {customBatOrder.bat.constructionType}
+              </strong>
+              <span style={{ fontWeight: 800, color: "#0f172a" }}>
+                {formatPrice(customBatOrder.payment.orderValue)}
+              </span>
             </div>
-            <span style={{ fontSize: ".68rem", color: "#15803d", fontWeight: 800 }}>✓ Added</span>
+            <div style={{ fontSize: ".74rem", color: "#64748b", lineHeight: 1.4 }}>
+              {customBatOrder.bat.size} · {customBatOrder.bat.qualityLevel} · {customBatOrder.bat.profile} · {customBatOrder.bat.preferredWeight}
+            </div>
+            {customBatOrder.services.selectedServiceNames.length > 0 && (
+              <div style={{ marginTop: 4, fontSize: ".72rem", color: "#15803d" }}>
+                ✓ {customBatOrder.services.selectedServiceNames.join(", ")}
+              </div>
+            )}
+            {customBatOrder.services.engraving && customBatOrder.services.engravingText && (
+              <div style={{ marginTop: 4, fontSize: ".72rem", color: "#b45309", background: "rgba(242,169,40,0.1)", padding: "2px 6px", borderRadius: 4 }}>
+                Laser Engraving: &ldquo;{customBatOrder.services.engravingText}&rdquo;
+              </div>
+            )}
           </div>
+        ) : (
+          lines.map((l) => (
+            <div
+              key={l.product.id}
+              className="checkout-product-line"
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                <img
+                  src={l.product.image}
+                  alt={l.product.name}
+                />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span className="checkout-product-name">
+                    {l.product.name}
+                  </span>
+                  <span className="checkout-product-qty" style={{ display: "block" }}>
+                    Qty: {l.quantity} · {formatPrice(l.product.price)} each
+                  </span>
+                </div>
+              </div>
+              <strong className="checkout-product-price">
+                {formatPrice(l.product.price * l.quantity)}
+              </strong>
+            </div>
+          ))
         )}
       </div>
 
@@ -569,8 +653,11 @@ export default function CheckoutPage() {
     </div>
   );
 
-  // Guard: Empty cart renders clean message
-  if (lines.length === 0) {
+  // Guard: Empty cart renders clean message ONLY when neither standard cart nor custom bat order exist
+  const hasStandardCart = cart.length > 0;
+  const hasCustomOrder = isCustomOrder;
+
+  if (!hasStandardCart && !hasCustomOrder && lines.length === 0) {
     return (
       <main className="checkout-page-wrapper">
         <div className="checkout-security-banner">
@@ -1301,68 +1388,195 @@ export default function CheckoutPage() {
                   <span>Provisional Order Reference: <strong>{provisionalRef}</strong></span>
                 </div>
 
-                {/* Items List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                  {lines.map((line) => (
-                    <div
-                      key={line.product.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: "10px 12px",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 10,
-                      }}
-                    >
-                      <img
-                        src={line.product.image}
-                        alt={line.product.name}
-                        style={{ width: 48, height: 48, minWidth: 48, objectFit: "cover", borderRadius: 8, background: "#ffffff", border: "1px solid #cbd5e1" }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <strong style={{ fontSize: ".88rem", display: "block", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {line.product.name}
-                        </strong>
-                        <span style={{ fontSize: ".76rem", color: "#64748b" }}>
-                          Qty: {line.quantity} · {formatPrice(line.product.price)} each
-                        </span>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <strong style={{ color: "#0f172a", fontSize: ".92rem" }}>
-                          {formatPrice(line.product.price * line.quantity)}
-                        </strong>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Custom Laser Engraving Confirmation Card */}
-                {customEngraving?.text && (
+                {/* Items List or Custom Bat Specification */}
+                {isCustomOrder && customBatOrder ? (
                   <div
                     style={{
-                      background: "rgba(34, 197, 94, 0.05)",
-                      border: "1.5px solid #86efac",
-                      padding: "14px 16px",
-                      borderRadius: 10,
+                      background: "#ffffff",
+                      border: "1.5px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: "16px 18px",
                       marginBottom: 20,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".82rem", fontWeight: 800, color: "#15803d", textTransform: "uppercase" }}>
-                        <CheckCircle2 size={16} color="#16a34a" /> Customization: Laser Engraving
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        borderBottom: "1px solid #f1f5f9",
+                        paddingBottom: 12,
+                        marginBottom: 12,
+                        gap: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div>
+                        <span
+                          style={{
+                            fontSize: ".72rem",
+                            fontWeight: 800,
+                            color: "#b45309",
+                            textTransform: "uppercase",
+                            letterSpacing: ".06em",
+                            display: "block",
+                            marginBottom: 2,
+                          }}
+                        >
+                          BESPOKE SPECIFICATION · CUSTOM BAT
+                        </span>
+                        <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
+                          Custom Cricket Bat — {customBatOrder.bat.constructionType}
+                        </h3>
                       </div>
-                      <span style={{ fontSize: ".72rem", background: "rgba(34, 197, 94, 0.12)", color: "#15803d", fontWeight: 800, padding: "2px 8px", borderRadius: 999 }}>
-                        Included Free
-                      </span>
+                      <div style={{ textAlign: "right" }}>
+                        <span
+                          style={{
+                            fontSize: ".74rem",
+                            background: "rgba(242, 169, 40, 0.15)",
+                            color: "#b45309",
+                            fontWeight: 800,
+                            padding: "3px 10px",
+                            borderRadius: 999,
+                            display: "inline-block",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {customBatOrder.bat.qualityLevel}
+                        </span>
+                        <div style={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>
+                          {formatPrice(customBatOrder.payment.orderValue)}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "1rem", fontWeight: 900, color: "#0f172a", marginBottom: 4 }}>
-                      Laser Engraving: &ldquo;{customEngraving.text}&rdquo;
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                        gap: "10px 14px",
+                        fontSize: ".82rem",
+                        color: "#475569",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
+                          Size / Category
+                        </span>
+                        <span>{customBatOrder.bat.size}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
+                          Blade Profile
+                        </span>
+                        <span>{customBatOrder.bat.profile}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
+                          Handle
+                        </span>
+                        <span>{customBatOrder.bat.handlePreference}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
+                          Target Weight
+                        </span>
+                        <span>{customBatOrder.bat.preferredWeight}</span>
+                      </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: ".76rem", color: "#64748b", lineHeight: 1.45 }}>
-                      Please check spelling carefully. Your bat will be engraved exactly as entered.
-                    </p>
+
+                    {customBatOrder.services.selectedServiceNames.length > 0 && (
+                      <div
+                        style={{
+                          fontSize: ".78rem",
+                          color: "#15803d",
+                          background: "rgba(34, 197, 94, 0.08)",
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <strong>Included Services:</strong> {customBatOrder.services.selectedServiceNames.join(" · ")}
+                      </div>
+                    )}
+
+                    {customBatOrder.services.engraving && customBatOrder.services.engravingText && (
+                      <div
+                        style={{
+                          fontSize: ".84rem",
+                          background: "rgba(242, 169, 40, 0.08)",
+                          border: "1px dashed rgba(242, 169, 40, 0.6)",
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontWeight: 800, color: "#b45309" }}>Laser Engraving Text:</span>
+                          <span style={{ fontSize: ".72rem", color: "#15803d", fontWeight: 700 }}>✓ Included</span>
+                        </div>
+                        <div style={{ fontSize: "1.02rem", fontWeight: 900, color: "#0f172a", marginTop: 3 }}>
+                          &ldquo;{customBatOrder.services.engravingText}&rdquo;
+                        </div>
+                        <p style={{ margin: "4px 0 0", fontSize: ".72rem", color: "#64748b" }}>
+                          Please check spelling carefully. Your bat will be laser engraved exactly as entered.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+                    {lines.map((line) => (
+                      <div
+                        key={line.product.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "10px 12px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 10,
+                        }}
+                      >
+                        <img
+                          src={line.product.image}
+                          alt={line.product.name}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            minWidth: 48,
+                            objectFit: "cover",
+                            borderRadius: 8,
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <strong
+                            style={{
+                              fontSize: ".88rem",
+                              display: "block",
+                              color: "#0f172a",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {line.product.name}
+                          </strong>
+                          <span style={{ fontSize: ".76rem", color: "#64748b" }}>
+                            Qty: {line.quantity} · {formatPrice(line.product.price)} each
+                          </span>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <strong style={{ color: "#0f172a", fontSize: ".92rem" }}>
+                            {formatPrice(line.product.price * line.quantity)}
+                          </strong>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 

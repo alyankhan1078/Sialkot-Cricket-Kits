@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -80,6 +81,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [lastAddedItem, setLastAddedItem] = useState<AddedItemInfo | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [currency, setCurrencyState] = useState<string>(DEFAULT_CURRENCY);
+  const pathname = usePathname();
+
+  // Automatically ensure Cart Drawer is closed when user navigates to checkout pages
+  useEffect(() => {
+    if (pathname && pathname.startsWith("/checkout")) {
+      setCartOpen(false);
+    }
+  }, [pathname]);
 
   // Initialize and auto-detect visitor currency
   useEffect(() => {

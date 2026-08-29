@@ -171,6 +171,28 @@ export async function POST(request: Request) {
       const serverProduct = await getProductById(productId);
 
       if (!serverProduct) {
+        // Handle bespoke custom bat orders
+        if (
+          productId &&
+          (productId.startsWith("custom-bat") ||
+            productId.includes("custom-bat") ||
+            productId === "custom-bat-order" ||
+            it.name?.toLowerCase().includes("custom"))
+        ) {
+          const customPrice = Number(it.price) || 300;
+          calculatedSubtotalGbp += customPrice * quantity;
+          totalQuantity += quantity;
+
+          verifiedItems.push({
+            productId: productId,
+            name: it.name || "Custom Cricket Bat",
+            category: "Bespoke Custom Bat",
+            price: customPrice,
+            quantity,
+          });
+          continue;
+        }
+
         return NextResponse.json(
           { success: false, error: `Product "${productId}" could not be found or is unavailable.` },
           { status: 400 }
