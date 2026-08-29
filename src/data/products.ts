@@ -552,10 +552,74 @@ const teamwear: Product[] = [
   ...[["Small", 8, 50], ["Medium", 8, 29], ["Large", 8, 13], ["X-Large", 8, 35]].map(([size, price, stock]) => product("Teamwear", `Supreme Shorts - ${size}`, Number(price), Number(stock), brandImage)),
 ];
 
+const customBatProducts: Product[] = [
+  // Beauty Processed Custom Bats
+  product("Beauty Processed Bats", "Custom Bat - Beauty Processed (£140 Essential)", 140, "Available", batImage, {
+    description: "Custom manufactured Beauty Processed English Willow cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Beauty Processed cricket bat.",
+  }),
+  product("Beauty Processed Bats", "Custom Bat - Beauty Processed (£190 Performance)", 190, "Available", batImage, {
+    description: "Custom manufactured Beauty Processed English Willow cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Beauty Processed cricket bat.",
+  }),
+  product("Beauty Processed Bats", "Custom Bat - Beauty Processed (£220 Advanced)", 220, "Available", batImage, {
+    description: "Custom manufactured Beauty Processed English Willow cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Beauty Processed cricket bat.",
+  }),
+  product("Beauty Processed Bats", "Custom Bat - Beauty Processed (£230 Premium)", 230, "Available", batImage, {
+    description: "Custom manufactured Beauty Processed English Willow cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Beauty Processed cricket bat.",
+  }),
+  product("Beauty Processed Bats", "Custom Bat - Beauty Processed (£250 Top)", 250, "Available", batImage, {
+    description: "Custom manufactured Beauty Processed English Willow cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Beauty Processed cricket bat.",
+  }),
+
+  // Bonafide Custom Bats
+  product("Bonafide Bats", "Custom Bat - Bonafide (£220 Entry)", 220, "Available", batImage, {
+    description: "Custom manufactured natural unbleached English Willow Bonafide cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Bonafide natural willow cricket bat.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Bonafide (£250 Performance)", 250, "Available", batImage, {
+    description: "Custom manufactured natural unbleached English Willow Bonafide cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Bonafide natural willow cricket bat.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Bonafide (£300 Professional)", 300, "Available", batImage, {
+    description: "Custom manufactured tournament grade natural English Willow Bonafide cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Bonafide professional cricket bat.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Bonafide (£400 Elite)", 400, "Available", batImage, {
+    description: "Custom manufactured player-spec natural English Willow Bonafide cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Bonafide elite cricket bat.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Bonafide (£500 Top Spec)", 500, "Available", batImage, {
+    description: "Custom manufactured Master Reserve private selection natural English Willow Bonafide cricket bat tailored to your exact size, handle, profile, and weight.",
+    shortDescription: "Custom made Bonafide masterclass cricket bat.",
+  }),
+
+  // General Custom Bat Builds
+  product("Beauty Processed Bats", "Custom Bat - Recommended Build (£150)", 150, "Available", batImage, {
+    description: "Custom manufactured cricket bat built to your target budget and playing specifications.",
+  }),
+  product("Beauty Processed Bats", "Custom Bat - Recommended Build (£200)", 200, "Available", batImage, {
+    description: "Custom manufactured cricket bat built to your target budget and playing specifications.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Recommended Build (£300)", 300, "Available", batImage, {
+    description: "Custom manufactured cricket bat built to your target budget and playing specifications.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Recommended Build (£400)", 400, "Available", batImage, {
+    description: "Custom manufactured cricket bat built to your target budget and playing specifications.",
+  }),
+  product("Bonafide Bats", "Custom Bat - Recommended Build (£500)", 500, "Available", batImage, {
+    description: "Custom manufactured cricket bat built to your target budget and playing specifications.",
+  }),
+];
+
 export const products: Product[] = [
   ...beautyBats,
   ...bonafideBats,
   ...juniorBats,
+  ...customBatProducts,
   ...battingPads,
   ...battingGloves,
   ...keepingGloves,

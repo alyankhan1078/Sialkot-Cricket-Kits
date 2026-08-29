@@ -1373,6 +1373,17 @@ export default function CheckoutPage() {
                         Pay {formatPrice(Math.round(grandTotal * 0.5 * 100) / 100)} now, balance before dispatch
                       </small>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDepositPercent(30)}
+                      className={`payment-method-option${depositPercent === 30 ? " selected" : ""}`}
+                    >
+                      <span className="payment-method-label">30% Minimum Advance</span>
+                      <small style={{ color: "#64748b", fontSize: ".76rem", display: "block", marginTop: 2 }}>
+                        Pay {formatPrice(Math.round(grandTotal * 0.3 * 100) / 100)} now (Custom Bats)
+                      </small>
+                    </button>
                   </div>
                 </div>
 
