@@ -23,6 +23,8 @@ import {
   Truck,
   Building2,
   HelpCircle,
+  AlertCircle,
+  Pencil,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { products } from "@/src/data/products";
@@ -59,11 +61,14 @@ export function CustomBatConfigurator() {
   const [customerCountry, setCustomerCountry] = useState<string>("");
   const [specialNotes, setSpecialNotes] = useState<string>("");
 
-  // ── Step 5: Additional Services ──
+  // ── Step 5: Additional Services & Interactive Engraving ──
   const [selectedServices, setSelectedServices] = useState<string[]>([
     "knocking-in",
     "live-ping-video",
   ]);
+  const [engravingText, setEngravingText] = useState<string>("");
+  const [isEngravingConfirmed, setIsEngravingConfirmed] = useState<boolean>(false);
+  const [engravingError, setEngravingError] = useState<string | null>(null);
 
   // ── Step 6: Advance Payment Percentage (Minimum 30%) ──
   const [advancePercent, setAdvancePercent] = useState<number>(30);
@@ -143,13 +148,44 @@ export function CustomBatConfigurator() {
     );
   }, [selectedProfileId]);
 
+  const isEngravingSelected = selectedServices.includes("name-engraving");
+
   // Handle service toggle
   const toggleService = (serviceId: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(serviceId)
-        ? prev.filter((id) => id !== serviceId)
-        : [...prev, serviceId]
-    );
+    setSelectedServices((prev) => {
+      const willInclude = !prev.includes(serviceId);
+      if (serviceId === "name-engraving") {
+        if (!willInclude) {
+          // unchecking: clear error & confirmed state
+          setIsEngravingConfirmed(false);
+          setEngravingError(null);
+        } else {
+          // checking: clear error & prepare input
+          setEngravingError(null);
+        }
+      }
+      return willInclude ? [...prev, serviceId] : prev.filter((id) => id !== serviceId);
+    });
+  };
+
+  // Confirm Engraving button handler
+  const handleConfirmEngraving = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const trimmed = engravingText.trim();
+    if (!trimmed) {
+      setEngravingError("Please enter the text you want engraved.");
+      return;
+    }
+    setEngravingText(trimmed);
+    setIsEngravingConfirmed(true);
+    setEngravingError(null);
+  };
+
+  // Edit Engraving button handler
+  const handleEditEngraving = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsEngravingConfirmed(false);
+    setEngravingError(null);
   };
 
   // Find matching product ID for checkout cart handoff
@@ -206,6 +242,7 @@ export function CustomBatConfigurator() {
       weight: finalWeight,
       profile: activeProfile.name,
       services: selectedServiceNames,
+      engravingText: isEngravingSelected && engravingText.trim() ? engravingText.trim() : undefined,
       notes: specialNotes,
       advancePercent,
       advanceAmount,
@@ -224,6 +261,8 @@ export function CustomBatConfigurator() {
     finalWeight,
     activeProfile.name,
     selectedServiceNames,
+    isEngravingSelected,
+    engravingText,
     specialNotes,
     advancePercent,
     advanceAmount,
@@ -232,8 +271,44 @@ export function CustomBatConfigurator() {
 
   // Submit Enquiry to backend & proceed to checkout
   const handleProceedToCheckout = async () => {
+    // ── Engraving Validation ──
+    if (isEngravingSelected) {
+      const trimmed = engravingText.trim();
+      if (!trimmed) {
+        setEngravingError("Please enter the text you want engraved.");
+        const servicesSection = document.getElementById("step-services");
+        if (servicesSection) {
+          servicesSection.scrollIntoView({ behavior: "smooth" });
+        }
+        return;
+      }
+      if (!isEngravingConfirmed) {
+        setIsEngravingConfirmed(true);
+      }
+    }
+
     setIsSubmitting(true);
     setStatusNotice(null);
+
+    // Save custom bat specs to localStorage so Checkout Review Order page can display it
+    try {
+      if (typeof window !== "undefined") {
+        if (isEngravingSelected && engravingText.trim()) {
+          window.localStorage.setItem(
+            "sialkot-custom-bat-engraving",
+            JSON.stringify({
+              text: engravingText.trim(),
+              size: activeSize.name,
+              construction: selectedConstruction,
+              tier: selectedTierLabel,
+              price: selectedPrice,
+            })
+          );
+        } else {
+          window.localStorage.removeItem("sialkot-custom-bat-engraving");
+        }
+      }
+    } catch {}
 
     // 1. Record custom enquiry lead in database
     try {
@@ -256,6 +331,7 @@ export function CustomBatConfigurator() {
             weight: finalWeight,
             profile: activeProfile.name,
             services: selectedServiceNames,
+            engraving: isEngravingSelected && engravingText.trim() ? { selected: true, text: engravingText.trim(), confirmed: true } : { selected: false },
             notes: specialNotes,
             advancePercent,
             advanceAmount,
@@ -278,6 +354,12 @@ export function CustomBatConfigurator() {
 
   // Dispatch WhatsApp enquiry directly
   const handleOpenWhatsApp = async () => {
+    if (isEngravingSelected && !engravingText.trim()) {
+      setEngravingError("Please enter the text you want engraved.");
+      document.getElementById("step-services")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
     try {
       await fetch("/api/enquiries", {
         method: "POST",
@@ -292,6 +374,7 @@ export function CustomBatConfigurator() {
             size: activeSize.name,
             price: selectedPrice,
             tierLabel: selectedTierLabel,
+            engravingText: isEngravingSelected ? engravingText.trim() : undefined,
             advancePercent,
           },
         }),
@@ -851,7 +934,7 @@ export function CustomBatConfigurator() {
           </section>
 
           {/* ══════════════════════════════════════════════
-              STEP 5: ADDITIONAL SERVICES
+              STEP 5: ADDITIONAL SERVICES & INTERACTIVE ENGRAVING
               ══════════════════════════════════════════════ */}
           <section className="configurator-step-box" id="step-services">
             <div className="configurator-step-header">
@@ -867,30 +950,132 @@ export function CustomBatConfigurator() {
             <div className="configurator-services-list">
               {CUSTOM_BAT_CONFIG.services.map((service) => {
                 const isSelected = selectedServices.includes(service.id);
+                const isEngravingCard = service.id === "name-engraving";
+
                 return (
                   <div
                     key={service.id}
-                    onClick={() => toggleService(service.id)}
-                    className={`service-card ${isSelected ? "selected" : ""}`}
-                    role="button"
-                    tabIndex={0}
+                    className={`service-card ${isSelected ? "selected" : ""} ${
+                      isEngravingCard ? "engraving-service-card" : ""
+                    }`}
                   >
-                    <div className="service-card-left">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleService(service.id)}
-                        className="service-checkbox"
-                        aria-label={service.name}
-                      />
-                      <div>
-                        <strong className="service-name">{service.name}</strong>
-                        <p className="service-desc">{service.description}</p>
+                    {/* Service Header Row */}
+                    <div
+                      className="service-card-main-row"
+                      onClick={() => toggleService(service.id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isEngravingCard ? isSelected : undefined}
+                    >
+                      <div className="service-card-left">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleService(service.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="service-checkbox"
+                          aria-label={service.name}
+                        />
+                        <div>
+                          <strong className="service-name">{service.name}</strong>
+                          <p className="service-desc">{service.description}</p>
+                        </div>
+                      </div>
+                      <div className="service-card-right">
+                        <span className="service-included-badge">Included Free</span>
                       </div>
                     </div>
-                    <div className="service-card-right">
-                      <span className="service-included-badge">Included Free</span>
-                    </div>
+
+                    {/* ── EXPANDED ENGRAVING SECTION (When selected) ── */}
+                    {isEngravingCard && isSelected && (
+                      <div
+                        className="service-engraving-expanded"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="engraving-divider" />
+
+                        {!isEngravingConfirmed ? (
+                          /* Input & Confirmation Mode */
+                          <div className="engraving-input-block">
+                            <label htmlFor="engraving-text-input" className="engraving-field-label">
+                              <span>What would you like engraved?</span>
+                              <span className="engraving-counter">
+                                {engravingText.length} / 30 characters
+                              </span>
+                            </label>
+                            <p id="engraving-helper" className="engraving-field-helper">
+                              Enter the exact name, initials, number or short text you want laser engraved on your bat.
+                            </p>
+
+                            <div className="engraving-input-row">
+                              <input
+                                id="engraving-text-input"
+                                type="text"
+                                maxLength={30}
+                                value={engravingText}
+                                onChange={(e) => {
+                                  setEngravingText(e.target.value);
+                                  if (engravingError) setEngravingError(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleConfirmEngraving();
+                                  }
+                                }}
+                                placeholder="e.g. ALYAN WAZIR, AW 07, KING 18"
+                                className={`config-text-input engraving-text-input ${
+                                  engravingError ? "has-error" : ""
+                                }`}
+                                aria-invalid={!!engravingError}
+                                aria-describedby="engraving-helper"
+                                autoFocus={!engravingText}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleConfirmEngraving}
+                                className="engraving-confirm-btn"
+                              >
+                                <Check size={16} strokeWidth={3} />
+                                <span>Confirm Engraving</span>
+                              </button>
+                            </div>
+
+                            {engravingError && (
+                              <div className="engraving-error-msg" role="alert">
+                                <AlertCircle size={14} />
+                                <span>{engravingError}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* Confirmed Preview Mode */
+                          <div className="engraving-confirmed-box">
+                            <div className="engraving-confirmed-left">
+                              <div className="engraving-confirmed-badge">
+                                <CheckCircle2 size={16} color="#16a34a" />
+                                <strong>✓ Engraving Confirmed</strong>
+                              </div>
+                              <div className="engraving-confirmed-text">
+                                &ldquo;{engravingText.trim()}&rdquo;
+                              </div>
+                              <p className="engraving-confirmed-note">
+                                Please check spelling carefully. Your bat will be engraved exactly as entered.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleEditEngraving}
+                              className="engraving-edit-btn"
+                              aria-label="Edit engraving text"
+                            >
+                              <Pencil size={13} />
+                              <span>Edit</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1011,6 +1196,24 @@ export function CustomBatConfigurator() {
                   <span className="spec-k">Services</span>
                   <span className="spec-v-services">
                     {selectedServiceNames.join(" · ")}
+                  </span>
+                </div>
+              )}
+
+              {/* Dedicated Laser Engraving Summary Box */}
+              {isEngravingSelected && Boolean(engravingText.trim()) && (
+                <div className="summary-engraving-card">
+                  <div className="summary-engraving-top">
+                    <span className="spec-k">Laser Engraving</span>
+                    <span className="summary-engraving-badge">
+                      {isEngravingConfirmed ? "✓ Confirmed" : "Entered"}
+                    </span>
+                  </div>
+                  <strong className="summary-engraving-text">
+                    &ldquo;{engravingText.trim()}&rdquo;
+                  </strong>
+                  <span className="summary-engraving-note">
+                    Please check spelling carefully. Engraved exactly as entered.
                   </span>
                 </div>
               )}

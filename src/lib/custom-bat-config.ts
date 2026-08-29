@@ -379,11 +379,17 @@ export function generateCustomBatWhatsAppMessage(config: {
   weight: string;
   profile: string;
   services: string[];
+  engravingText?: string;
   notes?: string;
   advancePercent: number;
   advanceAmount: number;
   remainingBalance: number;
 }): string {
+  const hasEngraving =
+    config.services &&
+    config.services.some((s) => s.toLowerCase().includes("engraving")) &&
+    Boolean(config.engravingText?.trim());
+
   const lines = [
     "🏏 *Custom Bat Enquiry — Sialkot Cricket Kits*",
     "",
@@ -403,6 +409,9 @@ export function generateCustomBatWhatsAppMessage(config: {
         ? config.services.join(", ")
         : "None selected"
     }`,
+    hasEngraving
+      ? `• *Laser Engraving Text:* "${config.engravingText?.trim()}" (Engraved exactly as entered)`
+      : null,
     "",
     "💳 *Payment Preference:*",
     `• *Total Bat Value:* £${config.priceLevel}`,

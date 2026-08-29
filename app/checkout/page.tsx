@@ -155,6 +155,28 @@ export default function CheckoutPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Custom Bat Engraving details from configurator
+  const [customEngraving, setCustomEngraving] = useState<{
+    text: string;
+    size?: string;
+    construction?: string;
+    tier?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem("sialkot-custom-bat-engraving");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.text) {
+            setCustomEngraving(parsed);
+          }
+        }
+      }
+    } catch {}
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const lines = cart.flatMap((item) => {
@@ -420,6 +442,28 @@ export default function CheckoutPage() {
             </strong>
           </div>
         ))}
+
+        {customEngraving?.text && (
+          <div
+            style={{
+              padding: "8px 10px",
+              background: "rgba(34, 197, 94, 0.08)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
+              borderRadius: 8,
+              fontSize: ".76rem",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div>
+              <span style={{ color: "#15803d", fontWeight: 700 }}>Laser Engraving:</span>{" "}
+              <strong style={{ color: "#0f172a" }}>&ldquo;{customEngraving.text}&rdquo;</strong>
+            </div>
+            <span style={{ fontSize: ".68rem", color: "#15803d", fontWeight: 800 }}>✓ Added</span>
+          </div>
+        )}
       </div>
 
       <div className="order-summary-divider" />
@@ -1293,6 +1337,34 @@ export default function CheckoutPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Custom Laser Engraving Confirmation Card */}
+                {customEngraving?.text && (
+                  <div
+                    style={{
+                      background: "rgba(34, 197, 94, 0.05)",
+                      border: "1.5px solid #86efac",
+                      padding: "14px 16px",
+                      borderRadius: 10,
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".82rem", fontWeight: 800, color: "#15803d", textTransform: "uppercase" }}>
+                        <CheckCircle2 size={16} color="#16a34a" /> Customization: Laser Engraving
+                      </div>
+                      <span style={{ fontSize: ".72rem", background: "rgba(34, 197, 94, 0.12)", color: "#15803d", fontWeight: 800, padding: "2px 8px", borderRadius: 999 }}>
+                        Included Free
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "1rem", fontWeight: 900, color: "#0f172a", marginBottom: 4 }}>
+                      Laser Engraving: &ldquo;{customEngraving.text}&rdquo;
+                    </div>
+                    <p style={{ margin: 0, fontSize: ".76rem", color: "#64748b", lineHeight: 1.45 }}>
+                      Please check spelling carefully. Your bat will be engraved exactly as entered.
+                    </p>
+                  </div>
+                )}
 
                 {/* Totals Summary */}
                 <div style={{ background: "#f8fafc", padding: "14px 16px", borderRadius: 10, border: "1px solid #e2e8f0", marginBottom: 20 }}>

@@ -3014,12 +3014,11 @@ textarea.checkout-input {
   border: 1.5px solid #cbd5e1;
   border-radius: 10px;
   padding: 14px 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .service-card:hover {
@@ -3028,7 +3027,22 @@ textarea.checkout-input {
 
 .service-card.selected {
   border-color: #16a34a;
-  background: rgba(34, 197, 94, 0.05);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.service-card.selected.engraving-service-card {
+  border-color: #16a34a;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.08);
+}
+
+.service-card-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  width: 100%;
 }
 
 .service-card-left {
@@ -3068,6 +3082,206 @@ textarea.checkout-input {
   padding: 3px 8px;
   border-radius: 999px;
   white-space: nowrap;
+}
+
+/* Expanded Engraving Section */
+.service-engraving-expanded {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.engraving-input-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.engraving-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.engraving-counter {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.engraving-field-helper {
+  font-size: 0.76rem;
+  color: #64748b;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.engraving-input-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.engraving-text-input {
+  flex: 1;
+  min-width: 200px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.engraving-text-input.has-error {
+  border-color: #ef4444 !important;
+  background: #fef2f2;
+}
+
+.engraving-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.engraving-confirm-btn:hover {
+  background: #15803d;
+}
+
+@media (max-width: 600px) {
+  .engraving-input-row {
+    flex-direction: column;
+  }
+  .engraving-confirm-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+.engraving-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Confirmed Preview Box */
+.engraving-confirmed-box {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.engraving-confirmed-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.engraving-confirmed-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: #15803d;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.engraving-confirmed-text {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.engraving-confirmed-note {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+.engraving-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.engraving-edit-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Summary Laser Engraving Card */
+.summary-engraving-card {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.summary-engraving-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-engraving-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #15803d;
+}
+
+.summary-engraving-text {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+.summary-engraving-note {
+  font-size: 0.68rem;
+  color: #64748b;
 }
 
 /* Advance Payment Grid (Critical Feature) */
