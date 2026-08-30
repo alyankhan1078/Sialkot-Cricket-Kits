@@ -105,6 +105,29 @@ button { color: inherit; }
 .brand-lockup > span { display: flex; flex-direction: column; }
 .brand-lockup strong { font-size: .78rem; text-transform: uppercase; letter-spacing: .14em; color: var(--text-primary); }
 .brand-lockup small { margin-top: .25rem; color: var(--gold); font-size: .5rem; text-transform: uppercase; letter-spacing: .15em; }
+.brand-home-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  width: fit-content;
+  padding: 1.5px 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.52rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+}
+.brand-lockup:hover .brand-home-chip {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
 .desktop-nav { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 2.5vw, 2.2rem); }
 .desktop-nav a { color: var(--text-secondary); text-transform: uppercase; letter-spacing: .12em; font-size: .62rem; font-weight: 800; transition: color .2s ease; }
 .desktop-nav a:hover, .desktop-nav a:focus { color: var(--gold); }
@@ -3868,10 +3891,11 @@ textarea.checkout-input {
 @media (max-width: 580px) {
   .announcement-bar { justify-content: center; font-size: .55rem; letter-spacing: .1em; }
   .site-header { min-height: 64px; padding-inline: .8rem; gap: .75rem; }
-  .brand-lockup { min-width: 0; gap: .6rem; }
-  .brand-lockup img { width: 48px; height: 48px; }
+  .brand-lockup { min-width: 0; gap: .5rem; }
+  .brand-lockup img { width: 44px; height: 44px; }
   .brand-lockup strong { font-size: .62rem; }
-  .brand-lockup small { display: none; }
+  .brand-lockup small { display: block; font-size: 0.44rem; margin-top: 1px; }
+  .brand-home-chip { display: inline-flex; padding: 1px 4px; font-size: 0.46rem; margin-top: 2px; }
   .header-icon { width: 40px; height: 40px; }
   .hamburger-button { width: 40px; height: 40px; min-width: 40px; }
   /* Hide search icon on very small mobile */

@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Instagram,
   Facebook,
+  Home,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -96,11 +97,12 @@ const catalogueColumns: CatalogueColumn[] = [
 
 // Customer-facing nav links
 const navItems = [
+  ["Home", "/"],
   ["Custom Bat", "/custom-bat"],
   ["About", "/about"],
-  ["FAQ", "/faq"],
+  ["Reviews", "/reviews"],
   ["Contact", "/contact"],
-  ["Payment Guidance", "/payment"],
+  ["Track Order", "/tracking"],
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -240,6 +242,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <span>
             <strong>{settings.businessName}</strong>
             <small>Performance equipment · Sialkot</small>
+            <span className="brand-home-chip">
+              <Home size={10} strokeWidth={2.5} />
+              <span>Home</span>
+            </span>
           </span>
         </Link>
 
