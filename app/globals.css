@@ -4035,21 +4035,24 @@ textarea.checkout-input {
   }
 }
 
-/* Mobile & Tablet Layout (<= 860px) - Compact & Clean */
+/* Mobile & Tablet Layout (<= 860px) - Compact & Seamless */
 @media (max-width: 860px) {
   .cinematic-hero {
     flex-direction: column;
     min-height: auto;
     width: 100%;
+    border-bottom: none !important;
   }
 
   .cinematic-hero-media {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: 320px;
+    max-height: 300px;
     overflow: hidden;
     background: #08090c;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .cinematic-hero-media picture {
@@ -4062,32 +4065,25 @@ textarea.checkout-input {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center center;
+    object-position: center top;
     display: block;
     image-rendering: -webkit-optimize-contrast;
     filter: contrast(1.08) brightness(1.03) saturate(1.08);
     transform: translateZ(0);
   }
 
+  /* Remove heavy mobile black gradient overlay so bats are visible down to the edge */
   .cinematic-hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(8, 9, 12, 0) 0%,
-      rgba(8, 9, 12, 0.6) 60%,
-      rgba(8, 9, 12, 0.85) 85%,
-      #08090c 100%
-    );
-    pointer-events: none;
+    display: none !important;
   }
 
   .cinematic-hero-container {
     position: relative;
     z-index: 2;
     width: 100%;
-    padding: 0.95rem 1rem 0.4rem !important;
+    padding: 0.55rem 1rem 0 !important;
     background: #08090c;
+    margin: 0 !important;
   }
 
   .cinematic-hero-content {
@@ -4097,53 +4093,27 @@ textarea.checkout-input {
   }
 
   .cinematic-hero-title {
-    font-size: clamp(1.25rem, 5.2vw, 1.55rem) !important;
+    font-size: clamp(1.2rem, 5vw, 1.5rem) !important;
     line-height: 1.18 !important;
     letter-spacing: -0.025em !important;
-    margin: 0 0 0.4rem !important;
+    margin: 0 0 0.35rem !important;
   }
 
   .cinematic-hero-desc {
-    font-size: 0.82rem !important;
-    line-height: 1.48 !important;
+    font-size: 0.8rem !important;
+    line-height: 1.45 !important;
     color: #9ca3af !important;
-    margin: 0 0 0.8rem !important;
+    margin: 0 0 0.55rem !important;
     max-width: 440px !important;
   }
 
-  .cinematic-hero-ctas {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    gap: 0.6rem;
-  }
-
-  /* 1. Mobile-only: Completely REMOVE Explore Products ↓ */
+  /* Completely REMOVE both Explore Products & large WhatsApp Us buttons on mobile */
+  .cinematic-hero-ctas,
   #hero-primary-cta,
-  .hero-explore-btn {
-    display: none !important;
-  }
-
-  /* 2. WhatsApp Us button positioned cleanly on mobile */
-  .cinematic-btn-secondary.compact,
   #hero-secondary-cta,
+  .hero-explore-btn,
   .hero-whatsapp-btn {
-    width: 100% !important;
-    flex: 1 !important;
-    padding: 0.68rem 1.2rem !important;
-    font-size: 0.84rem !important;
-    font-weight: 700 !important;
-    min-height: 44px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 0.5rem !important;
-    text-align: center !important;
-    background: rgba(255, 255, 255, 0.07) !important;
-    border: 1px solid rgba(255, 255, 255, 0.18) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
-    color: #ffffff !important;
+    display: none !important;
   }
 }
 
