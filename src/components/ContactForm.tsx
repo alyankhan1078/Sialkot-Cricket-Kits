@@ -1,21 +1,98 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Mail, MessageCircle, Check, Copy, ExternalLink } from "lucide-react";
+import { Mail, MessageCircle, Check, Copy, ExternalLink, Send, AlertCircle, ShieldCheck } from "lucide-react";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { BUSINESS_CONFIG } from "@/src/lib/business-config";
+import { POPULAR_DESTINATIONS, REMAINING_COUNTRIES } from "@/src/lib/countries";
+
+const ENQUIRY_TYPES = [
+  "Product Availability",
+  "Shipping Quote",
+  "Custom Cricket Bat",
+  "Bulk Order",
+  "OEM / Private Label",
+  "Existing Order",
+  "General Enquiry",
+];
+
+const ALL_COUNTRIES_LIST = [
+  ...POPULAR_DESTINATIONS,
+  ...REMAINING_COUNTRIES,
+];
 
 export function ContactForm() {
-  const [form, setForm] = useState({ name: "", email: "", country: "", message: "" });
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    country: "United Kingdom",
+    enquiryType: "Product Availability",
+    productModel: "",
+    quantity: "1",
+    orderNumber: "",
+    message: "",
+  });
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showEmailOptions, setShowEmailOptions] = useState(false);
 
-  const update = (key: string, value: string) =>
+  const update = (key: string, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
 
-  const message = `Hello Sialkot Cricket Kits,\n\nName: ${form.name || "Customer"}\nEmail: ${
-    form.email || "Not provided"
-  }\nCountry: ${form.country || "Not specified"}\n\nEnquiry: ${form.message}\n\nPlease confirm availability and the next steps. Thank you.`;
+  const validate = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!form.fullName.trim()) {
+      newErrors.fullName = "Please enter your full name";
+    } else if (form.fullName.trim().length < 2) {
+      newErrors.fullName = "Name must be at least 2 characters";
+    }
+
+    if (!form.email.trim()) {
+      newErrors.email = "Please enter your email address";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      newErrors.email = "Please enter a valid email address (e.g. name@example.com)";
+    }
+
+    if (!form.country.trim()) {
+      newErrors.country = "Please select or enter your delivery country";
+    }
+
+    if (!form.message.trim()) {
+      newErrors.message = "Please write your enquiry message";
+    } else if (form.message.trim().length < 5) {
+      newErrors.message = "Message must be at least 5 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const buildMessage = () => {
+    let msg = `Hello Sialkot Cricket Kits,\n\nI would like assistance with an enquiry:`;
+    msg += `\n• Full Name: ${form.fullName || "Customer"}`;
+    msg += `\n• Email: ${form.email || "Not provided"}`;
+    if (form.phone) msg += `\n• Phone/WhatsApp: ${form.phone}`;
+    msg += `\n• Delivery Country: ${form.country}`;
+    msg += `\n• Enquiry Type: ${form.enquiryType}`;
+    if (form.productModel) msg += `\n• Product / Model: ${form.productModel}`;
+    if (form.quantity) msg += `\n• Quantity: ${form.quantity}`;
+    if (form.orderNumber) msg += `\n• Order Ref: ${form.orderNumber}`;
+    msg += `\n\n• Message:\n${form.message}`;
+    msg += `\n\nPlease confirm availability, pricing and dispatch details. Thank you!`;
+    return msg;
+  };
 
   const submitToDatabase = async () => {
     try {
@@ -24,9 +101,14 @@ export function ContactForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "contact",
-          name: form.name,
+          name: form.fullName,
           email: form.email,
+          phone: form.phone,
           country: form.country,
+          enquiryType: form.enquiryType,
+          productModel: form.productModel,
+          quantity: form.quantity,
+          orderNumber: form.orderNumber,
           message: form.message,
         }),
       });
@@ -37,233 +119,282 @@ export function ContactForm() {
 
   const handleWhatsAppSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!validate()) return;
+
     await submitToDatabase();
     setSubmitted(true);
-    window.open(whatsappUrl(message), "_blank", "noopener,noreferrer");
+    const msg = buildMessage();
+    window.open(whatsappUrl(msg), "_blank", "noopener,noreferrer");
+  };
+
+  const handleEmailTrigger = async () => {
+    if (!validate()) return;
+    await submitToDatabase();
+    setShowEmailOptions(true);
   };
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText("sialkotcricketkits@gmail.com");
+    navigator.clipboard.writeText(BUSINESS_CONFIG.primaryEmail);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const subject = `Website enquiry from ${form.name || "Customer"}`;
-  const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=sialkotcricketkits@gmail.com&su=${encodeURIComponent(
+  const messageText = buildMessage();
+  const subject = `Sialkot Cricket Kits Enquiry — ${form.enquiryType} [${form.fullName || "Customer"}]`;
+  const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+    BUSINESS_CONFIG.primaryEmail
+  )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(messageText)}`;
+  const outlookWebUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(
+    BUSINESS_CONFIG.primaryEmail
+  )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(messageText)}`;
+  const yahooWebUrl = `https://compose.mail.yahoo.com/?to=${encodeURIComponent(
+    BUSINESS_CONFIG.primaryEmail
+  )}&subj=${encodeURIComponent(subject)}&body=${encodeURIComponent(messageText)}`;
+  const standardMailto = `mailto:${BUSINESS_CONFIG.primaryEmail}?subject=${encodeURIComponent(
     subject
-  )}&body=${encodeURIComponent(message)}`;
-  const outlookWebUrl = `https://outlook.live.com/default.aspx?rru=compose&to=sialkotcricketkits@gmail.com&subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(message)}`;
-  const yahooWebUrl = `https://compose.mail.yahoo.com/?to=sialkotcricketkits@gmail.com&subj=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(message)}`;
-  const standardMailto = `mailto:sialkotcricketkits@gmail.com?subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(message)}`;
+  )}&body=${encodeURIComponent(messageText)}`;
 
   return (
-    <form className="enquiry-form" onSubmit={handleWhatsAppSubmit}>
-      <div className="form-grid two">
-        <label>
-          <span>Your name</span>
+    <form className="contact-enquiry-form" onSubmit={handleWhatsAppSubmit} noValidate>
+      {/* 2-Column Responsive Form Fields */}
+      <div className="contact-form-grid">
+        {/* Full Name */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-fullName">
+            Full Name <span className="req-star">*</span>
+          </label>
           <input
+            id="contact-fullName"
+            type="text"
             required
             maxLength={100}
-            value={form.name}
-            onChange={(event) => update("name", event.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            placeholder="e.g. Michael Clarke"
+            value={form.fullName}
+            onChange={(e) => update("fullName", e.target.value)}
+            placeholder="e.g. David Warner"
+            className={errors.fullName ? "has-error" : ""}
           />
-        </label>
-        <label>
-          <span>Email address (Gmail, Outlook, Yahoo, etc.)</span>
+          {errors.fullName && <span className="contact-field-error"><AlertCircle size={13} /> {errors.fullName}</span>}
+        </div>
+
+        {/* Email Address */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-email">
+            Email Address <span className="req-star">*</span>
+          </label>
           <input
+            id="contact-email"
             type="email"
+            required
             maxLength={150}
             value={form.email}
-            onChange={(event) => update("email", event.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            placeholder="e.g. name@example.com / user@yahoo.com"
+            onChange={(e) => update("email", e.target.value)}
+            placeholder="e.g. david@example.com"
+            className={errors.email ? "has-error" : ""}
           />
-        </label>
+          {errors.email && <span className="contact-field-error"><AlertCircle size={13} /> {errors.email}</span>}
+        </div>
+
+        {/* WhatsApp / Phone Number */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-phone">
+            WhatsApp / Phone Number <span className="opt-tag">(Optional)</span>
+          </label>
+          <input
+            id="contact-phone"
+            type="tel"
+            maxLength={50}
+            value={form.phone}
+            onChange={(e) => update("phone", e.target.value)}
+            placeholder="e.g. +44 7911 123456"
+          />
+        </div>
+
+        {/* Destination Country */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-country">
+            Destination Country <span className="req-star">*</span>
+          </label>
+          <select
+            id="contact-country"
+            value={form.country}
+            onChange={(e) => update("country", e.target.value)}
+            className={`contact-select ${errors.country ? "has-error" : ""}`}
+          >
+            {ALL_COUNTRIES_LIST.map((c) => (
+              <option key={c.code} value={c.name}>
+                {c.flag} {c.name}
+              </option>
+            ))}
+          </select>
+          {errors.country && <span className="contact-field-error"><AlertCircle size={13} /> {errors.country}</span>}
+        </div>
+
+        {/* Enquiry Type */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-enquiryType">
+            Enquiry Type <span className="req-star">*</span>
+          </label>
+          <select
+            id="contact-enquiryType"
+            value={form.enquiryType}
+            onChange={(e) => update("enquiryType", e.target.value)}
+            className="contact-select"
+          >
+            {ENQUIRY_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Product / Model */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-productModel">
+            Product / Model <span className="opt-tag">(Optional)</span>
+          </label>
+          <input
+            id="contact-productModel"
+            type="text"
+            maxLength={100}
+            value={form.productModel}
+            onChange={(e) => update("productModel", e.target.value)}
+            placeholder="e.g. Apex Pro Grade 1+ Bat / Test Pads"
+          />
+        </div>
+
+        {/* Quantity */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-quantity">
+            Quantity
+          </label>
+          <input
+            id="contact-quantity"
+            type="text"
+            maxLength={20}
+            value={form.quantity}
+            onChange={(e) => update("quantity", e.target.value)}
+            placeholder="e.g. 1 bat / 10 kit sets"
+          />
+        </div>
+
+        {/* Existing Order Number */}
+        <div className="contact-form-field">
+          <label htmlFor="contact-orderNumber">
+            Order Reference <span className="opt-tag">(Optional)</span>
+          </label>
+          <input
+            id="contact-orderNumber"
+            type="text"
+            maxLength={40}
+            value={form.orderNumber}
+            onChange={(e) => update("orderNumber", e.target.value)}
+            placeholder="e.g. SCK-84920"
+          />
+        </div>
       </div>
-      <label>
-        <span>Country</span>
-        <input
-          required
-          maxLength={100}
-          value={form.country}
-          onChange={(event) => update("country", event.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.preventDefault();
-          }}
-          placeholder="e.g. United Kingdom, Pakistan, UAE, USA"
-        />
-      </label>
-      <label>
-        <span>How can we help?</span>
+
+      {/* Message Textarea */}
+      <div className="contact-form-field full-width">
+        <label htmlFor="contact-message">
+          Enquiry Message <span className="req-star">*</span>
+        </label>
         <textarea
-          rows={5}
+          id="contact-message"
+          rows={4}
           required
           maxLength={2000}
           value={form.message}
-          onChange={(event) => update("message", event.target.value)}
-          placeholder="Product, size, weight preference, quantity and delivery destination"
+          onChange={(e) => update("message", e.target.value)}
+          placeholder="Please describe your requirements (e.g. bat weight 2lb 8oz, grain preference, custom laser engraving, international express courier timeline)..."
+          className={errors.message ? "has-error" : ""}
         />
-      </label>
+        {errors.message && <span className="contact-field-error"><AlertCircle size={13} /> {errors.message}</span>}
+      </div>
 
-      <div className="form-actions" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-        <button className="button whatsapp" type="submit" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <MessageCircle size={18} /> Send on WhatsApp
+      {/* Action Buttons */}
+      <div className="contact-form-actions">
+        <button
+          type="submit"
+          className="contact-submit-btn whatsapp"
+          id="contact-whatsapp-submit"
+        >
+          <MessageCircle size={18} />
+          <span>Send on WhatsApp</span>
         </button>
 
         <button
           type="button"
-          className="button secondary-dark"
-          onClick={() => {
-            submitToDatabase();
-            setShowEmailOptions((prev) => !prev);
-          }}
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+          onClick={handleEmailTrigger}
+          className="contact-submit-btn email"
+          id="contact-email-trigger"
         >
-          <Mail size={18} /> Send via Email
+          <Mail size={18} />
+          <span>Send via Email</span>
         </button>
       </div>
 
+      {/* Email Client Choice Tray */}
       {showEmailOptions && (
-        <div
-          style={{
-            marginTop: 14,
-            padding: "16px 18px",
-            background: "#f8fafc",
-            border: "1.5px solid #cbd5e1",
-            borderRadius: 10,
-            color: "#0f172a",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <strong style={{ fontSize: ".88rem", color: "#0f172a" }}>Choose your email service:</strong>
+        <div className="contact-email-tray">
+          <div className="email-tray-header">
+            <span className="tray-title">Choose your preferred email client:</span>
             <button
               type="button"
               onClick={handleCopyEmail}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "4px 10px",
-                background: "#ffffff",
-                border: "1px solid #cbd5e1",
-                borderRadius: 6,
-                fontSize: ".78rem",
-                color: "#1e293b",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
+              className="copy-email-btn"
             >
               {copied ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
-              {copied ? "Copied!" : "Copy Official Email"}
+              <span>{copied ? "Copied Official Email!" : "Copy Email Address"}</span>
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+          <div className="email-tray-grid">
             <a
               href={gmailWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                padding: "8px 12px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                color: "#dc2626",
-                fontSize: ".84rem",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
+              className="email-client-link gmail"
             >
-              <span>Gmail Web</span> <ExternalLink size={12} />
+              <span>Gmail Web</span>
+              <ExternalLink size={12} />
             </a>
 
             <a
               href={outlookWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                padding: "8px 12px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                color: "#0284c7",
-                fontSize: ".84rem",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
+              className="email-client-link outlook"
             >
-              <span>Outlook Web</span> <ExternalLink size={12} />
+              <span>Outlook Web</span>
+              <ExternalLink size={12} />
             </a>
 
             <a
               href={yahooWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                padding: "8px 12px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                color: "#7c3aed",
-                fontSize: ".84rem",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
+              className="email-client-link yahoo"
             >
-              <span>Yahoo Mail</span> <ExternalLink size={12} />
+              <span>Yahoo Mail</span>
+              <ExternalLink size={12} />
             </a>
 
             <a
               href={standardMailto}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                padding: "8px 12px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                color: "#475569",
-                fontSize: ".84rem",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
+              className="email-client-link default-app"
             >
-              <span>Mail App</span>
+              <span>Default Mail App</span>
             </a>
           </div>
         </div>
       )}
 
       {submitted && (
-        <p style={{ color: "#16a34a", fontSize: "0.85rem", marginTop: "0.75rem", fontWeight: 600 }}>
-          ✓ Enquiry recorded! WhatsApp opened in a new tab.
-        </p>
+        <div className="contact-success-banner">
+          <Check size={16} />
+          <span>Enquiry logged! WhatsApp opened in a new tab with your pre-filled details.</span>
+        </div>
       )}
     </form>
   );
