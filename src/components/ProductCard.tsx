@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, Heart, MessageCircle, ShoppingCart } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
-import { formatPrice, type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/products";
+import { type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/products";
 import { productMessage, whatsappUrl } from "@/src/lib/whatsapp";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -20,7 +20,7 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="product-card" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <article className="product-card">
       <div className="product-image-wrap">
         <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}>
           <img
@@ -37,38 +37,30 @@ export function ProductCard({ product }: { product: Product }) {
           <Heart size={18} fill={favourite ? "currentColor" : "none"} />
         </button>
         {isBest ? (
-          <span className="product-badge" style={{ background: "linear-gradient(135deg, #e11d48 0%, #f59e0b 100%)", color: "#fff", fontWeight: 800, letterSpacing: "0.03em" }}>🔥 Best Seller</span>
+          <span className="product-badge best-seller">🔥 Best Seller</span>
         ) : product.featured ? (
           <span className="product-badge">Featured</span>
         ) : null}
       </div>
-      <div className="product-card-body" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        <span className="product-category">{product.category}</span>
-        <h3><Link href={`/product/${product.id}`}>{product.name}</Link></h3>
 
-        {/* Concise Short Description with 2-line clamp */}
-        <p
-          style={{
-            fontSize: ".78rem",
-            color: "var(--text-muted)",
-            lineHeight: 1.45,
-            margin: "4px 0 10px",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            minHeight: "2.35em",
-          }}
-        >
+      <div className="product-card-body">
+        <span className="product-category">{product.category}</span>
+        <h3 className="product-title">
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </h3>
+
+        {/* Compact 2-line clamped description without reserved min-height */}
+        <p className="product-short-desc">
           {product.shortDescription || `${product.name} handcrafted in Sialkot, Pakistan.`}
         </p>
 
-        <div className="stock-line" style={{ marginTop: "auto" }}>
+        <div className="stock-line">
           <span>{typeof product.stock === "number" ? `${product.stock} in stock` : product.stock}</span>
           {product.rightStock !== undefined && <small>RH {product.rightStock} · LH {product.leftStock}</small>}
         </div>
+
         <strong className="product-price">{formatPrice(product.price)}</strong>
+
         <div className="product-card-actions">
           <button
             onClick={handleAdd}
@@ -76,14 +68,22 @@ export function ProductCard({ product }: { product: Product }) {
             className={isJustAdded ? "is-added" : ""}
             style={isJustAdded ? { background: "#166534", color: "#ffffff" } : undefined}
           >
-            {isJustAdded ? <Check size={17} /> : <ShoppingCart size={17} />}
+            {isJustAdded ? <Check size={16} /> : <ShoppingCart size={16} />}
             <span>{isJustAdded ? "Added" : "Add"}</span>
           </button>
-          <a href={whatsappUrl(productMessage(product))} target="_blank" rel="noreferrer" aria-label={`Order ${product.name} on WhatsApp`}><MessageCircle size={17} /></a>
-          <Link href={`/product/${product.id}`} aria-label={`View details for ${product.name}`}><ArrowUpRight size={17} /></Link>
+          <a
+            href={whatsappUrl(productMessage(product))}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Order ${product.name} on WhatsApp`}
+          >
+            <MessageCircle size={16} />
+          </a>
+          <Link href={`/product/${product.id}`} aria-label={`View details for ${product.name}`}>
+            <ArrowUpRight size={16} />
+          </Link>
         </div>
       </div>
     </article>
   );
 }
-
