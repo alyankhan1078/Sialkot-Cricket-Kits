@@ -263,7 +263,7 @@ export default function CheckoutPage() {
     : lines.reduce((t, i) => t + i.product.price * i.quantity, 0);
 
   const totalItemCount = isCustomOrder ? 1 : lines.reduce((t, i) => t + i.quantity, 0);
-  const shippingCalc = calculateShippingFee(formData.country, totalItemCount);
+  const shippingCalc = calculateShippingFee(formData.country, lines);
   const grandTotal = subtotal + (shippingCalc.hasDestination ? shippingCalc.shippingFee : 0);
   const depositDueNow =
     depositPercent === 100

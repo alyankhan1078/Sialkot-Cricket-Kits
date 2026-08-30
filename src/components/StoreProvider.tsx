@@ -302,38 +302,57 @@ function CartDrawer() {
     setCurrency,
     formatPrice,
   } = useStore();
-  const [selectedCountry, setSelectedCountry] = useState("");
+
+  const [addedSuggestionId, setAddedSuggestionId] = useState<string | null>(null);
 
   const lines = cart.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
     return product ? [{ ...item, product }] : [];
   });
 
+  const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
+
+  // Intelligent complementary product suggestion logic based on cart contents
+  const hasBat = lines.some((l) => l.product.category.includes("Bat") && !l.product.category.includes("Pad") && !l.product.category.includes("Glove"));
+  const hasGloves = lines.some((l) => l.product.category.includes("Glove"));
+  const hasPads = lines.some((l) => l.product.category.includes("Pad"));
+  const hasBag = lines.some((l) => l.product.category.includes("Bag"));
+  const hasHelmet = lines.some((l) => l.product.category.includes("Helmet"));
+
+  const targetCategories: string[] = [];
+  if (hasBat) {
+    if (!hasGloves) targetCategories.push("Batting Gloves");
+    if (!hasPads) targetCategories.push("Batting Pads");
+    if (!hasHelmet) targetCategories.push("Helmets");
+    if (!hasBag) targetCategories.push("Kit & Duffle Bags");
+    targetCategories.push("Other Accessories");
+  } else if (hasGloves || hasPads) {
+    if (!hasBat) targetCategories.push("Beauty Processed Bats", "Bonafide Bats");
+    if (!hasGloves) targetCategories.push("Batting Gloves");
+    if (!hasPads) targetCategories.push("Batting Pads");
+    if (!hasHelmet) targetCategories.push("Helmets");
+    if (!hasBag) targetCategories.push("Kit & Duffle Bags");
+  } else if (hasBag || hasHelmet) {
+    targetCategories.push("Beauty Processed Bats", "Batting Gloves", "Batting Pads", "Other Accessories");
+  } else {
+    targetCategories.push("Batting Gloves", "Batting Pads", "Beauty Processed Bats", "Other Accessories", "Kit & Duffle Bags");
+  }
+
+  // Pick top 6 complementary products not already in the customer's cart
   const suggestedProducts = products
     .filter(
       (p) =>
-        (p.category === "Batting Gloves" || p.category === "Batting Pads" || p.category === "Other Accessories") &&
+        targetCategories.includes(p.category) &&
         !cart.some((ci) => ci.productId === p.id)
     )
-    .slice(0, 3);
+    .slice(0, 6);
 
-  const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
-  const shippingCalculation = calculateShippingFee(selectedCountry, totalItemCount);
-  const grandTotal = subtotal + (shippingCalculation.hasDestination ? shippingCalculation.shippingFee : 0);
-  const depositDueNow = Math.round(grandTotal * 0.5 * 100) / 100;
-
-  // WhatsApp message for the cart with local currency and GBP note
-  const cartMessage = `Hello Sialkot Cricket Kits,\n\nI would like to order:\n\n${lines
-    .map(
-      (item, index) =>
-        `${index + 1}. ${item.product.name}\n   Quantity: ${item.quantity}\n   Price: ${formatPrice(item.product.price)} each`
-    )
-    .join("\n\n")}\n\nSubtotal: ${formatPrice(subtotal)}${
-    shippingCalculation.hasDestination
-      ? `\nDelivery to: ${shippingCalculation.countryName}\nShipping: ${formatPrice(shippingCalculation.shippingFee)}`
-      : "\nDelivery: (Destination to be confirmed)"
-  }\nOrder Total: ${formatPrice(grandTotal)} (${currency !== "GBP" ? `approx. £${grandTotal}` : "GBP"})\n\nPlease confirm my order. Thank you!`;
+  const handleAddSuggested = (productId: string) => {
+    addToCart(productId, 1);
+    setAddedSuggestionId(productId);
+    setTimeout(() => setAddedSuggestionId(null), 1800);
+  };
 
   return (
     <div className={`cart-layer${isCartOpen ? " is-open" : ""}`} aria-hidden={!isCartOpen}>
@@ -350,47 +369,42 @@ function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-title"
-        style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+        style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "#ffffff" }}
       >
         {/* Header */}
-        <div className="cart-drawer-head" style={{ flexShrink: 0 }}>
+        <div className="cart-drawer-head" style={{ flexShrink: 0, padding: "14px 18px", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }}>
           <div>
-            <span className="mini-label">Your basket</span>
-            <h2 id="cart-title">
-              Cart
-              {totalItemCount > 0 && (
-                <span style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-secondary)", marginLeft: ".4rem" }}>
-                  ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})
-                </span>
-              )}
+            <span className="mini-label" style={{ color: "#b45309", fontSize: ".65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", display: "block" }}>
+              YOUR BASKET
+            </span>
+            <h2 id="cart-title" style={{ fontSize: "1.25rem", fontWeight: 900, color: "#0f172a", margin: "2px 0 0" }}>
+              Cart {totalItemCount > 0 && <span style={{ fontSize: ".92rem", fontWeight: 600, color: "#64748b" }}>({totalItemCount} {totalItemCount === 1 ? "item" : "items"})</span>}
             </h2>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div className="cart-currency-badge-wrap" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="cart-currency-select"
-                aria-label="Change currency"
-                title="Select Currency"
-                style={{
-                  fontSize: ".76rem",
-                  fontWeight: 700,
-                  background: "var(--surface-subtle)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                  padding: "4px 6px",
-                  color: "var(--text-primary)",
-                  cursor: "pointer",
-                }}
-              >
-                {Object.values(CURRENCIES).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.flag} {c.code} ({c.symbol})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="cart-currency-select"
+              aria-label="Change currency"
+              title="Select Currency"
+              style={{
+                fontSize: ".76rem",
+                fontWeight: 700,
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: 6,
+                padding: "4px 6px",
+                color: "#0f172a",
+                cursor: "pointer",
+              }}
+            >
+              {Object.values(CURRENCIES).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code} ({c.symbol})
+                </option>
+              ))}
+            </select>
             <button
               className="icon-button"
               onClick={() => {
@@ -398,137 +412,202 @@ function CartDrawer() {
                 clearLastAddedItem();
               }}
               aria-label="Close cart"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                color: "#0f172a",
+                display: "grid",
+                placeItems: "center",
+                cursor: "pointer",
+              }}
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>
 
         {/* Empty state */}
         {lines.length === 0 ? (
-          <div className="empty-cart">
-            <ShoppingBag size={36} />
-            <h3>Your cart is empty</h3>
-            <p>Browse our cricket equipment and add items to your cart.</p>
+          <div className="empty-cart" style={{ display: "grid", placeItems: "center", alignContent: "center", flex: 1, padding: "2.5rem 1.5rem", textAlign: "center", color: "#0f172a" }}>
+            <ShoppingBag size={42} color="#b45309" strokeWidth={1.5} />
+            <h3 style={{ margin: "1rem 0 .5rem", textTransform: "uppercase", fontSize: "1.15rem", fontWeight: 800 }}>Your cart is empty</h3>
+            <p style={{ maxWidth: 300, color: "#64748b", fontSize: ".86rem", lineHeight: 1.5, margin: "0 auto 1.25rem" }}>
+              Explore our handcrafted cricket bats, pads, gloves, and protective equipment.
+            </p>
             <Link
               className="button primary compact"
               href="/shop"
               onClick={() => setCartOpen(false)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
+                color: "#000000",
+                fontWeight: 800,
+                padding: "10px 20px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontSize: ".84rem",
+              }}
             >
-              Explore equipment
+              Explore Equipment
             </Link>
           </div>
         ) : (
           <>
             {/* Scrollable content */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 1.1rem" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
               {/* Just Added Confirmation Hero Box */}
               {lastAddedItem && (
-                <div className="cart-just-added-box">
-                  <div className="cart-just-added-top">
-                    <div className="cart-just-added-badge">
-                      <span className="check-dot">✓</span>
+                <div
+                  className="cart-just-added-box"
+                  style={{
+                    marginBottom: 12,
+                    padding: "10px 12px",
+                    background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+                    border: "1.5px solid #86efac",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".76rem", fontWeight: 800, color: "#15803d", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                      <span style={{ display: "inline-grid", placeItems: "center", width: 18, height: 18, background: "#16a34a", color: "#ffffff", borderRadius: "50%", fontSize: ".68rem", fontWeight: 900 }}>
+                        ✓
+                      </span>
                       <span>Added to your cart!</span>
                     </div>
                     <button
                       type="button"
-                      className="cart-continue-chip"
                       onClick={() => {
                         setCartOpen(false);
                         clearLastAddedItem();
+                      }}
+                      style={{
+                        background: "#0284c7",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 999,
+                        padding: "3px 10px",
+                        fontSize: ".68rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        textTransform: "uppercase",
                       }}
                     >
                       ← Keep Shopping
                     </button>
                   </div>
-                  <div className="cart-just-added-details">
-                    <img src={lastAddedItem.image} alt={lastAddedItem.name} />
-                    <div>
-                      <strong>{lastAddedItem.name}</strong>
-                      <div className="cart-just-added-meta">
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#ffffff", padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(134, 239, 172, 0.6)" }}>
+                    <img src={lastAddedItem.image} alt={lastAddedItem.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #e2e8f0" }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <strong style={{ fontSize: ".82rem", color: "#0f172a", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {lastAddedItem.name}
+                      </strong>
+                      <div style={{ fontSize: ".74rem", color: "#64748b", marginTop: 2, display: "flex", gap: 6 }}>
                         <span>Qty: {lastAddedItem.quantity}</span>
-                        <span className="sep">·</span>
-                        <span className="price">{formatPrice(lastAddedItem.price)}</span>
+                        <span>·</span>
+                        <span style={{ color: "#b45309", fontWeight: 700 }}>{formatPrice(lastAddedItem.price)}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Quick Category Add Shortcuts */}
-              <div className="cart-quick-categories">
-                <div className="cart-quick-categories-label">
-                  <span>Add more equipment from catalogue:</span>
-                </div>
-                <div className="cart-quick-category-pills">
-                  <Link
-                    href="/shop?category=Beauty%20Processed%20Bats"
-                    className="cart-category-pill"
-                    onClick={() => setCartOpen(false)}
-                  >
-                    🏏 Bats
-                  </Link>
-                  <Link
-                    href="/shop?category=Batting%20Pads"
-                    className="cart-category-pill"
-                    onClick={() => setCartOpen(false)}
-                  >
-                    🛡️ Pads
-                  </Link>
-                  <Link
-                    href="/shop?category=Batting%20Gloves"
-                    className="cart-category-pill"
-                    onClick={() => setCartOpen(false)}
-                  >
-                    🧤 Gloves
-                  </Link>
-                  <Link
-                    href="/shop?category=Kit%20%26%20Duffle%20Bags"
-                    className="cart-category-pill"
-                    onClick={() => setCartOpen(false)}
-                  >
-                    🎒 Bags
-                  </Link>
-                  <Link
-                    href="/shop"
-                    className="cart-category-pill all"
-                    onClick={() => setCartOpen(false)}
-                  >
-                    ⚡ All (140+)
-                  </Link>
-                </div>
-              </div>
+              {/* ── TOP ACTION: + ADD MORE PRODUCTS / CONTINUE SHOPPING ── */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCartOpen(false);
+                  clearLastAddedItem();
+                }}
+                className="cart-top-add-more-btn"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: "#f8fafc",
+                  border: "1.5px dashed #cbd5e1",
+                  color: "#0f172a",
+                  fontWeight: 800,
+                  fontSize: ".82rem",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  marginBottom: 14,
+                  textTransform: "uppercase",
+                  letterSpacing: ".04em",
+                  transition: "all .15s ease",
+                }}
+              >
+                <Plus size={15} color="#b45309" strokeWidth={2.5} />
+                <span>＋ Add More Products</span>
+              </button>
 
-              {/* Cart items */}
-              <div className="cart-lines" style={{ paddingTop: ".5rem" }}>
+              {/* Cart Items List */}
+              <div className="cart-lines" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {lines.map(({ product, quantity }) => (
-                  <article className="cart-line" key={product.id}>
+                  <article
+                    className="cart-line"
+                    key={product.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "60px 1fr auto",
+                      gap: 12,
+                      alignItems: "center",
+                      padding: "10px 12px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                    }}
+                  >
                     <img
                       src={product.image}
                       alt={product.name}
-                      style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover" }}
+                      style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover", border: "1px solid #cbd5e1", background: "#ffffff" }}
                     />
-                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                      <strong style={{ fontSize: ".86rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <strong style={{ fontSize: ".86rem", color: "#0f172a", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                         {product.name}
                       </strong>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <small style={{ color: "var(--red)", fontWeight: 700 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+                        <span style={{ color: "#b45309", fontWeight: 800, fontSize: ".86rem" }}>
                           {formatPrice(product.price)}
-                        </small>
-                        <div className="quantity-control" style={{ marginLeft: "auto" }}>
+                        </span>
+                        <div
+                          className="quantity-control"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 6,
+                            background: "#ffffff",
+                            overflow: "hidden",
+                          }}
+                        >
                           <button
+                            type="button"
                             onClick={() => updateQuantity(product.id, quantity - 1)}
                             aria-label={`Reduce ${product.name} quantity`}
+                            style={{ width: 26, height: 26, border: "none", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer", color: "#475569" }}
                           >
-                            <Minus size={12} />
+                            <Minus size={11} />
                           </button>
-                          <span>{quantity}</span>
+                          <span style={{ padding: "0 8px", fontSize: ".82rem", fontWeight: 800, color: "#0f172a", minWidth: 20, textAlign: "center" }}>
+                            {quantity}
+                          </span>
                           <button
+                            type="button"
                             onClick={() => updateQuantity(product.id, quantity + 1)}
                             aria-label={`Increase ${product.name} quantity`}
+                            style={{ width: 26, height: 26, border: "none", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer", color: "#475569" }}
                           >
-                            <Plus size={12} />
+                            <Plus size={11} />
                           </button>
                         </div>
                       </div>
@@ -537,198 +616,223 @@ function CartDrawer() {
                       className="remove-button"
                       onClick={() => removeFromCart(product.id)}
                       aria-label={`Remove ${product.name}`}
+                      style={{
+                        padding: 6,
+                        color: "#94a3b8",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        borderRadius: 6,
+                      }}
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={16} />
                     </button>
                   </article>
                 ))}
               </div>
 
-              {/* Delivery country */}
-              <div style={{ marginTop: "1rem", paddingBottom: ".5rem" }}>
-                <label
-                  htmlFor="cart-country"
+              {/* ── INTELLIGENT COMPLEMENTARY CROSS-SELL: YOU MAY ALSO ADD ── */}
+              {suggestedProducts.length > 0 && (
+                <div
+                  className="cart-cross-sell-section"
                   style={{
-                    display: "block",
-                    fontSize: ".7rem",
-                    fontWeight: 700,
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".08em",
-                    marginBottom: ".4rem",
+                    marginTop: 18,
+                    padding: "14px 12px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 12,
                   }}
                 >
-                  <Truck size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4, color: "var(--gold)" }} />
-                  Delivery country
-                </label>
-                <select
-                  id="cart-country"
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
-                  className="delivery-country-select"
-                  style={{ fontSize: ".85rem" }}
-                >
-                  <option value="" disabled>
-                    Select your destination country
-                  </option>
-                  {ALL_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.name}>
-                      {c.flag} {c.name}
-                    </option>
-                  ))}
-                </select>
-                {/* Shipping info */}
-                <div style={{
-                  marginTop: ".5rem",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  fontSize: ".78rem",
-                  color: "var(--text-secondary)",
-                }}>
-                  <span>
-                    {shippingCalculation.hasDestination && shippingCalculation.destination
-                      ? `Tracked courier delivery · ${shippingCalculation.destination.estimatedDelivery}`
-                      : "Select destination country to calculate exact delivery"}
-                  </span>
-                </div>
-                {shippingCalculation.hasDestination && totalItemCount > 1 && (
-                  <div style={{
-                    marginTop: ".35rem",
-                    fontSize: ".74rem",
-                    color: "#0d5e38",
-                    background: "var(--success-light)",
-                    padding: ".35rem .6rem",
-                    borderRadius: 6,
-                    fontWeight: 600,
-                  }}>
-                    Combined shipping — you save {formatPrice(shippingCalculation.totalSaved)}!
-                  </div>
-                )}
-                {shippingCalculation.hasDestination && shippingCalculation.destination && totalItemCount === 1 && (
-                  <div style={{ marginTop: ".35rem", fontSize: ".74rem", color: "var(--text-muted)" }}>
-                    Add another bat — saves on shipping ({formatPrice(shippingCalculation.destination.additionalItemGbp)}/extra bat)
-                  </div>
-                )}
-              </div>
-
-              {/* Suggested Add-ons (Gloves, Pads, Accessories) */}
-              {suggestedProducts.length > 0 && (
-                <div style={{ marginTop: "1rem", padding: ".75rem .6rem", background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", borderRadius: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".6rem" }}>
-                    <span style={{ fontSize: ".74rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--gold)", display: "flex", alignItems: "center", gap: 5 }}>
-                      <span>💡</span> Recommended Gear
-                    </span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: ".9rem" }}>🏏</span>
+                      <span style={{ fontSize: ".76rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "#0f172a" }}>
+                        You May Also Add
+                      </span>
+                    </div>
                     <Link
                       href="/shop"
                       onClick={() => setCartOpen(false)}
-                      style={{ fontSize: ".72rem", color: "var(--text-secondary)", fontWeight: 600, textDecoration: "none" }}
+                      style={{ fontSize: ".72rem", color: "#b45309", fontWeight: 700, textDecoration: "none" }}
                     >
-                      More →
+                      View All (140+) →
                     </Link>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
-                    {suggestedProducts.map((sp) => (
-                      <div
-                        key={sp.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          background: "var(--surface)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          padding: "6px 8px",
-                          gap: 10,
-                        }}
-                      >
-                        <img
-                          src={sp.image}
-                          alt={sp.name}
-                          style={{ width: 42, height: 42, borderRadius: 6, objectFit: "cover", flexShrink: 0 }}
-                        />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <strong style={{ fontSize: ".78rem", color: "var(--text-primary)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {sp.name}
-                          </strong>
-                          <span style={{ fontSize: ".74rem", color: "var(--gold)", fontWeight: 700 }}>
-                            {formatPrice(sp.price)}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => addToCart(sp.id, 1)}
+
+                  {/* Horizontal Scrollable Compact Cards */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      overflowX: "auto",
+                      paddingBottom: 4,
+                      WebkitOverflowScrolling: "touch",
+                      scrollbarWidth: "none",
+                    }}
+                  >
+                    {suggestedProducts.map((p) => {
+                      const isJustAdded = addedSuggestionId === p.id;
+                      return (
+                        <div
+                          key={p.id}
                           style={{
-                            background: "rgba(242, 169, 40, 0.15)",
-                            border: "1px solid rgba(242, 169, 40, 0.4)",
-                            color: "var(--gold)",
-                            fontWeight: 800,
-                            fontSize: ".75rem",
-                            padding: "4px 10px",
-                            borderRadius: 6,
-                            cursor: "pointer",
-                            flexShrink: 0,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            transition: "all .15s ease",
+                            flex: "0 0 130px",
+                            background: "#ffffff",
+                            border: isJustAdded ? "1.5px solid #22c55e" : "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "8px",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                            transition: "all .18s ease",
                           }}
                         >
-                          <Plus size={12} /> Add
-                        </button>
-                      </div>
-                    ))}
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            style={{
+                              width: "100%",
+                              height: 80,
+                              borderRadius: 6,
+                              objectFit: "cover",
+                              background: "#f1f5f9",
+                              marginBottom: 6,
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <strong
+                              style={{
+                                fontSize: ".74rem",
+                                color: "#0f172a",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                lineHeight: 1.25,
+                                height: "2.5em",
+                                marginBottom: 4,
+                              }}
+                            >
+                              {p.name}
+                            </strong>
+                            <span style={{ fontSize: ".76rem", color: "#b45309", fontWeight: 800, display: "block" }}>
+                              {formatPrice(p.price)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddSuggested(p.id)}
+                            style={{
+                              marginTop: 8,
+                              width: "100%",
+                              padding: "5px 0",
+                              borderRadius: 6,
+                              border: "none",
+                              background: isJustAdded ? "#22c55e" : "linear-gradient(135deg, #f2a928 0%, #d97706 100%)",
+                              color: isJustAdded ? "#ffffff" : "#000000",
+                              fontSize: ".74rem",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 4,
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                              transition: "all .15s ease",
+                            }}
+                          >
+                            {isJustAdded ? (
+                              <>
+                                <span>✓</span> Added
+                              </>
+                            ) : (
+                              <>
+                                <Plus size={12} strokeWidth={2.5} /> Add
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Sticky summary + CTAs */}
+            {/* ── STICKY SUMMARY + CHECKOUT CTA ── */}
             <div
               className="cart-summary"
-              style={{ padding: "1rem 1.1rem", display: "flex", flexDirection: "column", gap: ".6rem" }}
+              style={{
+                padding: "14px 18px 18px",
+                borderTop: "1px solid #e2e8f0",
+                background: "#ffffff",
+                boxShadow: "0 -4px 16px rgba(0,0,0,0.04)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                flexShrink: 0,
+              }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: ".92rem", fontWeight: 700, color: "var(--text-primary)" }}>Order total</span>
-                <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--text-primary)" }}>
-                  {shippingCalculation.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
+                <span style={{ fontSize: ".88rem", fontWeight: 700, color: "#64748b" }}>Order Subtotal</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#0f172a" }}>
+                  {formatPrice(subtotal)}
                 </span>
               </div>
 
-              {/* Action Buttons: Continue Shopping & Proceed to Checkout */}
-              <div className="cart-action-buttons-group">
-                {/* 1. Continue Shopping / Add More */}
-                <button
-                  type="button"
-                  className="cart-continue-shopping-cta"
-                  onClick={() => {
-                    setCartOpen(false);
-                    clearLastAddedItem();
-                  }}
-                >
-                  <ShoppingBag size={16} />
-                  <span>Continue Shopping &amp; Add More</span>
-                </button>
-
-                {/* 2. Proceed to Checkout (Primary) */}
-                <Link
-                  href="/checkout"
-                  className="checkout-primary-cta"
-                  onClick={() => {
-                    setCartOpen(false);
-                    clearLastAddedItem();
-                  }}
-                >
-                  <Lock size={16} />
-                  <span>Proceed to Checkout</span>
-                </Link>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: ".76rem", color: "#64748b" }}>
+                <span>Shipping</span>
+                <span style={{ fontStyle: "italic", color: "#0284c7", fontWeight: 600 }}>
+                  Calculated at checkout
+                </span>
               </div>
 
-              {/* Clear cart */}
+              {/* Primary Full-Width Proceed to Checkout CTA */}
+              <Link
+                href="/checkout"
+                className="checkout-primary-cta"
+                onClick={() => {
+                  setCartOpen(false);
+                  clearLastAddedItem();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  width: "100%",
+                  minHeight: 46,
+                  padding: "12px 18px",
+                  background: "linear-gradient(135deg, #ea580c 0%, #dc2626 100%)",
+                  color: "#ffffff",
+                  borderRadius: 10,
+                  fontSize: ".86rem",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  textDecoration: "none",
+                  boxShadow: "0 4px 16px rgba(220, 38, 38, 0.3)",
+                  boxSizing: "border-box",
+                }}
+              >
+                <Lock size={16} />
+                <span>Proceed to Checkout</span>
+              </Link>
+
+              {/* Clear Cart */}
               <button
                 className="text-button"
                 onClick={clearCart}
-                style={{ fontSize: ".72rem", color: "var(--text-muted)", paddingBlock: ".2rem", textAlign: "center" }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: ".74rem",
+                  color: "#94a3b8",
+                  padding: "4px 0 0",
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
               >
                 Remove all items
               </button>

@@ -212,7 +212,7 @@ export async function POST(request: Request) {
     }
 
     // ── Server-Side Shipping Calculation ──
-    const shippingCalc = calculateShippingFee(country, totalQuantity);
+    const shippingCalc = calculateShippingFee(country, verifiedItems);
     if (shippingCalc.requiresQuotation) {
       return NextResponse.json(
         {
