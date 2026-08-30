@@ -290,6 +290,7 @@ export function useStore() {
 function CartDrawer() {
   const {
     cart,
+    addToCart,
     isCartOpen,
     setCartOpen,
     updateQuantity,
@@ -307,6 +308,14 @@ function CartDrawer() {
     const product = products.find((candidate) => candidate.id === item.productId);
     return product ? [{ ...item, product }] : [];
   });
+
+  const suggestedProducts = products
+    .filter(
+      (p) =>
+        (p.category === "Batting Gloves" || p.category === "Batting Pads" || p.category === "Other Accessories") &&
+        !cart.some((ci) => ci.productId === p.id)
+    )
+    .slice(0, 3);
 
   const subtotal = lines.reduce((total, item) => total + item.product.price * item.quantity, 0);
   const totalItemCount = lines.reduce((total, item) => total + item.quantity, 0);
@@ -602,61 +611,93 @@ function CartDrawer() {
                   </div>
                 )}
               </div>
+
+              {/* Suggested Add-ons (Gloves, Pads, Accessories) */}
+              {suggestedProducts.length > 0 && (
+                <div style={{ marginTop: "1rem", padding: ".75rem .6rem", background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", borderRadius: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".6rem" }}>
+                    <span style={{ fontSize: ".74rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--gold)", display: "flex", alignItems: "center", gap: 5 }}>
+                      <span>💡</span> Recommended Gear
+                    </span>
+                    <Link
+                      href="/shop"
+                      onClick={() => setCartOpen(false)}
+                      style={{ fontSize: ".72rem", color: "var(--text-secondary)", fontWeight: 600, textDecoration: "none" }}
+                    >
+                      More →
+                    </Link>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+                    {suggestedProducts.map((sp) => (
+                      <div
+                        key={sp.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          padding: "6px 8px",
+                          gap: 10,
+                        }}
+                      >
+                        <img
+                          src={sp.image}
+                          alt={sp.name}
+                          style={{ width: 42, height: 42, borderRadius: 6, objectFit: "cover", flexShrink: 0 }}
+                        />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <strong style={{ fontSize: ".78rem", color: "var(--text-primary)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {sp.name}
+                          </strong>
+                          <span style={{ fontSize: ".74rem", color: "var(--gold)", fontWeight: 700 }}>
+                            {formatPrice(sp.price)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addToCart(sp.id, 1)}
+                          style={{
+                            background: "rgba(242, 169, 40, 0.15)",
+                            border: "1px solid rgba(242, 169, 40, 0.4)",
+                            color: "var(--gold)",
+                            fontWeight: 800,
+                            fontSize: ".75rem",
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            transition: "all .15s ease",
+                          }}
+                        >
+                          <Plus size={12} /> Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sticky summary + CTAs */}
             <div
               className="cart-summary"
-              style={{ padding: "1rem 1.1rem", display: "flex", flexDirection: "column", gap: ".45rem" }}
+              style={{ padding: "1rem 1.1rem", display: "flex", flexDirection: "column", gap: ".6rem" }}
             >
-              {/* Price breakdown */}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".84rem", color: "var(--text-secondary)" }}>
-                <span>Subtotal</span>
-                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatPrice(subtotal)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".84rem", color: "var(--text-secondary)" }}>
-                <span>
-                  {shippingCalculation.hasDestination
-                    ? `Delivery (${shippingCalculation.countryName})`
-                    : "Delivery: Select destination"}
-                </span>
-                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                  {shippingCalculation.hasDestination
-                    ? formatPrice(shippingCalculation.shippingFee)
-                    : "—"}
-                </span>
-              </div>
-
-              <div style={{ height: 1, background: "var(--border)", margin: ".2rem 0" }} />
-
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: ".88rem", fontWeight: 700, color: "var(--text-primary)" }}>Order total</span>
-                <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                <span style={{ fontSize: ".92rem", fontWeight: 700, color: "var(--text-primary)" }}>Order total</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--text-primary)" }}>
                   {shippingCalculation.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
                 </span>
               </div>
 
-              {/* Pay today highlight */}
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: ".6rem .8rem",
-                background: "var(--accent-light)",
-                border: "1px solid rgba(242,169,40,.25)",
-                borderRadius: 8,
-                marginTop: ".15rem",
-              }}>
-                <div>
-                  <div style={{ fontSize: ".76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Pay today (50% deposit)</div>
-                  <div style={{ fontSize: ".7rem", color: "var(--text-muted)" }}>Balance before dispatch</div>
-                </div>
-                <span style={{ fontSize: "1.3rem", fontWeight: 900, color: "var(--orange)" }}>{formatPrice(depositDueNow)}</span>
-              </div>
-
               {/* Action Buttons: Continue Shopping & Proceed to Checkout */}
               <div className="cart-action-buttons-group">
-                {/* 1. Continue Shopping / Add More (Colored matching CTA) */}
+                {/* 1. Continue Shopping / Add More */}
                 <button
                   type="button"
                   className="cart-continue-shopping-cta"
@@ -683,21 +724,11 @@ function CartDrawer() {
                 </Link>
               </div>
 
-              {/* WhatsApp secondary */}
-              <a
-                className="checkout-secondary-cta"
-                href={whatsappUrl(cartMessage)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                💬 Order via WhatsApp
-              </a>
-
               {/* Clear cart */}
               <button
                 className="text-button"
                 onClick={clearCart}
-                style={{ fontSize: ".72rem", color: "var(--text-muted)", paddingBlock: ".25rem" }}
+                style={{ fontSize: ".72rem", color: "var(--text-muted)", paddingBlock: ".2rem", textAlign: "center" }}
               >
                 Remove all items
               </button>
