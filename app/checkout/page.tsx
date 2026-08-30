@@ -198,6 +198,33 @@ export default function CheckoutPage() {
   }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const checkoutTopRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      if (checkoutTopRef.current) {
+        checkoutTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  };
+
+  const goToStep = (newStep: Step) => {
+    setFieldErrors({});
+    setErrorMessage(null);
+    setStep(newStep);
+    scrollToTop();
+    setTimeout(scrollToTop, 50);
+  };
+
+  // Auto-scroll to top whenever step changes (ensures phone viewports always go up automatically)
+  useEffect(() => {
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 60);
+    return () => clearTimeout(timer);
+  }, [step]);
 
   const isCustomOrder = Boolean(customBatOrder && customBatOrder.payment?.orderValue > 0);
 
@@ -318,7 +345,7 @@ export default function CheckoutPage() {
         postalCode: true,
       });
       setErrorMessage("Please complete all required contact and delivery fields with valid information.");
-      setStep(1);
+      goToStep(1);
       return;
     }
 
@@ -454,7 +481,7 @@ export default function CheckoutPage() {
             state: true,
             postalCode: true,
           });
-          setStep(1);
+          goToStep(1);
         }
         setErrorMessage(
           data.error || "Failed to submit order. Please check your information and try again."
@@ -718,7 +745,7 @@ export default function CheckoutPage() {
         <span>256-Bit SSL Encrypted · Direct Factory Dispatch Checkout</span>
       </div>
 
-      <div className="checkout-main-container">
+      <div className="checkout-main-container" ref={checkoutTopRef}>
         {/* ── MOBILE PROGRESS INDICATOR (< 768px) ── */}
         <div className="checkout-progress-mobile">
           <div className="checkout-progress-mobile-header">
@@ -733,7 +760,7 @@ export default function CheckoutPage() {
             {step > 1 && (
               <button
                 type="button"
-                onClick={() => setStep((step - 1) as Step)}
+                onClick={() => goToStep((step - 1) as Step)}
                 className="checkout-progress-mobile-back"
               >
                 <ChevronLeft size={14} /> Back
@@ -767,7 +794,7 @@ export default function CheckoutPage() {
                 key={s}
                 type="button"
                 onClick={() => {
-                  if (isCompleted) setStep(s as Step);
+                  if (isCompleted) goToStep(s as Step);
                 }}
                 style={{
                   flex: 1,
@@ -1347,9 +1374,7 @@ export default function CheckoutPage() {
                       return;
                     }
 
-                    setFieldErrors({});
-                    setErrorMessage(null);
-                    setStep(2);
+                    goToStep(2);
                   }}
                   style={{ marginTop: 22 }}
                 >
@@ -1361,7 +1386,7 @@ export default function CheckoutPage() {
             {/* ── STEP 2: REVIEW ORDER ── */}
             {step === 2 && (
               <div className="checkout-card">
-                <button className="checkout-back-btn" type="button" onClick={() => setStep(1)}>
+                <button className="checkout-back-btn" type="button" onClick={() => goToStep(1)}>
                   <ChevronLeft size={16} /> Back to Contact Details
                 </button>
 
@@ -1615,7 +1640,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="checkout-primary-cta"
-                  onClick={() => setStep(3)}
+                  onClick={() => goToStep(3)}
                 >
                   Select Payment Option <ArrowRight size={17} />
                 </button>
@@ -1625,7 +1650,7 @@ export default function CheckoutPage() {
             {/* ── STEP 3: SELECT PAYMENT METHOD ── */}
             {step === 3 && (
               <div className="checkout-card">
-                <button className="checkout-back-btn" type="button" onClick={() => setStep(2)}>
+                <button className="checkout-back-btn" type="button" onClick={() => goToStep(2)}>
                   <ChevronLeft size={16} /> Back to Order Review
                 </button>
 
@@ -1707,7 +1732,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="checkout-primary-cta"
-                  onClick={() => setStep(4)}
+                  onClick={() => goToStep(4)}
                 >
                   View UBL Bank Transfer Instructions <ArrowRight size={17} />
                 </button>
@@ -1717,7 +1742,7 @@ export default function CheckoutPage() {
             {/* ── STEP 4: PAYMENT INSTRUCTIONS & EVIDENCE UPLOAD ── */}
             {step === 4 && (
               <div className="checkout-card">
-                <button className="checkout-back-btn" type="button" onClick={() => setStep(3)}>
+                <button className="checkout-back-btn" type="button" onClick={() => goToStep(3)}>
                   <ChevronLeft size={16} /> Back to Payment Option
                 </button>
 
