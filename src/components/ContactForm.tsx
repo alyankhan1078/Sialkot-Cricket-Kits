@@ -170,7 +170,7 @@ export function ContactForm() {
             maxLength={100}
             value={form.fullName}
             onChange={(e) => update("fullName", e.target.value)}
-            placeholder="e.g. David Warner"
+            placeholder="Enter your full name"
             className={errors.fullName ? "has-error" : ""}
           />
           {errors.fullName && <span className="contact-field-error"><AlertCircle size={13} /> {errors.fullName}</span>}

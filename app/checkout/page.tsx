@@ -924,7 +924,7 @@ export default function CheckoutPage() {
                       type="text"
                       required
                       autoComplete="name"
-                      placeholder="e.g. David Warner / Michael Clarke"
+                      placeholder="Enter your full name"
                       value={formData.fullName}
                       onChange={(e) => handleFieldChange("fullName", e.target.value)}
                       onBlur={() => handleFieldBlur("fullName")}

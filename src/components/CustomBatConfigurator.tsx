@@ -940,7 +940,7 @@ export function CustomBatConfigurator() {
                     id="config-customer-name"
                     type="text"
                     className="config-text-input"
-                    placeholder="e.g. Michael Clarke"
+                    placeholder="Enter your full name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
