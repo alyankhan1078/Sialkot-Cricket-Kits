@@ -788,37 +788,73 @@ function CartDrawer() {
                 </span>
               </div>
 
-              {/* Primary Full-Width Proceed to Checkout CTA */}
-              <Link
-                href="/checkout"
-                className="checkout-primary-cta"
-                onClick={() => {
-                  setCartOpen(false);
-                  clearLastAddedItem();
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  width: "100%",
-                  minHeight: 46,
-                  padding: "12px 18px",
-                  background: "linear-gradient(135deg, #ea580c 0%, #dc2626 100%)",
-                  color: "#ffffff",
-                  borderRadius: 10,
-                  fontSize: ".86rem",
-                  fontWeight: 800,
-                  textTransform: "uppercase",
-                  letterSpacing: ".05em",
-                  textDecoration: "none",
-                  boxShadow: "0 4px 16px rgba(220, 38, 38, 0.3)",
-                  boxSizing: "border-box",
-                }}
-              >
-                <Lock size={16} />
-                <span>Proceed to Checkout</span>
-              </Link>
+              {/* Action Buttons: Continue Shopping & Proceed to Checkout */}
+              <div className="cart-action-buttons-group" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* 1. Continue Shopping / Add More */}
+                <button
+                  type="button"
+                  className="cart-continue-shopping-cta"
+                  onClick={() => {
+                    setCartOpen(false);
+                    clearLastAddedItem();
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    width: "100%",
+                    minHeight: 44,
+                    padding: "10px 16px",
+                    background: "linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 10,
+                    fontSize: ".84rem",
+                    fontWeight: 800,
+                    textTransform: "uppercase",
+                    letterSpacing: ".05em",
+                    cursor: "pointer",
+                    boxShadow: "0 3px 12px rgba(2, 132, 199, 0.25)",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <ShoppingBag size={16} />
+                  <span>Continue Shopping &amp; Add More</span>
+                </button>
+
+                {/* 2. Primary Full-Width Proceed to Checkout CTA */}
+                <Link
+                  href="/checkout"
+                  className="checkout-primary-cta"
+                  onClick={() => {
+                    setCartOpen(false);
+                    clearLastAddedItem();
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    width: "100%",
+                    minHeight: 46,
+                    padding: "12px 18px",
+                    background: "linear-gradient(135deg, #ea580c 0%, #dc2626 100%)",
+                    color: "#ffffff",
+                    borderRadius: 10,
+                    fontSize: ".86rem",
+                    fontWeight: 800,
+                    textTransform: "uppercase",
+                    letterSpacing: ".05em",
+                    textDecoration: "none",
+                    boxShadow: "0 4px 16px rgba(220, 38, 38, 0.3)",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <Lock size={16} />
+                  <span>Proceed to Checkout</span>
+                </Link>
+              </div>
 
               {/* Clear Cart */}
               <button
