@@ -51,7 +51,7 @@ export function CinematicHeroBanner({
           <div className="cinematic-hero-ctas">
             <a
               href="#products"
-              className="cinematic-btn-primary compact"
+              className="cinematic-btn-primary compact hero-explore-btn"
               id="hero-primary-cta"
             >
               <span>Explore Products ↓</span>
@@ -61,7 +61,7 @@ export function CinematicHeroBanner({
               href={whatsappUrl(whatsappMessage)}
               target="_blank"
               rel="noreferrer"
-              className="cinematic-btn-secondary compact"
+              className="cinematic-btn-secondary compact hero-whatsapp-btn"
               id="hero-secondary-cta"
               aria-label="Contact Sialkot Cricket Kits on WhatsApp"
             >

@@ -189,28 +189,27 @@ export function HomeProductsDirect({
 
         {/* QUICK CATEGORY HORIZONTAL BAR (Desktop & Mobile quick access) */}
         <div className="quick-categories-scroll">
-          {["All Equipment", "Beauty Processed Bats", "Bonafide Bats", "Batting Pads", "Batting Gloves", "Keeping Gloves", "Kit & Duffle Bags"].map(
-            (cat) => {
-              const active = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`quick-cat-btn ${active ? "active" : ""}`}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  {cat}
-                  <span className="cat-pill-count">{categoryCounts[cat] || 0}</span>
-                </button>
-              );
-            }
-          )}
+          {categoriesList.map((cat) => {
+            const active = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                className={`quick-cat-btn ${active ? "active" : ""}`}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+                <span className="cat-pill-count">{categoryCounts[cat] || 0}</span>
+              </button>
+            );
+          })}
           <button
             type="button"
             className="quick-cat-btn more-btn"
             onClick={() => setIsDrawerOpen(true)}
+            aria-label="Open full category list"
           >
-            <span>+ More Categories</span>
+            <span>+ More</span>
           </button>
         </div>
 

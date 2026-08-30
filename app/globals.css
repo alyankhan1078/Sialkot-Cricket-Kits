@@ -3980,7 +3980,7 @@ textarea.checkout-input {
     position: relative;
     z-index: 2;
     width: 100%;
-    padding: 1.1rem 1rem 1.6rem;
+    padding: 0.95rem 1rem 0.4rem !important;
     background: #08090c;
   }
 
@@ -3994,14 +3994,14 @@ textarea.checkout-input {
     font-size: clamp(1.25rem, 5.2vw, 1.55rem) !important;
     line-height: 1.18 !important;
     letter-spacing: -0.025em !important;
-    margin: 0 0 0.45rem !important;
+    margin: 0 0 0.4rem !important;
   }
 
   .cinematic-hero-desc {
     font-size: 0.82rem !important;
     line-height: 1.48 !important;
     color: #9ca3af !important;
-    margin: 0 0 1rem !important;
+    margin: 0 0 0.8rem !important;
     max-width: 440px !important;
   }
 
@@ -4012,14 +4012,32 @@ textarea.checkout-input {
     gap: 0.6rem;
   }
 
-  .cinematic-btn-primary.compact,
-  .cinematic-btn-secondary.compact {
-    flex: 1;
-    padding: 0.65rem 0.9rem;
-    font-size: 0.8rem;
-    min-height: 42px;
-    justify-content: center;
-    text-align: center;
+  /* 1. Mobile-only: Completely REMOVE Explore Products ↓ */
+  #hero-primary-cta,
+  .hero-explore-btn {
+    display: none !important;
+  }
+
+  /* 2. WhatsApp Us button positioned cleanly on mobile */
+  .cinematic-btn-secondary.compact,
+  #hero-secondary-cta,
+  .hero-whatsapp-btn {
+    width: 100% !important;
+    flex: 1 !important;
+    padding: 0.68rem 1.2rem !important;
+    font-size: 0.84rem !important;
+    font-weight: 700 !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    text-align: center !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25) !important;
+    color: #ffffff !important;
   }
 }
 
@@ -4384,24 +4402,213 @@ textarea.checkout-input {
   }
 }
 
-@media (max-width: 600px) {
-  .direct-products-grid.three-col {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
+@media (max-width: 768px) {
+  .home-direct-products-section {
+    padding: 0.5rem 1rem 3.5rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
   }
+
+  /* Compact SINGLE-LINE search/filter toolbar */
   .home-products-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .toolbar-right {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .search-input-wrap .search-input {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.45rem !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     width: 100% !important;
   }
+
+  /* Hide the large boxed Catalogue Categories 160 items panel on mobile */
+  .toolbar-left {
+    display: none !important;
+  }
+
+  /* Single-row search + sort */
+  .toolbar-right {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    width: 100% !important;
+  }
+
+  .search-input-wrap {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .search-input-wrap .search-icon {
+    left: 0.75rem !important;
+    width: 15px !important;
+    height: 15px !important;
+    color: #9ca3af !important;
+    pointer-events: none !important;
+  }
+
+  .search-input-wrap .search-input {
+    width: 100% !important;
+    height: 44px !important;
+    padding: 0.55rem 1.85rem 0.55rem 2.25rem !important;
+    background: #11141c !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    font-size: 0.82rem !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .search-input-wrap .search-input::placeholder {
+    color: #6b7280 !important;
+    font-size: 0.8rem !important;
+  }
+
+  .search-input-wrap .search-input:focus {
+    border-color: #f2a928 !important;
+    background: #161924 !important;
+    outline: none !important;
+  }
+
+  .search-clear-btn {
+    right: 0.6rem !important;
+  }
+
+  .sort-select-wrap {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .sort-select-wrap .sort-icon {
+    left: 0.65rem !important;
+    width: 14px !important;
+    height: 14px !important;
+    color: #f2a928 !important;
+    pointer-events: none !important;
+    z-index: 2;
+  }
+
   .sort-select-wrap .sort-select {
-    width: 100%;
+    width: auto !important;
+    min-width: 110px !important;
+    max-width: 125px !important;
+    height: 44px !important;
+    padding: 0.55rem 1.3rem 0.55rem 1.95rem !important;
+    background: #11141c !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.45rem center !important;
+    background-size: 8px 5px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+  }
+
+  .sort-select-wrap .sort-select:focus {
+    border-color: #f2a928 !important;
+    outline: none !important;
+  }
+
+  /* Horizontal Category Chips */
+  .quick-categories-scroll {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    overflow-x: auto !important;
+    padding: 0.65rem 0 0.35rem !important;
+    margin: 0 -1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .quick-categories-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .quick-cat-btn {
+    padding: 0.4rem 0.7rem !important;
+    font-size: 0.74rem !important;
+    border-radius: 20px !important;
+    flex-shrink: 0 !important;
+    height: 32px !important;
+  }
+
+  .cat-pill-count {
+    padding: 0.08rem 0.35rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* Results Summary Line */
+  .products-summary-line {
+    padding: 0.35rem 0 0.65rem !important;
+    font-size: 0.74rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Parallel 2-Column Product Grid */
+  .direct-products-grid.three-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.65rem !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-direct-products-section {
+    padding: 0.4rem 0.6rem 3rem !important;
+  }
+
+  .quick-categories-scroll {
+    margin: 0 -0.6rem !important;
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .search-input-wrap .search-input {
+    font-size: 0.76rem !important;
+    padding-left: 1.95rem !important;
+    padding-right: 1.4rem !important;
+  }
+
+  .search-input-wrap .search-icon {
+    left: 0.6rem !important;
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  .sort-select-wrap .sort-select {
+    min-width: 95px !important;
+    max-width: 105px !important;
+    font-size: 0.72rem !important;
+    padding-left: 1.65rem !important;
+    padding-right: 1.05rem !important;
+  }
+
+  .sort-select-wrap .sort-icon {
+    left: 0.5rem !important;
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .direct-products-grid.three-col {
+    gap: 0.45rem !important;
   }
 }
 
