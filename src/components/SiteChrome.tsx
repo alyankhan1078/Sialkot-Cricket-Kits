@@ -127,9 +127,6 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollYRef = useRef(0);
-  const lastScrollY = useRef(0);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -170,44 +167,24 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     }, 180);
   };
 
-  // Escape key, body scroll lock, scroll-to-close
+  // Escape key & clean body scroll lock (never close on scrolling or touch gestures)
   useEffect(() => {
     if (!menuOpen) return;
-
-    scrollYRef.current = window.scrollY;
-    lastScrollY.current = window.scrollY;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
 
-    const handleScroll = () => {
-      const delta = Math.abs(window.scrollY - lastScrollY.current);
-      const totalDelta = Math.abs(window.scrollY - scrollYRef.current);
-      if (delta > 8 || totalDelta > 40) {
-        setMenuOpen(false);
-      }
-      lastScrollY.current = window.scrollY;
-    };
-
     document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Save previous overflow and lock body scroll
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("menu-open");
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("scroll", handleScroll);
-      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    };
-  }, [menuOpen]);
-
-  // Body class for scroll lock
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.classList.add("menu-open");
-    } else {
-      document.body.classList.remove("menu-open");
-    }
-    return () => {
+      document.body.style.overflow = prevOverflow || "";
       document.body.classList.remove("menu-open");
     };
   }, [menuOpen]);
@@ -440,6 +417,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           className="mobile-drawer-panel"
           ref={drawerRef}
           id="mobile-drawer-nav"
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="mobile-drawer-head">
             <div className="mobile-drawer-brand">
@@ -518,7 +496,6 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             <nav
               className="mobile-drawer-nav"
               aria-label="Mobile navigation"
-              onClick={handleNavClick}
             >
               <div className="mobile-nav-divider">
                 <span>Site Pages</span>
@@ -526,6 +503,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link
                 href="/shop"
                 className={pathname === "/shop" ? "active" : ""}
+                onClick={handleNavClick}
                 tabIndex={menuOpen ? 0 : -1}
               >
                 Shop Full Collection
@@ -536,6 +514,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                   href={href}
                   key={href}
                   className={pathname === href ? "active" : ""}
+                  onClick={handleNavClick}
                   tabIndex={menuOpen ? 0 : -1}
                 >
                   {label}
@@ -543,73 +522,74 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </nav>
-          </div>
 
-          <div className="mobile-drawer-footer">
-            {/* Mobile Currency Picker */}
-            <div className="mobile-drawer-currency">
-              <label htmlFor="mobile-currency-select">Display Currency:</label>
-              <select
-                id="mobile-currency-select"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="mobile-currency-select"
+            {/* Mobile Drawer Footer (Inside scrollable body so everything scrolls seamlessly) */}
+            <div className="mobile-drawer-footer">
+              {/* Mobile Currency Picker */}
+              <div className="mobile-drawer-currency">
+                <label htmlFor="mobile-currency-select">Display Currency:</label>
+                <select
+                  id="mobile-currency-select"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="mobile-currency-select"
+                >
+                  {Object.values(currencies).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code} — {c.name} ({c.symbol})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <a
+                className="mobile-drawer-whatsapp"
+                href={whatsappUrl(
+                  "Hello Sialkot Cricket Kits, I would like information about your cricket equipment."
+                )}
+                target="_blank"
+                rel="noreferrer"
+                tabIndex={menuOpen ? 0 : -1}
               >
-                {Object.values(currencies).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.flag} {c.code} — {c.name} ({c.symbol})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <a
-              className="mobile-drawer-whatsapp"
-              href={whatsappUrl(
-                "Hello Sialkot Cricket Kits, I would like information about your cricket equipment."
-              )}
-              target="_blank"
-              rel="noreferrer"
-              tabIndex={menuOpen ? 0 : -1}
-            >
-              💬 Chat on WhatsApp
-            </a>
-            <div className="mobile-drawer-socials">
-              <span className="mobile-drawer-social-label">Follow &amp; Watch Live Videos:</span>
-              <div className="mobile-drawer-social-icons">
-                <a
-                  href={settings.instagramUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mobile-soc-icon insta"
-                  aria-label="Follow Sialkot Cricket Kits on Instagram"
-                  tabIndex={menuOpen ? 0 : -1}
-                >
-                  <Instagram size={17} />
-                  <span>Instagram</span>
-                </a>
-                <a
-                  href={settings.facebookUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mobile-soc-icon fb"
-                  aria-label="Like Sialkot Cricket Kits on Facebook"
-                  tabIndex={menuOpen ? 0 : -1}
-                >
-                  <Facebook size={17} />
-                  <span>Facebook</span>
-                </a>
-                <a
-                  href={settings.tiktokUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mobile-soc-icon tt"
-                  aria-label="Watch Sialkot Cricket Kits on TikTok"
-                  tabIndex={menuOpen ? 0 : -1}
-                >
-                  <TikTokIcon size={16} />
-                  <span>TikTok</span>
-                </a>
+                💬 Chat on WhatsApp
+              </a>
+              <div className="mobile-drawer-socials">
+                <span className="mobile-drawer-social-label">Follow &amp; Watch Live Videos:</span>
+                <div className="mobile-drawer-social-icons">
+                  <a
+                    href={settings.instagramUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mobile-soc-icon insta"
+                    aria-label="Follow Sialkot Cricket Kits on Instagram"
+                    tabIndex={menuOpen ? 0 : -1}
+                  >
+                    <Instagram size={17} />
+                    <span>Instagram</span>
+                  </a>
+                  <a
+                    href={settings.facebookUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mobile-soc-icon fb"
+                    aria-label="Like Sialkot Cricket Kits on Facebook"
+                    tabIndex={menuOpen ? 0 : -1}
+                  >
+                    <Facebook size={17} />
+                    <span>Facebook</span>
+                  </a>
+                  <a
+                    href={settings.tiktokUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mobile-soc-icon tt"
+                    aria-label="Watch Sialkot Cricket Kits on TikTok"
+                    tabIndex={menuOpen ? 0 : -1}
+                  >
+                    <TikTokIcon size={16} />
+                    <span>TikTok</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
