@@ -271,17 +271,15 @@ export default function CheckoutPage() {
       : Math.round(grandTotal * (depositPercent / 100) * 100) / 100;
   const balanceRemaining = Math.max(0, Math.round((grandTotal - depositDueNow) * 100) / 100);
 
-  // Auto-sync sender defaults when navigating between steps or updating deposit
+  // Auto-sync transfer defaults when navigating between steps or updating deposit
   useEffect(() => {
     setEvidenceData((prev) => ({
       ...prev,
-      senderName: prev.senderName || formData.fullName,
-      senderCountry: prev.senderCountry || formData.country,
       currencySent: prev.currencySent || currency || "GBP",
       amountSent: prev.amountSent || String(depositDueNow),
       transferReference: prev.transferReference || provisionalRef,
     }));
-  }, [step, currency, depositDueNow, provisionalRef, formData.fullName, formData.country]);
+  }, [step, currency, depositDueNow, provisionalRef]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -2077,29 +2075,84 @@ export default function CheckoutPage() {
                   <div className="checkout-form-grid">
                     {/* Sender Name */}
                     <div>
-                      <label className="checkout-field-label">
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span>SENDER’S FULL NAME</span>
-                          <span style={{ color: "#ef4444" }}>*</span>
-                        </div>
-                      </label>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
+                        <label className="checkout-field-label" style={{ marginBottom: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span>SENDER’S FULL NAME</span>
+                            <span style={{ color: "#ef4444" }}>*</span>
+                          </div>
+                        </label>
+                        {formData.fullName.trim() && evidenceData.senderName !== formData.fullName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => setEvidenceData((prev) => ({ ...prev, senderName: formData.fullName.trim() }))}
+                            style={{
+                              background: "rgba(242, 169, 40, 0.12)",
+                              border: "1px solid rgba(242, 169, 40, 0.4)",
+                              color: "#b45309",
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontSize: ".74rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              transition: "all .15s ease",
+                            }}
+                          >
+                            <span>💡 Suggest:</span>
+                            <span style={{ color: "#0f172a", textDecoration: "underline" }}>{formData.fullName.trim()}</span>
+                          </button>
+                        )}
+                      </div>
                       <input
                         className="checkout-input"
                         type="text"
                         required
-                        placeholder="Name on bank / transfer account"
+                        placeholder={formData.fullName.trim() ? `e.g. ${formData.fullName.trim()}` : "Name on bank / transfer account"}
                         value={evidenceData.senderName}
                         onChange={(e) => setEvidenceData({ ...evidenceData, senderName: e.target.value })}
                       />
+                      <span style={{ fontSize: ".72rem", color: "#64748b", display: "block", marginTop: 4 }}>
+                        Enter the account holder name as it appears on your transfer receipt.
+                      </span>
                     </div>
 
                     {/* Country Payment Sent From */}
                     <div>
-                      <label className="checkout-field-label">COUNTRY PAYMENT SENT FROM</label>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
+                        <label className="checkout-field-label" style={{ marginBottom: 0 }}>
+                          COUNTRY PAYMENT SENT FROM
+                        </label>
+                        {formData.country && evidenceData.senderCountry !== formData.country && (
+                          <button
+                            type="button"
+                            onClick={() => setEvidenceData((prev) => ({ ...prev, senderCountry: formData.country }))}
+                            style={{
+                              background: "rgba(242, 169, 40, 0.12)",
+                              border: "1px solid rgba(242, 169, 40, 0.4)",
+                              color: "#b45309",
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontSize: ".74rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              transition: "all .15s ease",
+                            }}
+                          >
+                            <span>💡 Suggest:</span>
+                            <span style={{ color: "#0f172a", textDecoration: "underline" }}>{formData.country}</span>
+                          </button>
+                        )}
+                      </div>
                       <input
                         className="checkout-input"
                         type="text"
-                        placeholder="e.g. United Kingdom, USA, UAE"
+                        placeholder={formData.country ? `e.g. ${formData.country}` : "e.g. United Kingdom, USA, UAE"}
                         value={evidenceData.senderCountry}
                         onChange={(e) => setEvidenceData({ ...evidenceData, senderCountry: e.target.value })}
                       />
