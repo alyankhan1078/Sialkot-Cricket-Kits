@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Printer,
+  Download,
   ShoppingBag,
   MessageCircle,
   Building2,
@@ -57,7 +58,163 @@ function OrderSuccessContent() {
   }, [orderId]);
 
   const handlePrint = () => {
-    window.print();
+    try {
+      if (typeof window !== "undefined") {
+        window.print();
+      }
+    } catch {
+      handleDownloadOffline();
+    }
+  };
+
+  const handleDownloadOffline = () => {
+    if (!order) return;
+    try {
+      const itemsHtml = order.items
+        .map(
+          (it, idx) => `
+        <tr>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">${idx + 1}</td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;">
+            ${it.name}
+            ${it.category ? `<div style="font-size: 12px; color: #64748b; font-weight: 400; margin-top: 2px;">Category: ${it.category}</div>` : ""}
+          </td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 14px; font-weight: 700; color: #0f172a;">${it.quantity}</td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 14px; color: #334155;">£${it.price}</td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 14px; font-weight: 700; color: #b45309;">£${it.price * it.quantity}</td>
+        </tr>
+      `
+        )
+        .join("");
+
+      const invoiceHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official Invoice #${order.id} — Sialkot Cricket Kits</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #0f172a; padding: 20px 12px; }
+    .invoice-card { max-width: 800px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 28px 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+    .brand h1 { font-size: 20px; color: #b45309; font-weight: 800; text-transform: uppercase; }
+    .brand p { font-size: 12px; color: #475569; margin-top: 3px; line-height: 1.4; }
+    .meta { text-align: right; }
+    .meta h2 { font-size: 20px; font-weight: 900; color: #0f172a; }
+    .meta .ref { font-size: 16px; font-weight: 800; color: #b45309; font-family: monospace; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } .meta { text-align: left; } }
+    .section-title { font-size: 11px; text-transform: uppercase; font-weight: 800; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { text-align: left; padding: 8px; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-size: 12px; text-transform: uppercase; color: #475569; font-weight: 700; }
+    .totals { margin-top: 10px; border-top: 2px solid #0f172a; padding-top: 10px; }
+    .tot-row { display: flex; justify-content: space-between; font-size: 13px; color: #475569; margin-bottom: 4px; }
+    .tot-row.grand { font-size: 18px; font-weight: 900; color: #b45309; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1; }
+    .footer { margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .print-btn { display: inline-flex; align-items: center; gap: 6px; background: #b45309; color: #ffffff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 16px; }
+    @media print { .print-btn { display: none; } body { padding: 0; background: #ffffff; } .invoice-card { border: none; box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div style="max-width: 800px; margin: 0 auto; text-align: right;">
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="invoice-card">
+    <div class="header">
+      <div class="brand">
+        <h1>${BUSINESS_CONFIG.businessName}</h1>
+        <p>${BUSINESS_CONFIG.factoryName} · Master Cricket Batmakers</p>
+        <p>📍 ${BUSINESS_CONFIG.fullAddress}</p>
+        <p>📱 WhatsApp: ${BUSINESS_CONFIG.displayPhone} | ✉️ ${BUSINESS_CONFIG.primaryEmail}</p>
+      </div>
+      <div class="meta">
+        <h2>OFFICIAL INVOICE</h2>
+        <div class="ref">#${order.id}</div>
+        <p style="font-size: 12px; color: #64748b; margin-top: 4px;">Issue Date: ${new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+        <p style="font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 2px;">Status: ${order.paymentStatus === "payment_verified" ? "Payment Verified" : "Payment Under Verification"}</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="section-title">Customer & Delivery Destination</div>
+        <div style="font-weight: 800; font-size: 15px; color: #0f172a;">${order.customerName}</div>
+        ${order.customerPhone ? `<div style="font-size: 13px; color: #334155; margin-top: 2px;">📱 ${order.customerPhone}</div>` : ""}
+        ${order.customerEmail ? `<div style="font-size: 13px; color: #334155; margin-top: 2px;">✉️ ${order.customerEmail}</div>` : ""}
+        <div style="font-size: 13px; color: #334155; margin-top: 4px; line-height: 1.4;">📍 ${order.address || ""}, ${order.city || ""}, ${order.state || ""}, ${order.postalCode || ""}, ${order.country}</div>
+      </div>
+      <div>
+        <div class="section-title">Payment & Beneficiary Summary</div>
+        <div style="font-weight: 800; font-size: 14px; color: #b45309;">${order.paymentMethod}</div>
+        <div style="font-size: 13px; color: #334155; margin-top: 4px;"><strong>Bank:</strong> ${UBL_PAYMENT_CONFIG.bankName}</div>
+        <div style="font-size: 13px; color: #334155;"><strong>Title:</strong> ${UBL_PAYMENT_CONFIG.beneficiaryFullName}</div>
+        <div style="font-size: 13px; color: #334155;"><strong>Account:</strong> ${UBL_PAYMENT_CONFIG.accountNumber}</div>
+        <div style="font-size: 13px; color: #334155;"><strong>IBAN:</strong> ${UBL_PAYMENT_CONFIG.iban}</div>
+        ${order.transferReference ? `<div style="font-size: 13px; color: #b45309; margin-top: 2px;"><strong>Transaction Ref:</strong> ${order.transferReference}</div>` : ""}
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 6%;">#</th>
+          <th style="width: 50%;">Item Description</th>
+          <th style="width: 12%; text-align: center;">Qty</th>
+          <th style="width: 16%; text-align: right;">Price</th>
+          <th style="width: 16%; text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="tot-row">
+        <span>Subtotal:</span>
+        <strong style="color: #0f172a;">£${order.subtotal || order.totalAmount}</strong>
+      </div>
+      ${order.shippingFee !== undefined ? `
+      <div class="tot-row">
+        <span>Tracked Courier (${order.country}):</span>
+        <strong style="color: #0f172a;">£${order.shippingFee}</strong>
+      </div>` : ""}
+      <div class="tot-row grand">
+        <span>Total Order Value:</span>
+        <span>£${order.totalAmount}</span>
+      </div>
+      ${order.depositPercent && order.depositPercent < 100 ? `
+      <div class="tot-row" style="color: #16a34a; font-weight: 700; margin-top: 6px;">
+        <span>Advance Deposit (${order.depositPercent}%):</span>
+        <span>£${order.depositAmount || 0}</span>
+      </div>
+      <div class="tot-row" style="color: #dc2626; font-weight: 700;">
+        <span>Remaining Balance (Due Before Dispatch):</span>
+        <span>£${order.balanceRemaining || 0}</span>
+      </div>` : ""}
+    </div>
+
+    <div class="footer">
+      <span>🛡️ Official Factory Dispatch Invoice · ${BUSINESS_CONFIG.businessName}</span>
+      <span>WhatsApp: ${BUSINESS_CONFIG.displayPhone}</span>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([invoiceHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Sialkot-Cricket-Kits-Invoice-${order.id}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download invoice:", e);
+    }
   };
 
   const handleCopy = (key: string, text: string) => {
@@ -992,7 +1149,7 @@ function OrderSuccessContent() {
           </p>
 
           {/* Actions Bar */}
-          <div className="actions-bar" style={{ marginTop: 22, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <div className="actions-bar" style={{ marginTop: 22, display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
             <a
               href={whatsappUrl(whatsappConfirmationMsg)}
               target="_blank"
@@ -1011,7 +1168,7 @@ function OrderSuccessContent() {
                 fontSize: ".86rem",
               }}
             >
-              <MessageCircle size={17} /> Confirm Order on WhatsApp
+              <MessageCircle size={17} /> Confirm on WhatsApp
             </a>
 
             <button
@@ -1025,15 +1182,59 @@ function OrderSuccessContent() {
                 border: "none",
                 color: "#000",
                 fontWeight: 700,
-                padding: "10px 20px",
+                padding: "10px 18px",
                 borderRadius: 10,
                 cursor: "pointer",
                 fontSize: ".86rem",
                 boxShadow: "0 4px 14px rgba(242, 169, 40, 0.3)",
               }}
             >
-              <Printer size={17} /> Print / Save Official Invoice (PDF)
+              <Printer size={17} /> Print / Save as PDF
             </button>
+
+            {order && (
+              <button
+                type="button"
+                onClick={handleDownloadOffline}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  padding: "10px 18px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontSize: ".86rem",
+                }}
+              >
+                <Download size={17} /> Save Invoice File
+              </button>
+            )}
+
+            {order && (
+              <Link
+                href={`/checkout/invoice/${encodeURIComponent(order.id)}`}
+                target="_blank"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "transparent",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  color: "#cbd5e1",
+                  fontWeight: 600,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  fontSize: ".86rem",
+                }}
+              >
+                <ExternalLink size={15} /> Standalone View
+              </Link>
+            )}
 
             <Link
               href="/shop"
