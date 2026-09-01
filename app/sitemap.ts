@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getProducts, getCategories } from "@/src/lib/data-service";
+import { getProducts, getCategories } from "../src/lib/data-service.ts";
 
 const BASE_URL = "https://sialkotcricketkits.com";
 
