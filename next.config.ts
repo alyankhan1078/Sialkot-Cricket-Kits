@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      {
+        source: "/(.*)",
+        has: [{ type: "host", value: "sialkot-cricket-kits.alyankhan1078.workers.dev" }],
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+        ],
+      },
     ];
   },
 };
