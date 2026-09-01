@@ -454,7 +454,18 @@ export default function CheckoutPage() {
         body: submitFormData,
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        console.error("JSON parsing error on submit response:", jsonErr);
+        data = {
+          success: false,
+          error: res.status >= 500
+            ? "Our order processing server experienced a temporary issue. Please try submitting again."
+            : `Order submission returned status ${res.status}. Please check your connection and try again.`,
+        };
+      }
 
       if (data.success && data.orderId) {
         if (isCustomOrder) {
@@ -488,7 +499,11 @@ export default function CheckoutPage() {
       }
     } catch (err: any) {
       console.error("Order submission error:", err);
-      setErrorMessage("Network error occurred during order submission. Please try again.");
+      setErrorMessage(
+        err?.message && !err.message.includes("fetch")
+          ? `Submission issue: ${err.message}`
+          : "Network connectivity issue during order submission. Please check your internet connection and try again."
+      );
       setIsSubmitting(false);
     }
   };

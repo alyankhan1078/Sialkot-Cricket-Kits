@@ -1,5 +1,7 @@
 import { products as initialProducts, categoryOrder, type Product as ProductType } from "../data/products.ts";
 import { faqs as initialFaqs } from "../data/faqs.ts";
+import { getAdminSupabase } from "./supabase.ts";
+import crypto from "crypto";
 
 export interface DBProduct {
   id: string;
@@ -957,6 +959,34 @@ export async function updateSettings(data: Partial<DBSettings>): Promise<DBSetti
 
 // ─── Enquiry Operations ──────────────────────────────────────────────────────
 export async function getEnquiries(): Promise<DBEnquiry[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb
+        .from("enquiries")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          type: d.type || "contact",
+          name: d.name,
+          email: d.email || undefined,
+          phone: d.phone || undefined,
+          country: d.country || undefined,
+          message: d.message,
+          product: d.product || undefined,
+          extras: typeof d.extras === "object" ? JSON.stringify(d.extras) : d.extras,
+          read: Boolean(d.read),
+          createdAt: d.created_at,
+        }));
+      }
+    }
+  } catch (err) {
+    console.error("[Supabase getEnquiries Error]:", err);
+  }
+
   return [...memoryEnquiries].reverse();
 }
 
@@ -970,6 +1000,27 @@ export async function createEnquiry(
     createdAt: new Date().toISOString(),
   };
   memoryEnquiries.push(newEnquiry);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("enquiries").insert({
+        type: newEnquiry.type,
+        name: newEnquiry.name,
+        email: newEnquiry.email || null,
+        phone: newEnquiry.phone || null,
+        country: newEnquiry.country || null,
+        message: newEnquiry.message,
+        product: newEnquiry.product || null,
+        extras: newEnquiry.extras ? JSON.parse(newEnquiry.extras) : null,
+        read: false,
+        created_at: newEnquiry.createdAt,
+      });
+    }
+  } catch (err) {
+    console.error("[Supabase createEnquiry Error]:", err);
+  }
+
   return newEnquiry;
 }
 
@@ -1043,6 +1094,43 @@ export async function getOrders(options?: {
   startDate?: string;
   endDate?: string;
 }): Promise<DBOrder[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data: dbOrders, error } = await sb
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && dbOrders && dbOrders.length > 0) {
+        const mappedOrders: DBOrder[] = dbOrders.map((o: any) => ({
+          id: o.id,
+          orderReference: o.id,
+          customerName: o.customer_name,
+          customerPhone: o.customer_phone || undefined,
+          customerEmail: o.customer_email || undefined,
+          country: o.country,
+          items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []),
+          totalAmount: Number(o.total_amount),
+          status: o.status,
+          paymentMethod: o.payment_method,
+          notes: o.notes || "",
+          createdAt: o.created_at,
+          updatedAt: o.updated_at,
+        }));
+
+        for (const mo of memoryOrders) {
+          if (!mappedOrders.some((so) => so.id === mo.id)) {
+            mappedOrders.push(mo);
+          }
+        }
+        memoryOrders = mappedOrders;
+      }
+    }
+  } catch (err) {
+    console.error("[Supabase getOrders Error]:", err);
+  }
+
   let list = [...memoryOrders];
 
   if (options?.status && options.status !== "all") {
@@ -1075,7 +1163,34 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
+  const local = memoryOrders.find((o) => o.id === id || o.orderReference === id);
+  if (local) return local;
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb.from("orders").select("*").eq("id", id).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          orderReference: data.id,
+          customerName: data.customer_name,
+          customerPhone: data.customer_phone || undefined,
+          customerEmail: data.customer_email || undefined,
+          country: data.country,
+          items: typeof data.items === "string" ? JSON.parse(data.items) : (data.items || []),
+          totalAmount: Number(data.total_amount),
+          status: data.status,
+          paymentMethod: data.payment_method,
+          notes: data.notes || "",
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+      }
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
@@ -1102,6 +1217,30 @@ export async function createOrder(
     updatedAt: new Date().toISOString(),
   };
   memoryOrders.unshift(newOrder);
+
+  // Sync to Supabase PostgreSQL database
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("orders").upsert({
+        id: newOrder.id,
+        customer_name: newOrder.customerName,
+        customer_phone: newOrder.customerPhone || null,
+        customer_email: newOrder.customerEmail || null,
+        country: newOrder.country || "Pakistan",
+        items: newOrder.items,
+        total_amount: newOrder.totalAmount,
+        status: newOrder.status || "pending",
+        payment_method: newOrder.paymentMethod || "Bank Transfer",
+        notes: newOrder.notes || "",
+        created_at: newOrder.createdAt,
+        updated_at: newOrder.updatedAt,
+      }, { onConflict: "id" });
+    }
+  } catch (err) {
+    console.error("[Supabase createOrder Error]:", err);
+  }
+
   return newOrder;
 }
 
@@ -1482,8 +1621,11 @@ export async function generateSalesCsv(startDate?: string, endDate?: string): Pr
 }
 
 // ─── Auth Operations ──────────────────────────────────────────────────────────
+const SESSION_SECRET = process.env.ADMIN_PASSWORD || "sialkot_cricket_kits_secure_admin_2026";
+
 export function verifyAdminPassword(password: string): boolean {
-  return password === adminPasswordHash;
+  const currentExpected = process.env.ADMIN_PASSWORD || adminPasswordHash || "admin123";
+  return password === currentExpected || password === adminPasswordHash;
 }
 
 export function updateAdminPassword(newPassword: string): void {
@@ -1491,14 +1633,40 @@ export function updateAdminPassword(newPassword: string): void {
 }
 
 export function createAdminSession(): string {
-  const token = `sck_sess_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+  const timestamp = Date.now();
+  const raw = `${timestamp}:${SESSION_SECRET}`;
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(raw).digest("hex").slice(0, 32);
+  const token = `sck_sess_${timestamp}_${sig}`;
   activeSessions.add(token);
   return token;
 }
 
 export function validateAdminSession(token?: string): boolean {
   if (!token) return false;
-  return activeSessions.has(token);
+  if (activeSessions.has(token)) return true;
+
+  // Verify signed token structure across distributed Cloudflare Workers isolates
+  try {
+    const parts = token.split("_");
+    if (parts.length >= 4 && parts[0] === "sck" && parts[1] === "sess") {
+      const timestamp = parseInt(parts[2], 10);
+      const sig = parts[3];
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      if (Date.now() - timestamp < maxAgeMs) {
+        const expectedSig = crypto
+          .createHmac("sha256", SESSION_SECRET)
+          .update(`${timestamp}:${SESSION_SECRET}`)
+          .digest("hex")
+          .slice(0, 32);
+        if (sig === expectedSig) {
+          activeSessions.add(token);
+          return true;
+        }
+      }
+    }
+  } catch {}
+
+  return false;
 }
 
 export function destroyAdminSession(token: string): void {

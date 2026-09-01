@@ -16,9 +16,36 @@ import {
   FACTORY_INFO,
 } from "@/src/lib/payment-config";
 import { sendOrderConfirmationEmail } from "@/src/lib/email";
+import { getAdminSupabase } from "@/src/lib/supabase";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs/promises";
+
+const ALLOWED_ORIGINS = [
+  "https://sialkot-cricket-kits.alyankhan1078.workers.dev",
+  "https://sialkotcricketkits.com",
+  "https://www.sialkotcricketkits.com",
+  "https://sialkot-cricket-kits-rust.vercel.app",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("origin") || "";
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(request),
+  });
+}
 
 // Validate file magic bytes to prevent spoofed file extensions
 function validateFileMagicBytes(buffer: Buffer, mimeType: string): boolean {
@@ -259,14 +286,37 @@ export async function POST(request: Request) {
 
     const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
     let receiptStoragePath = "";
+
+    // 1. Try Supabase Storage first if configured
     try {
-      const privateDir = path.join(process.cwd(), "private_receipts");
-      await fs.mkdir(privateDir, { recursive: true });
-      const fullDiskPath = path.join(privateDir, safeUniqueName);
-      await fs.writeFile(fullDiskPath, fileBuffer);
-      receiptStoragePath = safeUniqueName;
+      const sb = getAdminSupabase();
+      if (sb) {
+        const { error: sbUploadErr } = await sb.storage
+          .from("receipts")
+          .upload(safeUniqueName, fileBuffer, {
+            contentType: receiptFile.type || "application/octet-stream",
+            upsert: true,
+          });
+        if (!sbUploadErr) {
+          receiptStoragePath = `supabase://${safeUniqueName}`;
+        }
+      }
     } catch {
-      receiptStoragePath = `data:${receiptFile.type};base64,${fileBuffer.toString("base64")}`;
+      // Fallback
+    }
+
+    // 2. Try filesystem storage if Supabase storage was not used
+    if (!receiptStoragePath) {
+      try {
+        const privateDir = path.join(process.cwd(), "private_receipts");
+        await fs.mkdir(privateDir, { recursive: true });
+        const fullDiskPath = path.join(privateDir, safeUniqueName);
+        await fs.writeFile(fullDiskPath, fileBuffer);
+        receiptStoragePath = safeUniqueName;
+      } catch {
+        // 3. Fallback to Data URI on Cloudflare Workers / serverless edge
+        receiptStoragePath = `data:${receiptFile.type || "image/jpeg"};base64,${fileBuffer.toString("base64")}`;
+      }
     }
 
     const receiptOriginalName = receiptFile.name;

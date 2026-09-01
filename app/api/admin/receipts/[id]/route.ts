@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
 import { getPaymentSubmissionById, getPaymentSubmissionByOrderId } from "@/src/lib/data-service";
+import { getAdminSupabase } from "@/src/lib/supabase";
 import path from "path";
 import fs from "fs/promises";
 
@@ -27,7 +28,30 @@ export async function GET(
 
   const storagePath = submission.receiptStoragePath;
 
-  // 3. If stored as Base64 Data URL
+  // 3. If stored in Supabase Storage
+  if (storagePath.startsWith("supabase://")) {
+    try {
+      const fileName = storagePath.replace("supabase://", "");
+      const sb = getAdminSupabase();
+      if (sb) {
+        const { data: blob, error } = await sb.storage.from("receipts").download(fileName);
+        if (!error && blob) {
+          const arrayBuffer = await blob.arrayBuffer();
+          return new NextResponse(Buffer.from(arrayBuffer), {
+            headers: {
+              "Content-Type": submission.receiptMimeType || blob.type || "image/jpeg",
+              "Content-Disposition": `inline; filename="${submission.receiptOriginalName || fileName}"`,
+              "Cache-Control": "private, max-age=3600",
+            },
+          });
+        }
+      }
+    } catch (sbErr) {
+      console.error("[Supabase Receipt Download Error]:", sbErr);
+    }
+  }
+
+  // 4. If stored as Base64 Data URL
   if (storagePath.startsWith("data:")) {
     const matches = storagePath.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
