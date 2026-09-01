@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import sitemap from "../app/sitemap.ts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -35,7 +36,56 @@ const worker = {
       return Response.redirect(url.toString(), 301);
     }
 
-    // 2. Image optimization endpoint
+    // 2. Direct Dynamic Robots.txt Endpoint
+    if (url.pathname === "/robots.txt") {
+      const robotsContent = `User-Agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/
+Disallow: /api/*
+Disallow: /checkout
+Disallow: /checkout/*
+Disallow: /payment
+Disallow: /payment/*
+
+Sitemap: https://sialkotcricketkits.com/sitemap.xml
+Host: https://sialkotcricketkits.com
+`;
+      return new Response(robotsContent, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=86400",
+        },
+      });
+    }
+
+    // 3. Direct Dynamic Sitemap.xml Endpoint (Serving all 185+ products & categories)
+    if (url.pathname === "/sitemap.xml") {
+      const sitemapEntries = await sitemap();
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapEntries
+  .map(
+    (e) => `  <url>
+    <loc>${e.url}</loc>
+    <lastmod>${e.lastModified instanceof Date ? e.lastModified.toISOString() : new Date().toISOString()}</lastmod>
+    <changefreq>${e.changeFrequency || "weekly"}</changefreq>
+    <priority>${e.priority || 0.7}</priority>
+  </url>`
+  )
+  .join("\n")}
+</urlset>`;
+
+      return new Response(xml, {
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        },
+      });
+    }
+
+    // 4. Image optimization endpoint
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
