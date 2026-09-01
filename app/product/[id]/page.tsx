@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     product.seoDescription ||
     product.shortDescription ||
     `${product.name} available at Sialkot Cricket Kits for £${product.price}. Handcrafted in Sialkot with worldwide tracked delivery.`;
-  const canonicalUrl = `https://sialkotcricketkits.co.uk/product/${product.id}`;
+  const canonicalUrl = `https://sialkotcricketkits.com/product/${product.id}`;
   const images = product.image ? [product.image] : ["/assets/brand/sialkot-cricket-kits-logo.png"];
 
   return {
@@ -64,11 +64,13 @@ export default async function ProductPage({ params }: PageProps) {
     stock: product.stock,
   };
 
-  const jsonLd = {
+  const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    image: product.image,
+    image: product.image?.startsWith("http")
+      ? product.image
+      : `https://sialkotcricketkits.com${product.image}`,
     description: product.shortDescription || product.description,
     sku: product.id,
     brand: {
@@ -77,11 +79,14 @@ export default async function ProductPage({ params }: PageProps) {
     },
     offers: {
       "@type": "Offer",
-      url: `https://sialkotcricketkits.co.uk/product/${product.id}`,
+      url: `https://sialkotcricketkits.com/product/${product.id}`,
       priceCurrency: "GBP",
       price: product.price,
+      itemCondition: "https://schema.org/NewCondition",
       availability:
-        String(product.stock) === "0" ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+        String(product.stock) === "0"
+          ? "https://schema.org/OutOfStock"
+          : "https://schema.org/InStock",
       seller: {
         "@type": "Organization",
         name: "Sialkot Cricket Kits",
@@ -89,11 +94,46 @@ export default async function ProductPage({ params }: PageProps) {
     },
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://sialkotcricketkits.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Shop",
+        item: "https://sialkotcricketkits.com/shop",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.category,
+        item: `https://sialkotcricketkits.com/shop?category=${encodeURIComponent(product.category)}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
+        name: product.name,
+        item: `https://sialkotcricketkits.com/product/${product.id}`,
+      },
+    ],
+  };
+
   return (
     <main className="product-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <div className="breadcrumb">
         <Link href="/shop">

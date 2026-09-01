@@ -614,6 +614,53 @@ export async function getProducts(options?: {
   search?: string;
   includeInactive?: boolean;
 }): Promise<DBProduct[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      let query = sb.from("products").select("*").order("sort_order", { ascending: true });
+      if (!options?.includeInactive) {
+        query = query.eq("active", true);
+      }
+      if (options?.category && options.category !== "All") {
+        query = query.ilike("category", options.category);
+      }
+      if (options?.featured !== undefined) {
+        query = query.eq("featured", options.featured);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const mapped: DBProduct[] = data.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          category: d.category,
+          price: Number(d.price),
+          stock: d.stock || "Available",
+          rightStock: d.right_stock || undefined,
+          leftStock: d.left_stock || undefined,
+          image: d.image,
+          images: Array.isArray(d.images) ? d.images : typeof d.images === "string" ? JSON.parse(d.images) : undefined,
+          description: d.description || "",
+          featured: Boolean(d.featured),
+          active: Boolean(d.active),
+          sortOrder: d.sort_order || 0,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+
+        // Merge with memory
+        for (const mp of memoryProducts) {
+          if (!mapped.some((p) => p.id === mp.id)) {
+            mapped.push(mp);
+          }
+        }
+        memoryProducts = mapped;
+      }
+    }
+  } catch (err) {
+    console.error("[Supabase getProducts Error]:", err);
+  }
+
   let list = [...memoryProducts];
 
   if (!options?.includeInactive) {
@@ -643,7 +690,35 @@ export async function getProducts(options?: {
 
 export async function getProductById(id: string): Promise<DBProduct | null> {
   const found = memoryProducts.find((p) => p.id === id);
-  return found || null;
+  if (found) return found;
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb.from("products").select("*").eq("id", id).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          name: data.name,
+          category: data.category,
+          price: Number(data.price),
+          stock: data.stock || "Available",
+          rightStock: data.right_stock || undefined,
+          leftStock: data.left_stock || undefined,
+          image: data.image,
+          images: Array.isArray(data.images) ? data.images : typeof data.images === "string" ? JSON.parse(data.images) : undefined,
+          description: data.description || "",
+          featured: Boolean(data.featured),
+          active: Boolean(data.active),
+          sortOrder: data.sort_order || 0,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+      }
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function createProduct(data: Omit<DBProduct, "createdAt" | "updatedAt">): Promise<DBProduct> {
@@ -654,6 +729,32 @@ export async function createProduct(data: Omit<DBProduct, "createdAt" | "updated
     updatedAt: new Date().toISOString(),
   };
   memoryProducts.push(newProduct);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("products").upsert({
+        id: newProduct.id,
+        name: newProduct.name,
+        category: newProduct.category,
+        price: newProduct.price,
+        stock: newProduct.stock,
+        right_stock: newProduct.rightStock || null,
+        left_stock: newProduct.leftStock || null,
+        image: newProduct.image,
+        images: newProduct.images || [newProduct.image],
+        description: newProduct.description,
+        featured: newProduct.featured,
+        active: newProduct.active,
+        sort_order: newProduct.sortOrder,
+        created_at: newProduct.createdAt,
+        updated_at: newProduct.updatedAt,
+      }, { onConflict: "id" });
+    }
+  } catch (err) {
+    console.error("[Supabase createProduct Error]:", err);
+  }
+
   return newProduct;
 }
 
@@ -666,6 +767,31 @@ export async function updateProduct(id: string, data: Partial<DBProduct>): Promi
     ...data,
     updatedAt: new Date().toISOString(),
   };
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const p = memoryProducts[index];
+      await sb.from("products").update({
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        stock: p.stock,
+        right_stock: p.rightStock || null,
+        left_stock: p.leftStock || null,
+        image: p.image,
+        images: p.images || [p.image],
+        description: p.description,
+        featured: p.featured,
+        active: p.active,
+        sort_order: p.sortOrder,
+        updated_at: p.updatedAt,
+      }).eq("id", id);
+    }
+  } catch (err) {
+    console.error("[Supabase updateProduct Error]:", err);
+  }
+
   return memoryProducts[index];
 }
 
@@ -673,6 +799,16 @@ export async function deleteProduct(id: string): Promise<boolean> {
   const initialLength = memoryProducts.length;
   memoryProducts = memoryProducts.filter((p) => p.id !== id);
   memoryProductImages.delete(id);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("products").delete().eq("id", id);
+    }
+  } catch (err) {
+    console.error("[Supabase deleteProduct Error]:", err);
+  }
+
   return memoryProducts.length < initialLength;
 }
 
@@ -888,6 +1024,27 @@ export async function reorderProductImages(productId: string, orderedImageIds: s
 
 // ─── Category Operations ─────────────────────────────────────────────────────
 export async function getCategories(includeInactive = false): Promise<DBCategory[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      let query = sb.from("categories").select("*").order("sort_order", { ascending: true });
+      if (!includeInactive) {
+        query = query.eq("active", true);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          sortOrder: d.sort_order || 0,
+          active: Boolean(d.active),
+        }));
+      }
+    }
+  } catch (err) {
+    console.error("[Supabase getCategories Error]:", err);
+  }
+
   const list = includeInactive ? memoryCategories : memoryCategories.filter((c) => c.active);
   return list.sort((a, b) => a.sortOrder - b.sortOrder);
 }
@@ -900,6 +1057,20 @@ export async function createCategory(name: string): Promise<DBCategory> {
     active: true,
   };
   memoryCategories.push(newCat);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("categories").insert({
+        name: newCat.name,
+        sort_order: newCat.sortOrder,
+        active: true,
+      });
+    }
+  } catch (err) {
+    console.error("[Supabase createCategory Error]:", err);
+  }
+
   return newCat;
 }
 
@@ -907,12 +1078,36 @@ export async function updateCategory(id: number, data: Partial<DBCategory>): Pro
   const index = memoryCategories.findIndex((c) => c.id === id);
   if (index === -1) return null;
   memoryCategories[index] = { ...memoryCategories[index], ...data };
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("categories").update({
+        ...(data.name ? { name: data.name } : {}),
+        ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+        ...(data.active !== undefined ? { active: data.active } : {}),
+      }).eq("id", id);
+    }
+  } catch (err) {
+    console.error("[Supabase updateCategory Error]:", err);
+  }
+
   return memoryCategories[index];
 }
 
 export async function deleteCategory(id: number): Promise<boolean> {
   const initialLength = memoryCategories.length;
   memoryCategories = memoryCategories.filter((c) => c.id !== id);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("categories").delete().eq("id", id);
+    }
+  } catch (err) {
+    console.error("[Supabase deleteCategory Error]:", err);
+  }
+
   return memoryCategories.length < initialLength;
 }
 

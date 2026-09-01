@@ -29,6 +29,13 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // 1. 301 Permanent Redirect: www.sialkotcricketkits.com -> sialkotcricketkits.com
+    if (url.hostname === "www.sialkotcricketkits.com") {
+      url.hostname = "sialkotcricketkits.com";
+      return Response.redirect(url.toString(), 301);
+    }
+
+    // 2. Image optimization endpoint
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
@@ -40,7 +47,25 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+
+    // 3. Staging/Testing Host Protection: Prevent duplicate indexing on *.workers.dev and *.vercel.app
+    const isStagingHost =
+      url.hostname.endsWith(".workers.dev") ||
+      url.hostname.endsWith(".vercel.app") ||
+      url.hostname.includes("preview");
+
+    if (isStagingHost) {
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set("X-Robots-Tag", "noindex, nofollow");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
+    }
+
+    return response;
   },
 };
 

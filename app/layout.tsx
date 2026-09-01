@@ -4,37 +4,74 @@ import { SiteChrome } from "@/src/components/SiteChrome";
 import { StoreProvider } from "@/src/components/StoreProvider";
 
 export const metadata: Metadata = {
-  title: "Sialkot Cricket Kits | Cricket Bats & Equipment Worldwide",
+  metadataBase: new URL("https://sialkotcricketkits.com"),
+  title: {
+    default: "Sialkot Cricket Kits | World Top-Class Cricket Bats & Gear Worldwide",
+    template: "%s | Sialkot Cricket Kits",
+  },
   description:
-    "Shop authentic cricket bats, batting gloves, pads, keeping equipment, kit bags and customized cricket gear from Sialkot Cricket Kits. Worldwide delivery and live product videos available.",
+    "Shop authentic handcrafted cricket bats, batting gloves, pads, helmets, kit bags and customized English Willow cricket equipment from Sialkot Cricket Kits. Tracked worldwide delivery and live product ping videos.",
+  keywords: [
+    "Cricket Bats",
+    "English Willow Bats",
+    "Sialkot Cricket",
+    "Custom Cricket Bats",
+    "Batting Pads",
+    "Batting Gloves",
+    "Cricket Helmets",
+    "Cricket Kit Bags",
+    "Sialkot Cricket Kits",
+    "Worldwide Cricket Delivery",
+  ],
+  authors: [{ name: "Sialkot Cricket Kits", url: "https://sialkotcricketkits.com" }],
+  creator: "Sialkot Cricket Kits",
+  publisher: "Sialkot Cricket Kits",
+  formatDetection: {
+    email: true,
+    address: true,
+    telephone: true,
+  },
   openGraph: {
-    title: "Sialkot Cricket Kits | Cricket Equipment Worldwide",
+    title: "Sialkot Cricket Kits | Premium Cricket Bats & Equipment",
     description:
-      "Cricket bats, protective equipment, kit bags, accessories and custom-bat support from Sialkot, Pakistan.",
-    url: "/",
+      "Handcrafted English Willow cricket bats, protective equipment, kit bags, and custom bat configurations dispatched directly from Sialkot with worldwide delivery.",
+    url: "https://sialkotcricketkits.com",
     siteName: "Sialkot Cricket Kits",
     type: "website",
+    locale: "en_GB",
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Sialkot Cricket Kits - Cricket Equipment and Worldwide Delivery",
+        alt: "Sialkot Cricket Kits - Handcrafted Cricket Equipment Dispatched Worldwide",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sialkot Cricket Kits",
-    description: "Cricket equipment from Sialkot with worldwide delivery.",
+    title: "Sialkot Cricket Kits | Premium Cricket Bats & Equipment",
+    description: "Handcrafted English Willow cricket equipment from Sialkot with worldwide delivery.",
     images: ["/og.png"],
   },
   icons: {
     icon: "/assets/brand/sialkot-cricket-kits-logo.png",
     apple: "/assets/brand/sialkot-cricket-kits-logo.png",
   },
-  alternates: { canonical: "/" },
-  robots: { index: true, follow: true },
+  alternates: {
+    canonical: "https://sialkotcricketkits.com",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 function safeJsonLd(obj: Record<string, unknown>): string {
@@ -44,19 +81,53 @@ function safeJsonLd(obj: Record<string, unknown>): string {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const organization = {
+  const storeSchema = {
     "@context": "https://schema.org",
     "@type": "SportingGoodsStore",
+    "@id": "https://sialkotcricketkits.com/#store",
     name: "Sialkot Cricket Kits",
-    url: "https://sialkotcricketkits.co.uk",
-    logo: "https://sialkotcricketkits.co.uk/assets/brand/sialkot-cricket-kits-logo.png",
+    url: "https://sialkotcricketkits.com",
+    logo: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
+    image: "https://sialkotcricketkits.com/og.png",
+    description:
+      "Manufacturer and international distributor of premium English Willow cricket bats, batting pads, gloves, helmets, and custom cricket gear based in Sialkot, Pakistan.",
     email: "sialkotcricketkits@gmail.com",
     telephone: "+923231438214",
+    priceRange: "££",
     address: {
       "@type": "PostalAddress",
       streetAddress: "House No. 207, Gulshan Street, Model Town",
       addressLocality: "Sialkot",
+      addressRegion: "Punjab",
+      postalCode: "51310",
       addressCountry: "PK",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: "32.4945",
+      longitude: "74.5229",
+    },
+    sameAs: [
+      "https://www.instagram.com/sialkotcricketkits",
+      "https://www.facebook.com/share/1PTo3qxPAn/",
+      "https://www.tiktok.com/@sialkotcricketkits",
+    ],
+  };
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://sialkotcricketkits.com/#website",
+    url: "https://sialkotcricketkits.com",
+    name: "Sialkot Cricket Kits",
+    description: "Premium Cricket Equipment Handcrafted in Sialkot",
+    publisher: {
+      "@id": "https://sialkotcricketkits.com/#store",
+    },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://sialkotcricketkits.com/shop?search={search_term_string}",
+      "query-input": "required name=search_term_string",
     },
   };
 
@@ -65,7 +136,11 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(organization) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteSchema) }}
         />
       </head>
       <body>

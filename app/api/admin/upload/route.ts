@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { getAdminSupabase } from "@/src/lib/supabase";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -45,16 +46,42 @@ export async function POST(request: Request) {
 
     let publicUrl = "";
 
+    // 1. Try Supabase Storage first if configured
     try {
-      const uploadDir = path.join(process.cwd(), "public", "uploads", "products", sanitizedProductId);
-      await fs.mkdir(uploadDir, { recursive: true });
-      const filePath = path.join(uploadDir, uniqueFilename);
-      await fs.writeFile(filePath, buffer);
-      publicUrl = `/uploads/products/${sanitizedProductId}/${uniqueFilename}`;
-    } catch {
-      // In sandboxed/workerd environment where disk write is restricted, store as Data URL
-      const base64Str = buffer.toString("base64");
-      publicUrl = `data:${file.type};base64,${base64Str}`;
+      const sb = getAdminSupabase();
+      if (sb) {
+        const storagePath = `products/${sanitizedProductId}/${uniqueFilename}`;
+        const { error: uploadError } = await sb.storage
+          .from("products")
+          .upload(storagePath, buffer, {
+            contentType: file.type,
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data: publicData } = sb.storage.from("products").getPublicUrl(storagePath);
+          if (publicData?.publicUrl) {
+            publicUrl = publicData.publicUrl;
+          }
+        }
+      }
+    } catch (sbErr) {
+      console.warn("Supabase Storage upload notice:", sbErr);
+    }
+
+    // 2. Fallback to filesystem if not uploaded to Supabase Storage
+    if (!publicUrl) {
+      try {
+        const uploadDir = path.join(process.cwd(), "public", "uploads", "products", sanitizedProductId);
+        await fs.mkdir(uploadDir, { recursive: true });
+        const filePath = path.join(uploadDir, uniqueFilename);
+        await fs.writeFile(filePath, buffer);
+        publicUrl = `/uploads/products/${sanitizedProductId}/${uniqueFilename}`;
+      } catch {
+        // 3. Fallback to Data URL on Cloudflare Workers / serverless edge
+        const base64Str = buffer.toString("base64");
+        publicUrl = `data:${file.type};base64,${base64Str}`;
+      }
     }
 
     return NextResponse.json({

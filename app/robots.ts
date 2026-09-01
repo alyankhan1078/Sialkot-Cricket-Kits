@@ -6,9 +6,19 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/payment", "/admin", "/api/"],
+        disallow: [
+          "/admin",
+          "/admin/*",
+          "/api/",
+          "/api/*",
+          "/checkout",
+          "/checkout/*",
+          "/payment",
+          "/payment/*",
+        ],
       },
     ],
-    sitemap: "https://sialkot-cricket-kits.pages.dev/sitemap.xml",
+    sitemap: "https://sialkotcricketkits.com/sitemap.xml",
+    host: "https://sialkotcricketkits.com",
   };
 }

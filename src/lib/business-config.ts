@@ -27,7 +27,7 @@ export const BUSINESS_CONFIG = {
   emailLink: "mailto:sialkotcricketkits@gmail.com",
 
   // Web & Social
-  websiteUrl: "https://sialkotcricketkits.co.uk",
+  websiteUrl: "https://sialkotcricketkits.com",
   instagramUrl: "https://www.instagram.com/sialkotcricketkits?igsi=aDBzenZrcnJjbXJi&utm_source=qr",
   facebookUrl: "https://www.facebook.com/share/1PTo3qxPAn/?mibextid=wwXIfr",
   tiktokUrl: "https://www.tiktok.com/@sialkotcricketkits",

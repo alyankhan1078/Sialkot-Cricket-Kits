@@ -51,6 +51,19 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  env: {
+    NEXT_PUBLIC_SITE_URL: "https://sialkotcricketkits.com",
+  },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.sialkotcricketkits.com" }],
+        destination: "https://sialkotcricketkits.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
