@@ -55,8 +55,19 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   icons: {
-    icon: "/assets/brand/sialkot-cricket-kits-logo.png",
-    apple: "/assets/brand/sialkot-cricket-kits-logo.png",
+    icon: [
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      { url: "/assets/brand/sialkot-cricket-kits-logo.png", sizes: "1024x1024", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/assets/brand/sialkot-cricket-kits-logo.png", sizes: "1024x1024", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico"],
   },
   alternates: {
     canonical: "https://sialkotcricketkits.com",
@@ -87,8 +98,13 @@ export default function RootLayout({
     "@id": "https://sialkotcricketkits.com/#store",
     name: "Sialkot Cricket Kits",
     url: "https://sialkotcricketkits.com",
-    logo: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
-    image: "https://sialkotcricketkits.com/og.png",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
+      width: "1024",
+      height: "1024",
+    },
+    image: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
     description:
       "Manufacturer and international distributor of premium English Willow cricket bats, batting pads, gloves, helmets, and custom cricket gear based in Sialkot, Pakistan.",
     email: "sialkotcricketkits@gmail.com",
@@ -134,6 +150,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(storeSchema) }}
