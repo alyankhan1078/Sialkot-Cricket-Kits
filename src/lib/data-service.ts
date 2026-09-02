@@ -2021,9 +2021,6 @@ export async function generateSalesCsv(startDate?: string, endDate?: string): Pr
 }
 
 // ─── Auth Operations ──────────────────────────────────────────────────────────
-const activeSessions = new Set<string>();
-let memoryAdminPassword = process.env.ADMIN_PASSWORD || "admin123";
-
 const SESSION_SECRET = process.env.ADMIN_PASSWORD || "sialkot_cricket_kits_secure_admin_2026";
 
 function computeSimpleSig(input: string): string {
@@ -2036,17 +2033,17 @@ function computeSimpleSig(input: string): string {
 }
 
 export function verifyAdminPassword(password: string): boolean {
-  const currentExpected = process.env.ADMIN_PASSWORD || memoryAdminPassword || "admin123";
+  const currentExpected = process.env.ADMIN_PASSWORD || adminPasswordHash || "admin123";
   return (
     password === currentExpected ||
-    password === memoryAdminPassword ||
+    password === adminPasswordHash ||
     password === "admin123" ||
     password === "sialkot_cricket_kits_secure_admin_2026"
   );
 }
 
 export function updateAdminPassword(newPassword: string): void {
-  memoryAdminPassword = newPassword;
+  adminPasswordHash = newPassword;
 }
 
 export function createAdminSession(): string {
