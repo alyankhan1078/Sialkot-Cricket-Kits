@@ -20,11 +20,11 @@ export async function GET(
     submission = await getPaymentSubmissionByOrderId(id);
   }
 
-  if (!submission || !submission.receiptStoragePath) {
-    return NextResponse.json({ error: "Payment receipt not found" }, { status: 404 });
+  if (!submission) {
+    return NextResponse.json({ error: "Payment submission not found" }, { status: 404 });
   }
 
-  const storagePath = submission.receiptStoragePath;
+  const storagePath = submission.receiptStoragePath || "";
 
   // 3. If stored in Supabase Storage or storage:// reference
   if (storagePath.startsWith("supabase://") || storagePath.startsWith("storage://")) {
