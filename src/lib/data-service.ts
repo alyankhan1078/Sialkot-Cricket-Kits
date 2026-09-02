@@ -1283,6 +1283,29 @@ export function sanitizeOrderRecord(order: DBOrder): DBOrder {
 }
 
 // ─── Orders & Sales Analytics Operations ──────────────────────────────────────
+// Helper to map modern statuses to Supabase orders CHECK constraint: ('completed', 'confirmed', 'pending', 'cancelled')
+function mapToSupabaseStatus(status?: string): "completed" | "confirmed" | "pending" | "cancelled" {
+  if (!status) return "pending";
+  const s = status.toLowerCase();
+  if (
+    s === "order_confirmed" ||
+    s === "payment_verified" ||
+    s === "in_production" ||
+    s === "ready_for_dispatch" ||
+    s === "dispatched" ||
+    s === "confirmed"
+  ) {
+    return "confirmed";
+  }
+  if (s === "delivered" || s === "completed") {
+    return "completed";
+  }
+  if (s === "rejected" || s === "payment_rejected" || s === "cancelled") {
+    return "cancelled";
+  }
+  return "pending";
+}
+
 export async function getOrders(options?: {
   status?: string;
   search?: string;
@@ -1298,21 +1321,27 @@ export async function getOrders(options?: {
         .order("created_at", { ascending: false });
 
       if (!error && dbOrders && dbOrders.length > 0) {
-        const mappedOrders: DBOrder[] = dbOrders.map((o: any) => ({
-          id: o.id,
-          orderReference: o.id,
-          customerName: o.customer_name,
-          customerPhone: o.customer_phone || undefined,
-          customerEmail: o.customer_email || undefined,
-          country: o.country,
-          items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []),
-          totalAmount: Number(o.total_amount),
-          status: o.status,
-          paymentMethod: o.payment_method,
-          notes: o.notes || "",
-          createdAt: o.created_at,
-          updatedAt: o.updated_at,
-        }));
+        const mappedOrders: DBOrder[] = dbOrders.map((o: any) => {
+          const notes = o.notes || "";
+          const statusMatch = notes.match(/\[Status:\s*([^\]]+)\]/);
+          const restoredStatus = statusMatch ? statusMatch[1].trim() : o.status;
+
+          return {
+            id: o.id,
+            orderReference: o.id,
+            customerName: o.customer_name,
+            customerPhone: o.customer_phone || undefined,
+            customerEmail: o.customer_email || undefined,
+            country: o.country,
+            items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []),
+            totalAmount: Number(o.total_amount),
+            status: restoredStatus,
+            paymentMethod: o.payment_method,
+            notes: notes.replace(/\[Status:\s*[^\]]+\]\n?/g, ""),
+            createdAt: o.created_at,
+            updatedAt: o.updated_at,
+          };
+        });
 
         for (const mo of memoryOrders) {
           if (!mappedOrders.some((so) => so.id === mo.id)) {
@@ -1366,6 +1395,10 @@ export async function getOrderById(id: string): Promise<DBOrder | null> {
     if (sb) {
       const { data, error } = await sb.from("orders").select("*").eq("id", id).maybeSingle();
       if (!error && data) {
+        const notes = data.notes || "";
+        const statusMatch = notes.match(/\[Status:\s*([^\]]+)\]/);
+        const restoredStatus = statusMatch ? statusMatch[1].trim() : data.status;
+
         return {
           id: data.id,
           orderReference: data.id,
@@ -1375,9 +1408,9 @@ export async function getOrderById(id: string): Promise<DBOrder | null> {
           country: data.country,
           items: typeof data.items === "string" ? JSON.parse(data.items) : (data.items || []),
           totalAmount: Number(data.total_amount),
-          status: data.status,
+          status: restoredStatus,
           paymentMethod: data.payment_method,
-          notes: data.notes || "",
+          notes: notes.replace(/\[Status:\s*[^\]]+\]\n?/g, ""),
           createdAt: data.created_at,
           updatedAt: data.updated_at,
         };
@@ -1413,10 +1446,13 @@ export async function createOrder(
   };
   memoryOrders.unshift(newOrder);
 
-  // Sync to Supabase PostgreSQL database
+  // Sync to Supabase PostgreSQL database with CHECK constraint compliant status
   try {
     const sb = getAdminSupabase();
     if (sb) {
+      const sbStatus = mapToSupabaseStatus(newOrder.status);
+      const sbNotes = `[Status: ${newOrder.status}]\n${newOrder.notes || ""}`;
+
       await sb.from("orders").upsert({
         id: newOrder.id,
         customer_name: newOrder.customerName,
@@ -1425,9 +1461,9 @@ export async function createOrder(
         country: newOrder.country || "Pakistan",
         items: newOrder.items,
         total_amount: newOrder.totalAmount,
-        status: newOrder.status || "pending",
+        status: sbStatus,
         payment_method: newOrder.paymentMethod || "Bank Transfer",
-        notes: newOrder.notes || "",
+        notes: sbNotes,
         created_at: newOrder.createdAt,
         updated_at: newOrder.updatedAt,
       }, { onConflict: "id" });
@@ -1462,13 +1498,17 @@ export async function updateOrder(id: string, data: Partial<DBOrder>): Promise<D
     memoryOrders.unshift(updated);
   }
 
-  // Sync update to Supabase
+  // Sync update to Supabase with CHECK constraint compliant status
   try {
     const sb = getAdminSupabase();
     if (sb) {
+      const sbStatus = mapToSupabaseStatus(updated.status);
+      const cleanNotes = (updated.notes || "").replace(/\[Status:\s*[^\]]+\]\n?/g, "");
+      const sbNotes = `[Status: ${updated.status}]\n${cleanNotes}`;
+
       await sb.from("orders").update({
-        status: updated.status,
-        notes: updated.notes,
+        status: sbStatus,
+        notes: sbNotes,
         total_amount: updated.totalAmount,
         updated_at: updated.updatedAt,
       }).eq("id", id);
