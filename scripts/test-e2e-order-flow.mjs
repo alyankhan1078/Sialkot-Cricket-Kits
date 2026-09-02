@@ -43,7 +43,7 @@ async function runTest() {
   const loginRes = await fetch(base + "/api/admin/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: process.env.ADMIN_PASSWORD || "sialkot_cricket_kits_secure_admin_2026" }),
+    body: JSON.stringify({ password: "admin123" }),
   });
   const authCookie = loginRes.headers.get("set-cookie");
   console.log("Admin Login Status:", loginRes.status, "| Cookie received:", Boolean(authCookie));
@@ -98,6 +98,16 @@ async function runTest() {
     });
     const statusJson = await statusRes.json();
     console.log("Status Update Result:", statusRes.status, statusJson);
+
+    // 7. Notification Retry Check
+    console.log("\n--- Step 7: Notification Logs & Retry Dispatch ---");
+    const retryRes = await fetch(base + "/api/admin/orders/" + testOrderId + "/notifications/retry", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ type: "order_confirmed" }),
+    });
+    const retryJson = await retryRes.json();
+    console.log("Notification Retry Status:", retryRes.status, "| Logs count:", retryJson.logs?.length || 0);
   }
 
   console.log("\n=== ALL END-TO-END WORKFLOW TESTS COMPLETED SUCCESSFULLY ===");

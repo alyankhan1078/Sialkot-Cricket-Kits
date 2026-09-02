@@ -1441,13 +1441,43 @@ export async function createOrder(
 
 export async function updateOrder(id: string, data: Partial<DBOrder>): Promise<DBOrder | null> {
   const index = memoryOrders.findIndex((o) => o.id === id);
-  if (index === -1) return null;
-  memoryOrders[index] = {
-    ...memoryOrders[index],
-    ...data,
-    updatedAt: new Date().toISOString(),
-  };
-  return memoryOrders[index];
+  const nowStr = new Date().toISOString();
+  let updated: DBOrder;
+
+  if (index !== -1) {
+    memoryOrders[index] = {
+      ...memoryOrders[index],
+      ...data,
+      updatedAt: nowStr,
+    };
+    updated = memoryOrders[index];
+  } else {
+    const existing = await getOrderById(id);
+    if (!existing) return null;
+    updated = {
+      ...existing,
+      ...data,
+      updatedAt: nowStr,
+    };
+    memoryOrders.unshift(updated);
+  }
+
+  // Sync update to Supabase
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("orders").update({
+        status: updated.status,
+        notes: updated.notes,
+        total_amount: updated.totalAmount,
+        updated_at: updated.updatedAt,
+      }).eq("id", id);
+    }
+  } catch (err) {
+    console.error("[Supabase updateOrder Error]:", err);
+  }
+
+  return updated;
 }
 
 export async function deleteOrder(id: string): Promise<boolean> {
@@ -1635,6 +1665,46 @@ export async function getPaymentSubmissions(options?: {
           }
         }
       }
+
+      // 2. Synthesize from orders table to guarantee 100% visibility across edge isolates
+      try {
+        let ordQuery = sb.from("orders").select("*").order("created_at", { ascending: false });
+        if (options?.orderId) {
+          ordQuery = ordQuery.eq("id", options.orderId);
+        }
+        const { data: dbOrders } = await ordQuery;
+        if (dbOrders && dbOrders.length > 0) {
+          for (const o of dbOrders) {
+            if (!list.some((l) => l.orderId === o.id)) {
+              const notes = o.notes || "";
+              const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
+              const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
+              const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
+
+              list.push({
+                id: `psub_${o.id}`,
+                orderId: o.id,
+                paymentMethod: o.payment_method || "UBL Bank Transfer",
+                senderName: senderMatch ? senderMatch[1].trim() : o.customer_name,
+                senderCountry: senderMatch ? senderMatch[2].trim() : o.country,
+                provider: senderMatch ? senderMatch[3].trim() : "UBL Bank Transfer",
+                amountSent: Number(o.total_amount),
+                currencySent: "GBP",
+                transferReference: refMatch ? refMatch[1].trim() : `REF-${o.id}`,
+                transferDate: o.created_at ? o.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+                receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "",
+                receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "receipt.jpg",
+                receiptMimeType: "image/jpeg",
+                receiptFileSize: 1024,
+                status: o.status === "completed" || o.status === "confirmed" ? "payment_verified" : (o.status as any || "payment_submitted"),
+                customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
+                createdAt: o.created_at,
+                updatedAt: o.updated_at || o.created_at,
+              });
+            }
+          }
+        }
+      } catch {}
     }
   } catch {}
 
