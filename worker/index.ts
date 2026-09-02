@@ -28,6 +28,18 @@ interface ExecutionContext {
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // 0. Expose Cloudflare env globally across route handlers
+    (globalThis as any).env = env;
+    if (env && typeof env === "object") {
+      (globalThis as any).process = (globalThis as any).process || { env: {} };
+      (globalThis as any).process.env = (globalThis as any).process.env || {};
+      for (const [k, v] of Object.entries(env)) {
+        if (typeof v === "string") {
+          (globalThis as any).process.env[k] = v;
+        }
+      }
+    }
+
     const url = new URL(request.url);
 
     // 1. 301 Permanent Redirect: www.sialkotcricketkits.com -> sialkotcricketkits.com
