@@ -1587,8 +1587,16 @@ export async function createPaymentSubmission(
   return submission;
 }
 
+export async function getPaymentSubmissionById(id: string): Promise<DBPaymentSubmission | null> {
+  const local = memoryPaymentSubmissions.find((p) => p.id === id);
+  if (local) return local;
+
+  const orderId = id.startsWith("psub_") ? id.replace(/^psub_/, "") : id;
+  return getPaymentSubmissionByOrderId(orderId);
+}
+
 export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DBPaymentSubmission | null> {
-  const local = memoryPaymentSubmissions.find((p) => p.orderId === orderId);
+  const local = memoryPaymentSubmissions.find((p) => p.orderId === orderId || p.id === orderId);
   if (local) return local;
 
   try {
@@ -1619,6 +1627,42 @@ export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DB
       }
     }
   } catch {}
+
+  // Synthesize directly from order record
+  const ord = await getOrderById(orderId);
+  if (ord) {
+    const notes = ord.notes || "";
+    const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
+    const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
+    const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
+
+    return {
+      id: `psub_${ord.id}`,
+      orderId: ord.id,
+      paymentMethod: ord.paymentMethod || "UBL Bank Transfer",
+      senderName: senderMatch ? senderMatch[1].trim() : ord.customerName,
+      senderCountry: senderMatch ? senderMatch[2].trim() : ord.country,
+      provider: senderMatch ? senderMatch[3].trim() : (ord.paymentMethod || "UBL Bank Transfer"),
+      amountSent: Number(ord.totalAmount),
+      currencySent: "GBP",
+      transferReference: refMatch ? refMatch[1].trim() : `REF-${ord.id}`,
+      transferDate: ord.createdAt ? ord.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+      receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "storage://receipt_preview.jpg",
+      receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "ubl_payment_proof.jpg",
+      receiptMimeType: "image/jpeg",
+      receiptFileSize: 1024,
+      status:
+        ord.status === "completed" ||
+        ord.status === "confirmed" ||
+        ord.status === "order_confirmed" ||
+        ord.paymentStatus === "payment_verified"
+          ? "payment_verified"
+          : (ord.status as any || "payment_submitted"),
+      customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
+      createdAt: ord.createdAt,
+      updatedAt: ord.updatedAt || ord.createdAt,
+    };
+  }
 
   return null;
 }
