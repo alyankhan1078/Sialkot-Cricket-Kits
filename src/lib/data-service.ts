@@ -1487,15 +1487,106 @@ export async function createPaymentSubmission(
     createdAt: new Date().toISOString(),
   });
 
+  // Sync to Supabase
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("payment_submissions").upsert({
+        id: submission.id,
+        order_id: submission.orderId,
+        payment_method: submission.paymentMethod,
+        sender_name: submission.senderName,
+        sender_country: submission.senderCountry,
+        provider: submission.provider,
+        amount_sent: submission.amountSent,
+        currency_sent: submission.currencySent,
+        transfer_reference: submission.transferReference,
+        transfer_date: submission.transferDate,
+        receipt_storage_path: submission.receiptStoragePath,
+        receipt_original_name: submission.receiptOriginalName,
+        receipt_mime_type: submission.receiptMimeType,
+        receipt_file_size: submission.receiptFileSize,
+        status: submission.status,
+        customer_note: submission.customerNote || null,
+        created_at: submission.createdAt,
+        updated_at: submission.updatedAt,
+      }, { onConflict: "id" });
+    }
+  } catch {}
+
   return submission;
 }
 
 export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DBPaymentSubmission | null> {
-  return memoryPaymentSubmissions.find((p) => p.orderId === orderId) || null;
+  const local = memoryPaymentSubmissions.find((p) => p.orderId === orderId);
+  if (local) return local;
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb.from("payment_submissions").select("*").eq("order_id", orderId).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          orderId: data.order_id,
+          paymentMethod: data.payment_method,
+          senderName: data.sender_name,
+          senderCountry: data.sender_country,
+          provider: data.provider,
+          amountSent: Number(data.amount_sent),
+          currencySent: data.currency_sent,
+          transferReference: data.transfer_reference,
+          transferDate: data.transfer_date,
+          receiptStoragePath: data.receipt_storage_path,
+          receiptOriginalName: data.receipt_original_name,
+          receiptMimeType: data.receipt_mime_type,
+          receiptFileSize: Number(data.receipt_file_size || 0),
+          status: data.status,
+          customerNote: data.customer_note || undefined,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+      }
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function getPaymentSubmissionById(id: string): Promise<DBPaymentSubmission | null> {
-  return memoryPaymentSubmissions.find((p) => p.id === id) || null;
+  const local = memoryPaymentSubmissions.find((p) => p.id === id);
+  if (local) return local;
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb.from("payment_submissions").select("*").eq("id", id).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          orderId: data.order_id,
+          paymentMethod: data.payment_method,
+          senderName: data.sender_name,
+          senderCountry: data.sender_country,
+          provider: data.provider,
+          amountSent: Number(data.amount_sent),
+          currencySent: data.currency_sent,
+          transferReference: data.transfer_reference,
+          transferDate: data.transfer_date,
+          receiptStoragePath: data.receipt_storage_path,
+          receiptOriginalName: data.receipt_original_name,
+          receiptMimeType: data.receipt_mime_type,
+          receiptFileSize: Number(data.receipt_file_size || 0),
+          status: data.status,
+          customerNote: data.customer_note || undefined,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+      }
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function getPaymentSubmissions(options?: {
@@ -1504,6 +1595,48 @@ export async function getPaymentSubmissions(options?: {
   orderId?: string;
 }): Promise<DBPaymentSubmission[]> {
   let list = [...memoryPaymentSubmissions];
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      let query = sb.from("payment_submissions").select("*").order("created_at", { ascending: false });
+      if (options?.status && options.status !== "all") {
+        query = query.eq("status", options.status);
+      }
+      if (options?.orderId) {
+        query = query.eq("order_id", options.orderId);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const mapped: DBPaymentSubmission[] = data.map((d: any) => ({
+          id: d.id,
+          orderId: d.order_id,
+          paymentMethod: d.payment_method,
+          senderName: d.sender_name,
+          senderCountry: d.sender_country,
+          provider: d.provider,
+          amountSent: Number(d.amount_sent),
+          currencySent: d.currency_sent,
+          transferReference: d.transfer_reference,
+          transferDate: d.transfer_date,
+          receiptStoragePath: d.receipt_storage_path,
+          receiptOriginalName: d.receipt_original_name,
+          receiptMimeType: d.receipt_mime_type,
+          receiptFileSize: Number(d.receipt_file_size || 0),
+          status: d.status,
+          customerNote: d.customer_note || undefined,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+
+        for (const m of mapped) {
+          if (!list.some((l) => l.id === m.id)) {
+            list.push(m);
+          }
+        }
+      }
+    }
+  } catch {}
 
   if (options?.status && options.status !== "all") {
     list = list.filter((p) => p.status === options.status);
@@ -1527,51 +1660,123 @@ export async function getPaymentSubmissions(options?: {
   return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function verifyPaymentSubmission(
+export async function verifyAndConfirmOrder(
   submissionId: string,
   adminEmail: string,
   note?: string
-): Promise<{ success: boolean; submission?: DBPaymentSubmission; error?: string }> {
-  const index = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId);
-  if (index === -1) {
-    return { success: false, error: "Payment submission not found" };
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; order?: DBOrder; error?: string; alreadyConfirmed?: boolean }> {
+  const subIndex = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId || p.orderId === submissionId);
+  if (subIndex === -1) {
+    return { success: false, error: "Payment submission record not found." };
   }
 
-  const oldStatus = memoryPaymentSubmissions[index].status;
+  const submission = memoryPaymentSubmissions[subIndex];
+  const orderId = submission.orderId;
+  const existingOrder = await getOrderById(orderId);
+
+  if (!existingOrder) {
+    return { success: false, error: "Associated order could not be found." };
+  }
+
+  const alreadyConfirmed = existingOrder.status === "order_confirmed" || existingOrder.paymentStatus === "payment_verified";
   const nowStr = new Date().toISOString();
 
-  memoryPaymentSubmissions[index] = {
-    ...memoryPaymentSubmissions[index],
+  // 1. Update Payment Submission
+  memoryPaymentSubmissions[subIndex] = {
+    ...submission,
     status: "payment_verified",
     verifiedBy: adminEmail,
     verifiedAt: nowStr,
     updatedAt: nowStr,
   };
 
-  const submission = memoryPaymentSubmissions[index];
-
-  // Update associated Order
-  await updateOrder(submission.orderId, {
+  // 2. Update Associated Order
+  const updatedOrder = await updateOrder(orderId, {
     paymentStatus: "payment_verified",
-    status: "payment_verified",
+    status: "order_confirmed",
+    fulfilmentStatus: "processing",
     paidAt: nowStr,
-    amountPaid: submission.amountSent,
-    notes: `${memoryOrders.find(o => o.id === submission.orderId)?.notes || ""}\n[Admin Verified]: Payment verified in official UBL account by ${adminEmail} on ${new Date().toLocaleString()} (Ref: ${submission.transferReference})`
+    amountPaid: submission.amountSent || existingOrder.depositAmount || existingOrder.totalAmount,
+    notes: `${existingOrder.notes || ""}\n[Admin Verified]: Payment verified in official UBL account by ${adminEmail} on ${new Date().toLocaleString()} (Ref: ${submission.transferReference})`
+  });
+
+  // 3. Record Audit History
+  memoryPaymentStatusHistory.unshift({
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: submission.id,
+    orderId: submission.orderId,
+    oldStatus: submission.status,
+    newStatus: "payment_verified",
+    changedBy: adminEmail,
+    internalNote: note || "Verified by admin against official UBL bank records; order confirmed",
+    createdAt: nowStr,
+  });
+
+  // 4. Dispatch Automated Confirmation Notifications if not already confirmed
+  if (!alreadyConfirmed && updatedOrder) {
+    try {
+      const { sendOrderConfirmedNotifications } = await import("./notifications.ts");
+      sendOrderConfirmedNotifications(updatedOrder).catch((err) => {
+        console.warn("[Confirmation Notification Dispatch Notice]:", err);
+      });
+    } catch {}
+  }
+
+  return {
+    success: true,
+    submission: memoryPaymentSubmissions[subIndex],
+    order: updatedOrder || existingOrder,
+    alreadyConfirmed,
+  };
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  newStatus: string,
+  adminEmail: string,
+  note?: string
+): Promise<{ success: boolean; order?: DBOrder; error?: string }> {
+  const existingOrder = await getOrderById(orderId);
+  if (!existingOrder) {
+    return { success: false, error: "Order not found." };
+  }
+
+  const nowStr = new Date().toISOString();
+  const updatedNotes = note
+    ? `${existingOrder.notes || ""}\n[${new Date().toLocaleDateString()}] Status changed to ${newStatus} by ${adminEmail}: ${note}`
+    : existingOrder.notes;
+
+  const updatedOrder = await updateOrder(orderId, {
+    status: newStatus as any,
+    notes: updatedNotes,
+    updatedAt: nowStr,
   });
 
   // Record audit history
   memoryPaymentStatusHistory.unshift({
     id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
-    paymentSubmissionId: submission.id,
-    orderId: submission.orderId,
-    oldStatus,
-    newStatus: "payment_verified",
+    paymentSubmissionId: existingOrder.paymentSubmissionId || `psub_${orderId}`,
+    orderId,
+    oldStatus: existingOrder.status,
+    newStatus: newStatus as any,
     changedBy: adminEmail,
-    internalNote: note || "Verified by admin against official UBL bank records",
+    internalNote: note || `Order status updated to ${newStatus}`,
     createdAt: nowStr,
   });
 
-  return { success: true, submission };
+  return {
+    success: true,
+    order: updatedOrder || existingOrder,
+  };
+}
+
+export async function verifyPaymentSubmission(
+  submissionId: string,
+  adminEmail: string,
+  note?: string
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; error?: string }> {
+  const res = await verifyAndConfirmOrder(submissionId, adminEmail, note);
+  return { success: res.success, submission: res.submission, error: res.error };
 }
 
 export async function rejectPaymentSubmission(

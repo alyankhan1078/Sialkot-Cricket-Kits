@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
-import { getPaymentSubmissions, getPaymentStatusHistory, checkDuplicateTransferReference } from "@/src/lib/data-service";
+import {
+  getPaymentSubmissions,
+  getPaymentStatusHistory,
+  checkDuplicateTransferReference,
+  getOrderById,
+} from "@/src/lib/data-service";
+import { getNotificationLogsForOrder } from "@/src/lib/notifications";
 
 export async function GET(request: NextRequest) {
   if (!validateAdminSessionFromRequest(request)) {
@@ -15,16 +21,23 @@ export async function GET(request: NextRequest) {
 
     const submissions = await getPaymentSubmissions({ status, search, orderId });
 
-    // Enrich with duplicate reference checks and latest history
+    // Enrich with duplicate reference checks, associated order data, and notification logs
     const enriched = await Promise.all(
       submissions.map(async (sub) => {
-        const duplicateInfo = await checkDuplicateTransferReference(sub.transferReference, sub.orderId);
-        const history = await getPaymentStatusHistory(sub.id);
+        const [duplicateInfo, history, order, notificationLogs] = await Promise.all([
+          checkDuplicateTransferReference(sub.transferReference, sub.orderId),
+          getPaymentStatusHistory(sub.id),
+          getOrderById(sub.orderId),
+          getNotificationLogsForOrder(sub.orderId),
+        ]);
+
         return {
           ...sub,
           isDuplicateReference: duplicateInfo.isDuplicate,
           duplicateMatchedOrders: duplicateInfo.matchedOrders,
           history,
+          order,
+          notificationLogs,
         };
       })
     );

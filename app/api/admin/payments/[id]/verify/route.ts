@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
-import { verifyPaymentSubmission, getOrderById } from "@/src/lib/data-service";
-import { sendOrderConfirmationEmail } from "@/src/lib/email";
+import { verifyAndConfirmOrder } from "@/src/lib/data-service";
+import { sendOrderConfirmedNotifications } from "@/src/lib/notifications";
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ success: false, error: "Unauthorized access" }, { status: 401 });
   }
 
   try {
@@ -26,27 +26,33 @@ export async function POST(
       );
     }
 
-    const verifiedAdmin = adminEmail || "admin@sialkotcricketkits.co.uk";
-    const result = await verifyPaymentSubmission(id, verifiedAdmin, note);
+    const verifiedAdmin = adminEmail || "sialkotcricketkits@gmail.com";
+    const result = await verifyAndConfirmOrder(id, verifiedAdmin, note);
 
     if (!result.success || !result.submission) {
-      return NextResponse.json({ success: false, error: result.error || "Verification failed" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: result.error || "Payment verification failed" },
+        { status: 400 }
+      );
     }
 
-    // Trigger updated confirmation email
-    const order = await getOrderById(result.submission.orderId);
-    if (order) {
-      sendOrderConfirmationEmail(order).catch(() => {});
+    // Trigger confirmation notifications (Email + WhatsApp) if not already confirmed
+    if (!result.alreadyConfirmed && result.order) {
+      sendOrderConfirmedNotifications(result.order).catch((err) => {
+        console.warn("[Admin Verification Notification Dispatch Notice]:", err);
+      });
     }
 
     return NextResponse.json({
       success: true,
       data: result.submission,
-      message: "Payment successfully verified against UBL account records.",
+      order: result.order,
+      alreadyConfirmed: result.alreadyConfirmed,
+      message: "Payment successfully verified. Order status updated to Order Confirmed.",
     });
   } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: err?.message || "Internal server error during verification" },
+      { success: false, error: err?.message || "Internal server error during payment verification" },
       { status: 500 }
     );
   }

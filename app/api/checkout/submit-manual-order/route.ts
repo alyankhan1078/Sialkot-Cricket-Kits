@@ -476,10 +476,11 @@ export async function POST(request: Request) {
       console.warn("[Payment Submission Record Notice]:", psubErr);
     }
 
-    // ── Asynchronous Email Notification (Never blocks or crashes order return) ──
+    // ── Asynchronous Multi-Channel Notifications (Customer & Admin Email + WhatsApp) ──
     try {
-      sendOrderConfirmationEmail(newOrder).catch((err) => {
-        console.warn("[Order Confirmation Email Dispatch Notice]:", err);
+      const { sendOrderReceivedNotifications } = await import("@/src/lib/notifications");
+      sendOrderReceivedNotifications(newOrder, paymentSubmission).catch((err) => {
+        console.warn("[Order Received Notification Dispatch Notice]:", err);
       });
     } catch {}
 
