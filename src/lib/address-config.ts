@@ -31,6 +31,35 @@ export const PAKISTAN_PROVINCES: StateInfo[] = [
   { code: "AJK", name: "Azad Jammu and Kashmir" },
 ];
 
+export function inferProvinceFromCity(cityName?: string | null): string | null {
+  if (!cityName) return null;
+  const c = cityName.trim().toLowerCase();
+  
+  if (/sialkot|lahore|rawalpindi|faisalabad|multan|gujranwala|bahawalpur|sargodha|sahiwal|sheikhupura|jhelum|gujrat|kasur|rahim yar khan|okara|ch определя|attock|mianwali|chakwal/i.test(c)) {
+    return "Punjab";
+  }
+  if (/karachi|hyderabad|sukkur|larkana|nawabshah|mirpur khas|thatta|jacobabad|shikarpur/i.test(c)) {
+    return "Sindh";
+  }
+  if (/peshawar|abbottabad|mardan|swat|kohat|dera ismail khan|haripur|nowshera|charsadda|bannu/i.test(c)) {
+    return "Khyber Pakhtunkhwa";
+  }
+  if (/quetta|gwadar|turbat|khuzdar|chaman|sibi|hub|zhob/i.test(c)) {
+    return "Balochistan";
+  }
+  if (/islamabad/i.test(c)) {
+    return "Islamabad Capital Territory";
+  }
+  if (/muzaffarabad|mirpur|rawalakot|kotli|bhimber/i.test(c)) {
+    return "Azad Jammu and Kashmir";
+  }
+  if (/gilgit|skardu|hunza|diamer/i.test(c)) {
+    return "Gilgit-Baltistan";
+  }
+  return null;
+}
+
+
 // 2. United States 50 States + DC
 export const US_STATES: StateInfo[] = [
   { code: "AL", name: "Alabama" },

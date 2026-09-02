@@ -174,6 +174,7 @@ export async function POST(request: Request) {
       countryCode: countryCode,
       address: address,
       city: city,
+      state: state,
       stateProvince: state,
       postalCode: postalCode,
       policiesAccepted: policiesAccepted,

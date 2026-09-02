@@ -15,7 +15,7 @@ import {
   extractDialCode,
   type PhoneCountryCode,
 } from "./phone-codes.ts";
-import { getAddressConfig, type CountryAddressConfig } from "./address-config.ts";
+import { getAddressConfig, inferProvinceFromCity, type CountryAddressConfig } from "./address-config.ts";
 
 export interface ValidationResult<T = string> {
   valid: boolean;
@@ -43,8 +43,10 @@ export interface CheckoutCustomerInput {
   address: string;
   city: string;
   state?: string;
+  stateProvince?: string;
   postalCode?: string;
   deliveryInstructions?: string;
+  policiesAccepted?: boolean;
 }
 
 export interface CheckoutValidationOutcome {
@@ -383,13 +385,19 @@ export function validateCity(rawCity: string | null | undefined): ValidationResu
  */
 export function validateState(
   rawState: string | null | undefined,
-  countryCode?: string | null | undefined
+  countryCode?: string | null | undefined,
+  cityName?: string | null | undefined
 ): ValidationResult<string> {
   const config = getAddressConfig(countryCode);
-  const state = (rawState || "").trim().replace(/\s+/g, " ");
+  let state = (rawState || "").trim().replace(/\s+/g, " ");
 
   if (config.requiresState) {
     if (!state) {
+      // Automatic province inference for Pakistan cities
+      const inferred = inferProvinceFromCity(cityName);
+      if (inferred) {
+        return { valid: true, normalized: inferred };
+      }
       return { valid: false, error: "Please enter or select your state, region or county." };
     }
     if (state.length < 2 || state.length > 80) {
@@ -407,6 +415,12 @@ export function validateState(
       return { valid: false, error: "State/Region is invalid or too long." };
     }
     return { valid: true, normalized: state };
+  }
+
+  // Auto-fill inferred province if available even if optional
+  const inferredOpt = inferProvinceFromCity(cityName);
+  if (inferredOpt) {
+    return { valid: true, normalized: inferredOpt };
   }
 
   return { valid: true, normalized: "" };
@@ -518,7 +532,8 @@ export function validateCheckoutCustomerInfo(data: CheckoutCustomerInput): Check
   }
 
   // 7. State / Region
-  const stateRes = validateState(data.state, resolvedCountryCode);
+  const stateInput = (data.state || data.stateProvince || "").trim();
+  const stateRes = validateState(stateInput, resolvedCountryCode, data.city);
   if (!stateRes.valid && stateRes.error) {
     errors.state = stateRes.error;
   }

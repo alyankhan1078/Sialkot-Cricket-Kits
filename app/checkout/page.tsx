@@ -60,7 +60,7 @@ import {
   validateState,
   validatePostalCode,
 } from "@/src/lib/validation";
-import { getAddressConfig } from "@/src/lib/address-config";
+import { getAddressConfig, inferProvinceFromCity } from "@/src/lib/address-config";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -95,18 +95,26 @@ export default function CheckoutPage() {
   const addressConfig = getAddressConfig(formData.countryCode);
 
   const handleFieldChange = (field: string, value: string) => {
-    const updated = { ...formData, [field]: value };
+    let updated = { ...formData, [field]: value };
+    if (field === "city" && !formData.state) {
+      const inferred = inferProvinceFromCity(value);
+      if (inferred) {
+        updated.state = inferred;
+      }
+    }
     setFormData(updated);
     // If the field becomes valid while typing, immediately clear its error
     const outcome = validateCheckoutCustomerInfo(updated);
-    if (!outcome.errors[field]) {
-      setFieldErrors((prev) => {
-        if (!prev[field]) return prev;
-        const next = { ...prev };
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (!outcome.errors[field]) {
         delete next[field];
-        return next;
-      });
-    }
+      }
+      if (updated.state && !outcome.errors.state) {
+        delete next.state;
+      }
+      return next;
+    });
   };
 
   const handleFieldBlur = (field: string) => {
