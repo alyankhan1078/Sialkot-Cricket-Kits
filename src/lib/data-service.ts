@@ -1624,100 +1624,20 @@ export async function getPaymentSubmissions(options?: {
   search?: string;
   orderId?: string;
 }): Promise<DBPaymentSubmission[]> {
-  const list: DBPaymentSubmission[] = [...memoryPaymentSubmissions];
+  const allOrders = await getOrders();
+  const list: DBPaymentSubmission[] = [];
 
-  // 1. Fetch from Supabase payment_submissions table if available
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      let query = sb.from("payment_submissions").select("*").order("created_at", { ascending: false });
-      if (options?.status && options.status !== "all") {
-        query = query.eq("status", options.status);
-      }
-      if (options?.orderId) {
-        query = query.eq("order_id", options.orderId);
-      }
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        for (const d of data) {
-          if (!list.some((l) => l.id === d.id)) {
-            list.push({
-              id: d.id,
-              orderId: d.order_id,
-              paymentMethod: d.payment_method,
-              senderName: d.sender_name,
-              senderCountry: d.sender_country,
-              provider: d.provider,
-              amountSent: Number(d.amount_sent),
-              currencySent: d.currency_sent,
-              transferReference: d.transfer_reference,
-              transferDate: d.transfer_date,
-              receiptStoragePath: d.receipt_storage_path,
-              receiptOriginalName: d.receipt_original_name,
-              receiptMimeType: d.receipt_mime_type,
-              receiptFileSize: Number(d.receipt_file_size || 0),
-              status: d.status,
-              customerNote: d.customer_note || undefined,
-              createdAt: d.created_at,
-              updatedAt: d.updated_at,
-            });
-          }
-        }
-      }
-    }
-  } catch {}
+  for (const o of allOrders) {
+    const notes = o.notes || "";
+    const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
+    const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
+    const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
 
-  // 2. Fetch from Supabase orders table
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      let ordQuery = sb.from("orders").select("*").order("created_at", { ascending: false });
-      if (options?.orderId) {
-        ordQuery = ordQuery.eq("id", options.orderId);
-      }
-      const { data: dbOrders, error: ordErr } = await ordQuery;
-      if (!ordErr && dbOrders && dbOrders.length > 0) {
-        for (const o of dbOrders) {
-          if (!list.some((l) => l.orderId === o.id)) {
-            const notes = o.notes || "";
-            const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
-            const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
-            const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
+    const explicitSub = memoryPaymentSubmissions.find((p) => p.orderId === o.id);
 
-            list.push({
-              id: `psub_${o.id}`,
-              orderId: o.id,
-              paymentMethod: o.payment_method || "UBL Bank Transfer",
-              senderName: senderMatch ? senderMatch[1].trim() : o.customer_name,
-              senderCountry: senderMatch ? senderMatch[2].trim() : o.country,
-              provider: senderMatch ? senderMatch[3].trim() : "UBL Bank Transfer",
-              amountSent: Number(o.total_amount),
-              currencySent: "GBP",
-              transferReference: refMatch ? refMatch[1].trim() : `REF-${o.id}`,
-              transferDate: o.created_at ? o.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
-              receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "",
-              receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "receipt.jpg",
-              receiptMimeType: "image/jpeg",
-              receiptFileSize: 1024,
-              status: o.status === "completed" || o.status === "confirmed" || o.status === "order_confirmed" ? "payment_verified" : (o.status as any || "payment_submitted"),
-              customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
-              createdAt: o.created_at,
-              updatedAt: o.updated_at || o.created_at,
-            });
-          }
-        }
-      }
-    }
-  } catch {}
-
-  // 3. Synthesize from memoryOrders
-  for (const o of memoryOrders) {
-    if (!list.some((l) => l.orderId === o.id)) {
-      const notes = o.notes || "";
-      const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
-      const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
-      const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
-
+    if (explicitSub) {
+      list.push(explicitSub);
+    } else {
       list.push({
         id: `psub_${o.id}`,
         orderId: o.id,
@@ -1729,11 +1649,17 @@ export async function getPaymentSubmissions(options?: {
         currencySent: "GBP",
         transferReference: refMatch ? refMatch[1].trim() : `REF-${o.id}`,
         transferDate: o.createdAt ? o.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
-        receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : (o.paymentMethod?.includes("Bank") ? "storage://receipt_preview.jpg" : ""),
+        receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "storage://receipt_preview.jpg",
         receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "ubl_payment_proof.jpg",
         receiptMimeType: "image/jpeg",
         receiptFileSize: 1024,
-        status: o.status === "completed" || o.status === "confirmed" || o.paymentStatus === "payment_verified" ? "payment_verified" : (o.status as any || "payment_submitted"),
+        status:
+          o.status === "completed" ||
+          o.status === "confirmed" ||
+          o.status === "order_confirmed" ||
+          o.paymentStatus === "payment_verified"
+            ? "payment_verified"
+            : (o.status as any || "payment_submitted"),
         customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt || o.createdAt,
