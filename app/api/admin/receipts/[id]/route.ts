@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
 import { getPaymentSubmissionById, getPaymentSubmissionByOrderId } from "@/src/lib/data-service";
 import { getAdminSupabase } from "@/src/lib/supabase";
-import path from "path";
-import fs from "fs/promises";
 
 export async function GET(
   request: NextRequest,
@@ -31,16 +29,27 @@ export async function GET(
   // 3. If stored in Supabase Storage
   if (storagePath.startsWith("supabase://")) {
     try {
-      const fileName = storagePath.replace("supabase://", "");
+      const rawPath = storagePath.replace("supabase://", "");
+      let bucket = "receipts";
+      let filePath = rawPath;
+
+      if (rawPath.startsWith("products/")) {
+        bucket = "products";
+        filePath = rawPath.replace("products/", "");
+      } else if (rawPath.startsWith("receipts/")) {
+        bucket = "receipts";
+        filePath = rawPath.replace("receipts/", "");
+      }
+
       const sb = getAdminSupabase();
       if (sb) {
-        const { data: blob, error } = await sb.storage.from("receipts").download(fileName);
+        const { data: blob, error } = await sb.storage.from(bucket).download(filePath);
         if (!error && blob) {
           const arrayBuffer = await blob.arrayBuffer();
-          return new NextResponse(Buffer.from(arrayBuffer), {
+          return new NextResponse(arrayBuffer, {
             headers: {
               "Content-Type": submission.receiptMimeType || blob.type || "image/jpeg",
-              "Content-Disposition": `inline; filename="${submission.receiptOriginalName || fileName}"`,
+              "Content-Disposition": `inline; filename="${submission.receiptOriginalName || filePath}"`,
               "Cache-Control": "private, max-age=3600",
             },
           });
@@ -59,9 +68,14 @@ export async function GET(
     }
 
     const mimeType = matches[1];
-    const buffer = Buffer.from(matches[2], "base64");
+    const binaryStr = atob(matches[2]);
+    const len = binaryStr.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
 
-    return new NextResponse(buffer, {
+    return new NextResponse(bytes, {
       headers: {
         "Content-Type": mimeType,
         "Content-Disposition": `inline; filename="${submission.receiptOriginalName || "receipt"}"`,
@@ -70,22 +84,5 @@ export async function GET(
     });
   }
 
-  // 4. If stored on disk in private_receipts
-  try {
-    // Prevent path traversal attacks
-    const sanitizedFileName = path.basename(storagePath);
-    const fullPath = path.join(process.cwd(), "private_receipts", sanitizedFileName);
-    const fileBuffer = await fs.readFile(fullPath);
-
-    return new NextResponse(fileBuffer, {
-      headers: {
-        "Content-Type": submission.receiptMimeType || "image/jpeg",
-        "Content-Disposition": `inline; filename="${submission.receiptOriginalName || sanitizedFileName}"`,
-        "Cache-Control": "private, max-age=3600",
-      },
-    });
-  } catch (err) {
-    console.error("[Receipt Read Error]:", err);
-    return NextResponse.json({ error: "Failed to load receipt from private storage" }, { status: 404 });
-  }
+  return NextResponse.json({ error: "Receipt stored in external bucket or reference is unavailable." }, { status: 404 });
 }

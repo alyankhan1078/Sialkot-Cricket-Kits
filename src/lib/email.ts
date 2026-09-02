@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { formatPrice } from "@/src/data/products";
 import type { DBOrder } from "@/src/lib/data-service";
 
@@ -139,26 +138,31 @@ export async function sendOrderConfirmationEmail(order: DBOrder): Promise<{ succ
     const recipients = [order.customerEmail, "sialkotcricketkits@gmail.com"].filter(Boolean).join(", ");
 
     if (smtpHost && smtpUser && smtpPass) {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
+      try {
+        const nodemailer = await import("nodemailer");
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
 
-      await transporter.sendMail({
-        from: smtpFrom,
-        to: order.customerEmail || "sialkotcricketkits@gmail.com",
-        bcc: "sialkotcricketkits@gmail.com",
-        subject: `🏏 Order Confirmation #${order.id} — Sialkot Cricket Kits`,
-        html: htmlContent,
-      });
+        await transporter.sendMail({
+          from: smtpFrom,
+          to: order.customerEmail || "sialkotcricketkits@gmail.com",
+          bcc: "sialkotcricketkits@gmail.com",
+          subject: `🏏 Order Confirmation #${order.id} — Sialkot Cricket Kits`,
+          html: htmlContent,
+        });
 
-      console.log(`[Email] Order confirmation sent via SMTP to: ${recipients}`);
-      return { success: true };
+        console.log(`[Email] Order confirmation sent via SMTP to: ${recipients}`);
+        return { success: true };
+      } catch (smtpErr) {
+        console.warn("[Email SMTP Notice]:", smtpErr);
+      }
     }
 
     // Check for Resend API Key

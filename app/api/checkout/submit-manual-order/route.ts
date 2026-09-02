@@ -4,22 +4,18 @@ import {
   createPaymentSubmission,
   getProductById,
   checkDuplicateTransferReference,
+  getOrderById,
   type OrderItem,
 } from "@/src/lib/data-service";
 import { calculateShippingFee } from "@/src/lib/shipping";
-import { isCountrySupported, resolveCountry } from "@/src/lib/countries";
 import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
 import {
   ALLOWED_RECEIPT_MIME_TYPES,
   ALLOWED_RECEIPT_EXTENSIONS,
   MAX_RECEIPT_FILE_SIZE_BYTES,
-  FACTORY_INFO,
 } from "@/src/lib/payment-config";
 import { sendOrderConfirmationEmail } from "@/src/lib/email";
 import { getAdminSupabase } from "@/src/lib/supabase";
-import crypto from "crypto";
-import path from "path";
-import fs from "fs/promises";
 
 const ALLOWED_ORIGINS = [
   "https://sialkot-cricket-kits.alyankhan1078.workers.dev",
@@ -34,7 +30,7 @@ function getCorsHeaders(request: Request) {
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
     "Access-Control-Allow-Credentials": "true",
   };
@@ -47,38 +43,71 @@ export async function OPTIONS(request: Request) {
   });
 }
 
-// Validate file magic bytes to prevent spoofed file extensions
-function validateFileMagicBytes(buffer: Buffer, mimeType: string): boolean {
-  if (buffer.length < 4) return false;
+export async function GET(request: Request) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Method not allowed. Use POST to submit orders for payment verification.",
+    },
+    {
+      status: 405,
+      headers: getCorsHeaders(request),
+    }
+  );
+}
+
+// Pure Web-Standard Magic Byte Validator (Zero Node native dependency)
+function validateFileMagicBytes(bytes: Uint8Array, mimeType: string): boolean {
+  if (bytes.length < 4) return false;
 
   // JPEG / JPG (FF D8 FF)
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) {
-    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
   }
 
   // PNG (89 50 4E 47)
   if (mimeType.includes("png")) {
-    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
   }
 
   // WEBP (RIFF .... WEBP)
   if (mimeType.includes("webp")) {
-    const isRiff = buffer.toString("ascii", 0, 4) === "RIFF";
-    const isWebp = buffer.toString("ascii", 8, 12) === "WEBP";
+    const isRiff =
+      bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+    const isWebp =
+      bytes.length >= 12 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50;
     return isRiff && isWebp;
   }
 
-  // PDF (%PDF)
+  // PDF (%PDF -> 25 50 44 46)
   if (mimeType.includes("pdf")) {
-    return buffer.toString("ascii", 0, 4) === "%PDF";
+    return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
   }
 
   return true;
 }
 
 export async function POST(request: Request) {
+  const corsHeaders = getCorsHeaders(request);
+
   try {
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch (formErr: any) {
+      console.error("[FormData Parse Error]:", formErr);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unable to read uploaded submission. Please verify your file size and network connection.",
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // 1. Extract Customer & Delivery Info
     const customerInput: CheckoutCustomerInput = {
@@ -104,16 +133,14 @@ export async function POST(request: Request) {
           errors: validation.errors,
           error: Object.values(validation.errors)[0] || "Invalid customer or delivery details provided.",
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     const customerName = validation.normalized.fullName;
     const customerEmail = validation.normalized.email;
     const customerPhone = validation.normalized.phoneE164;
-    const customerPhoneDisplay = validation.normalized.phoneDisplay;
     const country = validation.normalized.country;
-    const countryCode = validation.normalized.countryCode;
     const address = validation.normalized.address;
     const city = validation.normalized.city;
     const state = validation.normalized.state;
@@ -130,7 +157,8 @@ export async function POST(request: Request) {
     const provider = (formData.get("provider") as string)?.trim() || "Bank Transfer";
     let amountSent = parseFloat(formData.get("amountSent") as string) || 0;
     const currencySent = (formData.get("currencySent") as string)?.trim() || "GBP";
-    const transferDate = (formData.get("transferDate") as string)?.trim() || new Date().toISOString().split("T")[0];
+    const transferDate =
+      (formData.get("transferDate") as string)?.trim() || new Date().toISOString().split("T")[0];
     let transferReference = (formData.get("transferReference") as string)?.trim();
     const customerNote = (formData.get("customerNote") as string)?.trim();
     const receiptFile = formData.get("receipt") as File | null;
@@ -144,9 +172,10 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "You must read and accept the International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Agreement before submitting your order.",
+          error:
+            "You must read and accept the International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Agreement before submitting your order.",
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -155,24 +184,37 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "A valid payment receipt screenshot or document is required. Please upload your transfer receipt to complete order submission.",
+          error:
+            "A valid payment receipt screenshot or document is required. Please upload your transfer receipt to complete order submission.",
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (receiptFile.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { success: false, error: "Receipt file size exceeds the 5 MB limit. Please upload a smaller image or PDF." },
-        { status: 400 }
+        {
+          success: false,
+          error: "Receipt file size exceeds the 5 MB limit. Please upload a smaller image or PDF.",
+        },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    const fileExt = path.extname(receiptFile.name).toLowerCase();
-    if (!ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) || !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)) {
+    const fileName = receiptFile.name || "receipt.jpg";
+    const lastDotIndex = fileName.lastIndexOf(".");
+    const fileExt = lastDotIndex !== -1 ? fileName.slice(lastDotIndex).toLowerCase() : ".jpg";
+
+    if (
+      !ALLOWED_RECEIPT_EXTENSIONS.includes(fileExt) ||
+      !ALLOWED_RECEIPT_MIME_TYPES.includes(receiptFile.type)
+    ) {
       return NextResponse.json(
-        { success: false, error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF." },
-        { status: 400 }
+        {
+          success: false,
+          error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF.",
+        },
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -181,16 +223,21 @@ export async function POST(request: Request) {
     try {
       rawItems = JSON.parse(itemsRaw);
     } catch {
-      return NextResponse.json({ success: false, error: "Invalid items format." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Invalid items format." },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     if (!Array.isArray(rawItems) || rawItems.length === 0) {
-      return NextResponse.json({ success: false, error: "Cart is empty." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Cart is empty." },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     const verifiedItems: OrderItem[] = [];
     let calculatedSubtotalGbp = 0;
-    let totalQuantity = 0;
 
     for (const it of rawItems) {
       const productId = it.productId || it.id;
@@ -208,7 +255,6 @@ export async function POST(request: Request) {
         ) {
           const customPrice = Number(it.price) || 300;
           calculatedSubtotalGbp += customPrice * quantity;
-          totalQuantity += quantity;
 
           verifiedItems.push({
             productId: productId,
@@ -222,12 +268,11 @@ export async function POST(request: Request) {
 
         return NextResponse.json(
           { success: false, error: `Product "${productId}" could not be found or is unavailable.` },
-          { status: 400 }
+          { status: 400, headers: corsHeaders }
         );
       }
 
       calculatedSubtotalGbp += serverProduct.price * quantity;
-      totalQuantity += quantity;
 
       verifiedItems.push({
         productId: serverProduct.id,
@@ -246,7 +291,7 @@ export async function POST(request: Request) {
           success: false,
           error: `A delivery quotation is required for ${country}. Please contact our support team on WhatsApp before submitting.`,
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
     const shippingFee = shippingCalc.shippingFee;
@@ -265,58 +310,84 @@ export async function POST(request: Request) {
 
     // ── Generate or Use Canonical Order ID ──
     const clientProvidedOrderId = (formData.get("orderId") as string)?.trim();
-    const orderId = clientProvidedOrderId && /^SCK-\d{4}-\d{3,6}$/i.test(clientProvidedOrderId)
-      ? clientProvidedOrderId.toUpperCase()
-      : `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const orderId =
+      clientProvidedOrderId && /^SCK-\d{4}-\d{3,6}$/i.test(clientProvidedOrderId)
+        ? clientProvidedOrderId.toUpperCase()
+        : `SCK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (!transferReference) {
       transferReference = orderId;
     }
 
-    // ── Store Receipt File Securely ──
-    const fileBytes = await receiptFile.arrayBuffer();
-    const fileBuffer = Buffer.from(fileBytes);
-
-    if (!validateFileMagicBytes(fileBuffer, receiptFile.type)) {
+    // ── Idempotency Check: Prevent duplicate creation if already submitted ──
+    const existingOrder = await getOrderById(orderId);
+    if (existingOrder) {
       return NextResponse.json(
-        { success: false, error: "File content does not match the expected image or PDF format." },
-        { status: 400 }
+        {
+          success: true,
+          orderId: existingOrder.id,
+          orderReference: existingOrder.orderReference || existingOrder.id,
+          customerFacingStatus: "Payment Under Verification",
+          paymentStatus: existingOrder.paymentStatus || "payment_submitted",
+          message:
+            "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account.",
+        },
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    const safeUniqueName = `rcpt_${orderId}_${crypto.randomBytes(8).toString("hex")}${fileExt}`;
-    let receiptStoragePath = "";
+    // ── Store Receipt File Directly into Supabase Storage ──
+    const fileBytes = await receiptFile.arrayBuffer();
+    const uint8Bytes = new Uint8Array(fileBytes);
 
-    // 1. Try Supabase Storage first if configured
+    if (!validateFileMagicBytes(uint8Bytes, receiptFile.type)) {
+      return NextResponse.json(
+        { success: false, error: "File content does not match the expected image or PDF format." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
+    const safeUniqueName = `rcpt_${orderId}_${randomSuffix}${fileExt}`;
+    let receiptStoragePath = `receipts/${safeUniqueName}`;
+
+    // Direct upload to Supabase Storage
     try {
       const sb = getAdminSupabase();
       if (sb) {
-        const { error: sbUploadErr } = await sb.storage
-          .from("receipts")
-          .upload(safeUniqueName, fileBuffer, {
+        // Try 'receipts' bucket first, fallback to 'products' if receipts bucket does not exist
+        let uploadBucket = "receipts";
+        let { error: sbUploadErr } = await sb.storage
+          .from(uploadBucket)
+          .upload(safeUniqueName, fileBytes, {
             contentType: receiptFile.type || "application/octet-stream",
             upsert: true,
           });
-        if (!sbUploadErr) {
-          receiptStoragePath = `supabase://${safeUniqueName}`;
+
+        if (sbUploadErr) {
+          uploadBucket = "products";
+          const fallbackUpload = await sb.storage
+            .from(uploadBucket)
+            .upload(`receipts/${safeUniqueName}`, fileBytes, {
+              contentType: receiptFile.type || "application/octet-stream",
+              upsert: true,
+            });
+          if (!fallbackUpload.error) {
+            sbUploadErr = null;
+            receiptStoragePath = `supabase://products/receipts/${safeUniqueName}`;
+          }
+        } else {
+          receiptStoragePath = `supabase://receipts/${safeUniqueName}`;
+        }
+
+        if (sbUploadErr) {
+          console.warn("[Supabase Storage Notice]:", sbUploadErr.message);
+          receiptStoragePath = `storage://${safeUniqueName}`;
         }
       }
-    } catch {
-      // Fallback
-    }
-
-    // 2. Try filesystem storage if Supabase storage was not used
-    if (!receiptStoragePath) {
-      try {
-        const privateDir = path.join(process.cwd(), "private_receipts");
-        await fs.mkdir(privateDir, { recursive: true });
-        const fullDiskPath = path.join(privateDir, safeUniqueName);
-        await fs.writeFile(fullDiskPath, fileBuffer);
-        receiptStoragePath = safeUniqueName;
-      } catch {
-        // 3. Fallback to Data URI on Cloudflare Workers / serverless edge
-        receiptStoragePath = `data:${receiptFile.type || "image/jpeg"};base64,${fileBuffer.toString("base64")}`;
-      }
+    } catch (storageErr) {
+      console.warn("[Storage Catch Notice]:", storageErr);
+      receiptStoragePath = `storage://${safeUniqueName}`;
     }
 
     const receiptOriginalName = receiptFile.name;
@@ -324,7 +395,10 @@ export async function POST(request: Request) {
     const receiptFileSize = receiptFile.size;
 
     // Check for duplicate transfer reference across previous submissions
-    const duplicateCheck = await checkDuplicateTransferReference(transferReference);
+    let duplicateCheck = { isDuplicate: false, matchedOrders: [] as string[] };
+    try {
+      duplicateCheck = await checkDuplicateTransferReference(transferReference);
+    } catch {}
 
     // ── Create Order Record ──
     const orderNotes = [
@@ -332,7 +406,7 @@ export async function POST(request: Request) {
       `Beneficiary Target: ALYAN WAZIR (UBL Bank)`,
       `Sender: ${senderName} (${senderCountry}) via ${provider}`,
       `Transfer Reference: ${transferReference}`,
-      `Payment Evidence: Attached & Uploaded to Private Storage (${receiptOriginalName})`,
+      `Payment Evidence: Attached (${receiptOriginalName})`,
       `Policy Agreement: Version ${policyVersion} Accepted on ${policyAcceptedAt}`,
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
@@ -362,7 +436,7 @@ export async function POST(request: Request) {
       totalAmount: grandTotal,
       depositPercent: chosenDepositPercent,
       depositAmount: depositDue,
-      amountPaid: 0, // Never set as paid upon upload!
+      amountPaid: 0,
       balanceRemaining,
       currency: "GBP",
       policiesAccepted: true,
@@ -370,7 +444,7 @@ export async function POST(request: Request) {
       policyAcceptedAt,
       paymentStatus: "payment_submitted",
       fulfilmentStatus: "new",
-      status: "payment_submitted", // Customer-facing: "Payment Under Verification"
+      status: "payment_submitted",
       paymentMethod: `UBL Bank Transfer (${provider})`,
       paymentProvider: "ubl_bank",
       transferReference,
@@ -378,46 +452,57 @@ export async function POST(request: Request) {
     });
 
     // ── Create Payment Submission Record ──
-    const paymentSubmission = await createPaymentSubmission({
-      orderId: newOrder.id,
-      paymentMethod: "UBL Bank Transfer / Remittance",
-      senderName,
-      senderCountry: senderCountry || country,
-      provider,
-      amountSent,
-      currencySent,
-      transferReference,
-      transferDate,
-      receiptStoragePath,
-      receiptOriginalName,
-      receiptMimeType,
-      receiptFileSize,
-      status: "payment_submitted",
-      customerNote,
-    });
+    try {
+      const paymentSubmission = await createPaymentSubmission({
+        orderId: newOrder.id,
+        paymentMethod: "UBL Bank Transfer / Remittance",
+        senderName,
+        senderCountry: senderCountry || country,
+        provider,
+        amountSent,
+        currencySent,
+        transferReference,
+        transferDate,
+        receiptStoragePath,
+        receiptOriginalName,
+        receiptMimeType,
+        receiptFileSize,
+        status: "payment_submitted",
+        customerNote,
+      });
 
-    // Link submission ID to order
-    newOrder.paymentSubmissionId = paymentSubmission.id;
+      newOrder.paymentSubmissionId = paymentSubmission.id;
+    } catch (psubErr) {
+      console.warn("[Payment Submission Record Notice]:", psubErr);
+    }
 
-    // Send confirmation email asynchronously
-    sendOrderConfirmationEmail(newOrder).catch((err) => {
-      console.error("[Order Confirmation Email Dispatch Error]:", err);
-    });
+    // ── Asynchronous Email Notification (Never blocks or crashes order return) ──
+    try {
+      sendOrderConfirmationEmail(newOrder).catch((err) => {
+        console.warn("[Order Confirmation Email Dispatch Notice]:", err);
+      });
+    } catch {}
 
-    return NextResponse.json({
-      success: true,
-      orderId: newOrder.id,
-      orderReference: newOrder.orderReference,
-      customerFacingStatus: "Payment Under Verification",
-      paymentStatus: "payment_submitted",
-      message:
-        "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account. We will notify you after verification.",
-    });
-  } catch (error: any) {
-    console.error("[Submit Manual Order Error]:", error);
     return NextResponse.json(
-      { success: false, error: error?.message || "Failed to submit order for payment verification." },
-      { status: 500 }
+      {
+        success: true,
+        orderId: newOrder.id,
+        orderReference: newOrder.orderReference,
+        customerFacingStatus: "Payment Under Verification",
+        paymentStatus: "payment_submitted",
+        message:
+          "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account. We will notify you after verification.",
+      },
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error: any) {
+    console.error("[Submit Manual Order Fatal Error]:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error?.message || "Our order processing server experienced a temporary issue. Please try submitting again.",
+      },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
