@@ -76,9 +76,8 @@ includeFiles.forEach((file) => {
   }
 });
 
-console.log("Compressing zip archive via PowerShell...");
-const psCommand = `powershell -NoProfile -Command "Compress-Archive -Path '${stageDir}\\*' -DestinationPath '${zipPath}' -Force"`;
-execSync(psCommand, { stdio: "inherit" });
+console.log("Packaging zip archive using native tar...");
+execSync(`tar -caf "${zipName}" -C zip_stage .`, { stdio: "inherit", cwd: rootDir });
 
 // Cleanup staging directory
 fs.rmSync(stageDir, { recursive: true, force: true });

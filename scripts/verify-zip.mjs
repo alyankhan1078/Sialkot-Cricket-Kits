@@ -1,7 +1,10 @@
 import { execSync } from "node:child_process";
 
 const output = execSync("tar -tf sialkot-cricket-kits-latest-production-source.zip", { encoding: "utf-8" });
-const lines = output.split("\n").map((l) => l.trim()).filter(Boolean);
+const lines = output
+  .split("\n")
+  .map((l) => l.trim().replace(/^\.\//, ""))
+  .filter(Boolean);
 
 console.log(`📦 Total entries in ZIP: ${lines.length}`);
 
@@ -23,4 +26,5 @@ if (envMatches.length === 1 && envMatches[0] === ".env.example" && excludedMatch
   console.log("✅ SECURITY AUDIT PASSED: ZIP is 100% clean, safe, and contains zero secrets.");
 } else {
   console.error("❌ SECURITY AUDIT FAILED:", { envMatches, excludedMatches });
+  process.exit(1);
 }
