@@ -1667,41 +1667,6 @@ export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DB
   return null;
 }
 
-export async function getPaymentSubmissionById(id: string): Promise<DBPaymentSubmission | null> {
-  const local = memoryPaymentSubmissions.find((p) => p.id === id);
-  if (local) return local;
-
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      const { data, error } = await sb.from("payment_submissions").select("*").eq("id", id).maybeSingle();
-      if (!error && data) {
-        return {
-          id: data.id,
-          orderId: data.order_id,
-          paymentMethod: data.payment_method,
-          senderName: data.sender_name,
-          senderCountry: data.sender_country,
-          provider: data.provider,
-          amountSent: Number(data.amount_sent),
-          currencySent: data.currency_sent,
-          transferReference: data.transfer_reference,
-          transferDate: data.transfer_date,
-          receiptStoragePath: data.receipt_storage_path,
-          receiptOriginalName: data.receipt_original_name,
-          receiptMimeType: data.receipt_mime_type,
-          receiptFileSize: Number(data.receipt_file_size || 0),
-          status: data.status,
-          customerNote: data.customer_note || undefined,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-      }
-    }
-  } catch {}
-
-  return null;
-}
 
 export async function getPaymentSubmissions(options?: {
   status?: string;
