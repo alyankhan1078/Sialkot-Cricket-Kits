@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "vite",
     "dev:next": "next dev --webpack",
-    "build": "next build",
+    "build": "vite build",
     "build:vite": "vite build",
+    "build:next": "next build",
     "start": "next start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
