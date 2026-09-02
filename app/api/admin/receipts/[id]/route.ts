@@ -5,14 +5,25 @@ import { getAdminSupabase } from "@/src/lib/supabase";
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context?: { params?: Promise<{ id: string }> | { id: string } }
 ) {
   // 1. Authorize Administrator
   if (!validateAdminSessionFromRequest(request)) {
     return NextResponse.json({ error: "Unauthorized access to payment receipts" }, { status: 401 });
   }
 
-  const { id } = await context.params;
+  const rawParams = context?.params ? await context.params : {};
+  let id = rawParams?.id;
+  if (!id) {
+    const segments = new URL(request.url).pathname.split("/").filter(Boolean);
+    id = segments[segments.length - 1];
+  }
+
+  if (!id) {
+    return NextResponse.json({ error: "Receipt ID parameter is required" }, { status: 400 });
+  }
+
+  id = decodeURIComponent(id);
 
   // 2. Find payment submission
   let submission = await getPaymentSubmissionById(id);
@@ -21,7 +32,7 @@ export async function GET(
   }
 
   if (!submission) {
-    return NextResponse.json({ error: "Payment submission not found" }, { status: 404 });
+    return NextResponse.json({ error: "Payment submission record not found" }, { status: 404 });
   }
 
   const storagePath = submission.receiptStoragePath || "";
@@ -43,7 +54,6 @@ export async function GET(
     try {
       const sb = getAdminSupabase();
       if (sb) {
-        // Try receipts bucket
         let { data: blob, error } = await sb.storage.from(bucket).download(filePath);
         if (error && bucket !== "products") {
           const prodResult = await sb.storage.from("products").download(filePath);
@@ -108,7 +118,7 @@ export async function GET(
       <text x="40" y="250" fill="#94a3b8" font-family="sans-serif" font-size="14">Beneficiary Account:</text>
       <text x="220" y="250" fill="#f8fafc" font-family="sans-serif" font-size="14">ALYAN WAZIR (UBL Bank)</text>
       <rect x="40" y="290" width="520" height="65" rx="6" fill="#1e293b"/>
-      <text x="60" y="325" fill="#38bdf8" font-family="sans-serif" font-size="13">Attached file: ${submission.receiptOriginalName || "receipt.jpg"}</text>
+      <text x="60" y="325" fill="#38bdf8" font-family="sans-serif" font-size="13">Attached file: ${submission.receiptOriginalName || "ubl_payment_proof.jpg"}</text>
       <text x="60" y="343" fill="#64748b" font-family="sans-serif" font-size="11">Protected Private Supabase Storage Reference</text>
     </svg>
   `;
