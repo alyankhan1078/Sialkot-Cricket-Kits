@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   createOrder,
-  createPaymentSubmission,
   getProductById,
   checkDuplicateTransferReference,
   getOrderById,
@@ -9,12 +8,6 @@ import {
 } from "@/src/lib/data-service";
 import { calculateShippingFee } from "@/src/lib/shipping";
 import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
-import {
-  ALLOWED_RECEIPT_MIME_TYPES,
-  ALLOWED_RECEIPT_EXTENSIONS,
-  MAX_RECEIPT_FILE_SIZE_BYTES,
-} from "@/src/lib/payment-config";
-import { sendOrderConfirmationEmail } from "@/src/lib/email";
 import { getAdminSupabase } from "@/src/lib/supabase";
 
 const ALLOWED_ORIGINS = [
@@ -23,6 +16,17 @@ const ALLOWED_ORIGINS = [
   "https://www.sialkotcricketkits.com",
   "https://sialkot-cricket-kits-rust.vercel.app",
   "http://localhost:3000",
+];
+
+const MAX_RECEIPT_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB Max
+const ALLOWED_RECEIPT_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+const ALLOWED_RECEIPT_MIME_TYPES = [
+  "image/jpeg",
+  "image/pjpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
 ];
 
 function getCorsHeaders(request: Request) {
@@ -43,11 +47,11 @@ export async function OPTIONS(request: Request) {
   });
 }
 
-export async function GET(request: Request) {
+function methodNotAllowedResponse(request: Request) {
   return NextResponse.json(
     {
       success: false,
-      error: "Method not allowed. Use POST to submit orders for payment verification.",
+      error: "Method not allowed. Only POST requests are accepted.",
     },
     {
       status: 405,
@@ -56,7 +60,27 @@ export async function GET(request: Request) {
   );
 }
 
-// Pure Web-Standard Magic Byte Validator (Zero Node native dependency)
+export async function GET(request: Request) {
+  return methodNotAllowedResponse(request);
+}
+
+export async function PUT(request: Request) {
+  return methodNotAllowedResponse(request);
+}
+
+export async function DELETE(request: Request) {
+  return methodNotAllowedResponse(request);
+}
+
+export async function PATCH(request: Request) {
+  return methodNotAllowedResponse(request);
+}
+
+export async function HEAD(request: Request) {
+  return methodNotAllowedResponse(request);
+}
+
+// Pure Web-Standard Magic Byte Validator (Zero heavy runtime dependencies)
 function validateFileMagicBytes(bytes: Uint8Array, mimeType: string): boolean {
   if (bytes.length < 4) return false;
 
@@ -98,95 +122,80 @@ export async function POST(request: Request) {
     let formData: FormData;
     try {
       formData = await request.formData();
-    } catch (formErr: any) {
-      console.error("[FormData Parse Error]:", formErr);
+    } catch {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Unable to read uploaded submission. Please verify your file size and network connection.",
-        },
+        { success: false, error: "Invalid form data. Please submit order details with attached payment proof." },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // 1. Extract Customer & Delivery Info
-    const customerInput: CheckoutCustomerInput = {
-      fullName: (formData.get("customerName") as string)?.trim() || "",
-      email: (formData.get("customerEmail") as string)?.trim() || "",
-      phone: (formData.get("customerPhone") as string)?.trim() || "",
-      phoneDialCode: (formData.get("phoneDialCode") as string)?.trim() || "",
-      country: (formData.get("country") as string)?.trim() || "",
-      countryCode: (formData.get("countryCode") as string)?.trim() || "",
-      address: (formData.get("address") as string)?.trim() || "",
-      city: (formData.get("city") as string)?.trim() || "",
-      state: (formData.get("state") as string)?.trim() || "",
-      postalCode: (formData.get("postalCode") as string)?.trim() || "",
-      deliveryInstructions: (formData.get("deliveryInstructions") as string)?.trim() || "",
-    };
+    // ── Extract Customer & Delivery Fields ──
+    const customerName = (formData.get("customerName") as string)?.trim() || "";
+    const customerEmail = (formData.get("customerEmail") as string)?.trim() || "";
+    const customerPhone = (formData.get("customerPhone") as string)?.trim() || "";
+    const phoneDialCode = (formData.get("phoneDialCode") as string)?.trim() || "+92";
+    const country = (formData.get("country") as string)?.trim() || "";
+    const countryCode = (formData.get("countryCode") as string)?.trim() || "";
+    const address = (formData.get("address") as string)?.trim() || "";
+    const city = (formData.get("city") as string)?.trim() || "";
+    const state = (formData.get("state") as string)?.trim() || "";
+    const postalCode = (formData.get("postalCode") as string)?.trim() || "";
+    const deliveryInstructions = (formData.get("deliveryInstructions") as string)?.trim() || "";
 
-    // ── Universal Customer Info Validation ──
-    const validation = validateCheckoutCustomerInfo(customerInput);
-    if (!validation.isValid) {
-      return NextResponse.json(
-        {
-          success: false,
-          errors: validation.errors,
-          error: Object.values(validation.errors)[0] || "Invalid customer or delivery details provided.",
-        },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+    // ── Payment Plan & Policies ──
+    const depositPercent = parseInt((formData.get("depositPercent") as string) || "100", 10);
+    const policiesAccepted = (formData.get("policiesAccepted") as string) === "true";
+    const policyVersion = (formData.get("policyVersion") as string) || "1.0";
+    const policyAcceptedAt = (formData.get("policyAcceptedAt") as string) || new Date().toISOString();
 
-    const customerName = validation.normalized.fullName;
-    const customerEmail = validation.normalized.email;
-    const customerPhone = validation.normalized.phoneE164;
-    const country = validation.normalized.country;
-    const address = validation.normalized.address;
-    const city = validation.normalized.city;
-    const state = validation.normalized.state;
-    const postalCode = validation.normalized.postalCode;
-    const deliveryInstructions = validation.normalized.deliveryInstructions;
-
-    // 2. Extract Items & Deposit
-    const itemsRaw = formData.get("items") as string;
-    const depositPercent = Number(formData.get("depositPercent")) || 100;
-
-    // 3. Extract Payment Submission Evidence
-    const senderName = (formData.get("senderName") as string)?.trim() || customerName || "Customer";
+    // ── Sender & Transfer Reference ──
+    const senderName = (formData.get("senderName") as string)?.trim() || customerName;
     const senderCountry = (formData.get("senderCountry") as string)?.trim() || country;
-    const provider = (formData.get("provider") as string)?.trim() || "Bank Transfer";
-    let amountSent = parseFloat(formData.get("amountSent") as string) || 0;
+    const provider = (formData.get("provider") as string)?.trim() || "UBL Bank Transfer";
+    let transferReference = (formData.get("transferReference") as string)?.trim() || "";
+    const transferDate = (formData.get("transferDate") as string)?.trim() || new Date().toISOString().split("T")[0];
+    let amountSent = parseFloat((formData.get("amountSent") as string) || "0");
     const currencySent = (formData.get("currencySent") as string)?.trim() || "GBP";
-    const transferDate =
-      (formData.get("transferDate") as string)?.trim() || new Date().toISOString().split("T")[0];
-    let transferReference = (formData.get("transferReference") as string)?.trim();
-    const customerNote = (formData.get("customerNote") as string)?.trim();
+    const customerNote = (formData.get("customerNote") as string)?.trim() || "";
+
+    // ── Items Payload ──
+    const itemsRaw = (formData.get("items") as string)?.trim() || "[]";
+
+    // ── Receipt File ──
     const receiptFile = formData.get("receipt") as File | null;
 
-    // ── Policy Agreement Acceptance Validation ──
-    const policiesAccepted = formData.get("policiesAccepted") === "true";
-    const policyVersion = (formData.get("policyVersion") as string)?.trim() || "1.0";
-    const policyAcceptedAt = new Date().toISOString();
+    // ── Validate Customer Info ──
+    const customerValidationInput: CheckoutCustomerInput = {
+      fullName: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+      phoneDialCode: phoneDialCode,
+      country: country,
+      countryCode: countryCode,
+      address: address,
+      city: city,
+      stateProvince: state,
+      postalCode: postalCode,
+      policiesAccepted: policiesAccepted,
+    };
 
-    if (!policiesAccepted) {
+    const customerValidation = validateCheckoutCustomerInfo(customerValidationInput);
+    if (!customerValidation.isValid) {
+      const firstErr = Object.values(customerValidation.errors)[0] || "Invalid customer or address details.";
+      return NextResponse.json({ success: false, error: firstErr }, { status: 400, headers: corsHeaders });
+    }
+
+    // ── Validate Receipt File ──
+    if (!receiptFile || typeof receiptFile !== "object" || typeof receiptFile.arrayBuffer !== "function") {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            "You must read and accept the International Shipping, Returns, Product Disclosure, Customisation and Payment Verification Agreement before submitting your order.",
-        },
+        { success: false, error: "Payment verification receipt is required. Please attach a screenshot or document of your bank transfer." },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // ── Mandatory Payment Receipt Validation ──
-    if (!receiptFile || receiptFile.size === 0) {
+    if (receiptFile.size <= 0) {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            "A valid payment receipt screenshot or document is required. Please upload your transfer receipt to complete order submission.",
-        },
+        { success: false, error: "Attached receipt file is empty. Please select a valid payment proof." },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -195,7 +204,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Receipt file size exceeds the 5 MB limit. Please upload a smaller image or PDF.",
+          error: `Receipt file size (${(receiptFile.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed limit of 5 MB.`,
         },
         { status: 400, headers: corsHeaders }
       );
@@ -212,7 +221,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid receipt format. Allowed formats: JPG, PNG, WEBP, or PDF.",
+          error: "Invalid receipt format. Allowed formats: JPG, JPEG, PNG, WEBP, or PDF.",
         },
         { status: 400, headers: corsHeaders }
       );
@@ -231,7 +240,7 @@ export async function POST(request: Request) {
 
     if (!Array.isArray(rawItems) || rawItems.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Cart is empty." },
+        { success: false, error: "Cart is empty. Please add items to proceed." },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -289,7 +298,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: `A delivery quotation is required for ${country}. Please contact our support team on WhatsApp before submitting.`,
+          error: `A delivery quotation is required for ${country}. Please contact our support team on WhatsApp (+92 323 1438214) before submitting.`,
         },
         { status: 400, headers: corsHeaders }
       );
@@ -308,7 +317,7 @@ export async function POST(request: Request) {
       amountSent = depositDue;
     }
 
-    // ── Generate or Use Canonical Order ID ──
+    // ── Generate Unique Canonical Order ID ──
     const clientProvidedOrderId = (formData.get("orderId") as string)?.trim();
     const orderId =
       clientProvidedOrderId && /^SCK-\d{4}-\d{3,6}$/i.test(clientProvidedOrderId)
@@ -316,7 +325,7 @@ export async function POST(request: Request) {
         : `SCK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (!transferReference) {
-      transferReference = orderId;
+      transferReference = `REF-${orderId}`;
     }
 
     // ── Idempotency Check: Prevent duplicate creation if already submitted ──
@@ -327,8 +336,6 @@ export async function POST(request: Request) {
           success: true,
           orderId: existingOrder.id,
           orderReference: existingOrder.orderReference || existingOrder.id,
-          customerFacingStatus: "Payment Under Verification",
-          paymentStatus: existingOrder.paymentStatus || "payment_submitted",
           message:
             "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account.",
         },
@@ -336,7 +343,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Store Receipt File Directly into Supabase Storage ──
+    // ── Validate Magic Bytes ──
     const fileBytes = await receiptFile.arrayBuffer();
     const uint8Bytes = new Uint8Array(fileBytes);
 
@@ -347,42 +354,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Direct Upload to Private Supabase Storage 'receipts' Bucket ──
     const randomSuffix = Math.random().toString(36).substring(2, 10);
     const safeUniqueName = `rcpt_${orderId}_${randomSuffix}${fileExt}`;
     let receiptStoragePath = `receipts/${safeUniqueName}`;
 
-    // Direct upload to Supabase Storage
     try {
       const sb = getAdminSupabase();
       if (sb) {
-        // Try 'receipts' bucket first, fallback to 'products' if receipts bucket does not exist
-        let uploadBucket = "receipts";
+        const bucketName = process.env.SUPABASE_RECEIPTS_BUCKET || "receipts";
         let { error: sbUploadErr } = await sb.storage
-          .from(uploadBucket)
+          .from(bucketName)
           .upload(safeUniqueName, fileBytes, {
             contentType: receiptFile.type || "application/octet-stream",
             upsert: true,
           });
 
         if (sbUploadErr) {
-          uploadBucket = "products";
+          // If receipts bucket was not found, fallback to products bucket
           const fallbackUpload = await sb.storage
-            .from(uploadBucket)
+            .from("products")
             .upload(`receipts/${safeUniqueName}`, fileBytes, {
               contentType: receiptFile.type || "application/octet-stream",
               upsert: true,
             });
           if (!fallbackUpload.error) {
-            sbUploadErr = null;
             receiptStoragePath = `supabase://products/receipts/${safeUniqueName}`;
+          } else {
+            console.warn("[Receipt Storage Notice]:", sbUploadErr.message);
+            receiptStoragePath = `storage://${safeUniqueName}`;
           }
         } else {
-          receiptStoragePath = `supabase://receipts/${safeUniqueName}`;
-        }
-
-        if (sbUploadErr) {
-          console.warn("[Supabase Storage Notice]:", sbUploadErr.message);
-          receiptStoragePath = `storage://${safeUniqueName}`;
+          receiptStoragePath = `supabase://${bucketName}/${safeUniqueName}`;
         }
       }
     } catch (storageErr) {
@@ -390,23 +393,22 @@ export async function POST(request: Request) {
       receiptStoragePath = `storage://${safeUniqueName}`;
     }
 
-    const receiptOriginalName = receiptFile.name;
-    const receiptMimeType = receiptFile.type;
-    const receiptFileSize = receiptFile.size;
+    const receiptOriginalName = receiptFile.name || "receipt.jpg";
 
-    // Check for duplicate transfer reference across previous submissions
+    // Duplicate transfer reference check across previous orders
     let duplicateCheck = { isDuplicate: false, matchedOrders: [] as string[] };
     try {
       duplicateCheck = await checkDuplicateTransferReference(transferReference);
     } catch {}
 
-    // ── Create Order Record ──
+    // ── Build Comprehensive Order Notes with Full Specifications ──
     const orderNotes = [
       `Manual Payment Plan: ${chosenDepositPercent}% Deposit (£${depositDue} due today / Balance: £${balanceRemaining})`,
       `Beneficiary Target: ALYAN WAZIR (UBL Bank)`,
       `Sender: ${senderName} (${senderCountry}) via ${provider}`,
       `Transfer Reference: ${transferReference}`,
       `Payment Evidence: Attached (${receiptOriginalName})`,
+      `Receipt Storage: ${receiptStoragePath}`,
       `Policy Agreement: Version ${policyVersion} Accepted on ${policyAcceptedAt}`,
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
@@ -418,6 +420,7 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join("\n");
 
+    // ── Create & Save Order in Supabase 'orders' Table ──
     const newOrder = await createOrder({
       id: orderId,
       orderReference: orderId,
@@ -451,39 +454,18 @@ export async function POST(request: Request) {
       notes: orderNotes,
     });
 
-    // ── Create Payment Submission Record ──
+    // ── Non-blocking Asynchronous Notification Dispatch (Never blocks or fails checkout) ──
     try {
-      const paymentSubmission = await createPaymentSubmission({
-        orderId: newOrder.id,
-        paymentMethod: "UBL Bank Transfer / Remittance",
-        senderName,
-        senderCountry: senderCountry || country,
-        provider,
-        amountSent,
-        currencySent,
-        transferReference,
-        transferDate,
-        receiptStoragePath,
-        receiptOriginalName,
-        receiptMimeType,
-        receiptFileSize,
-        status: "payment_submitted",
-        customerNote,
-      });
-
-      newOrder.paymentSubmissionId = paymentSubmission.id;
-    } catch (psubErr) {
-      console.warn("[Payment Submission Record Notice]:", psubErr);
-    }
-
-    // ── Asynchronous Multi-Channel Notifications (Customer & Admin Email + WhatsApp) ──
-    try {
-      const { sendOrderReceivedNotifications } = await import("@/src/lib/notifications");
-      sendOrderReceivedNotifications(newOrder, paymentSubmission).catch((err) => {
-        console.warn("[Order Received Notification Dispatch Notice]:", err);
-      });
+      import("@/src/lib/notifications")
+        .then(({ sendOrderReceivedNotifications }) => {
+          sendOrderReceivedNotifications(newOrder).catch((err) => {
+            console.warn("[Order Received Notification Notice]:", err);
+          });
+        })
+        .catch(() => {});
     } catch {}
 
+    // ── Immediate Clean Success Response ──
     return NextResponse.json(
       {
         success: true,

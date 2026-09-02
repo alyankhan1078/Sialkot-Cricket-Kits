@@ -215,7 +215,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       {/* Header — white/light */}
       <header className="site-header">
         <Link className="brand-lockup" href="/" aria-label="Sialkot Cricket Kits home">
-          <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" />
+          <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="Sialkot Cricket Kits" />
           <span>
             <strong>{settings.businessName}</strong>
             <small>Performance equipment · Sialkot</small>
@@ -421,7 +421,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         >
           <div className="mobile-drawer-head">
             <div className="mobile-drawer-brand">
-              <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="" width={32} height={32} />
+              <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="" width={32} height={32} />
               <strong>Menu</strong>
             </div>
             <button
@@ -601,7 +601,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       {/* Footer — white/light */}
       <footer className="site-footer">
         <div className="footer-brand">
-          <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits Logo" />
+          <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="Sialkot Cricket Kits Logo" />
           <div>
             <strong>{settings.businessName}</strong>
             <span>Cricket equipment crafted in Sialkot</span>

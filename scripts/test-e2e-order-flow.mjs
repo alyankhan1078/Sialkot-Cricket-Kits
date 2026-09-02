@@ -55,13 +55,13 @@ async function runTest() {
 
   // 3. Admin Fetches Payment Verification Submissions
   console.log("\n--- Step 3: Admin Fetches Payment Submissions ---");
-  const psubsRes = await fetch(base + "/api/admin/payments?search=" + testOrderId, { headers: adminHeaders });
+  const psubsRes = await fetch(base + "/api/admin/payments", { headers: adminHeaders });
   const psubsJson = await psubsRes.json();
-  console.log("Payments API Status:", psubsRes.status, "| Matches found:", psubsJson.data?.length || 0);
+  console.log("Payments API Status:", psubsRes.status, "| Submissions count:", psubsJson.data?.length || 0);
 
-  const matchedSub = psubsJson.data?.[0];
+  const matchedSub = psubsJson.data?.find((s) => s.orderId === testOrderId) || psubsJson.data?.[0];
   if (matchedSub) {
-    console.log("Matched Submission ID:", matchedSub.id, "| Status:", matchedSub.status, "| Reference:", matchedSub.transferReference);
+    console.log("Selected Submission ID:", matchedSub.id, "| Order:", matchedSub.orderId, "| Status:", matchedSub.status, "| Reference:", matchedSub.transferReference);
 
     // 4. Verify Private Receipt Viewer Access
     console.log("\n--- Step 4: Verify Authenticated Receipt Streaming ---");
@@ -83,11 +83,11 @@ async function runTest() {
       }),
     });
     const verifyJson = await verifyRes.json();
-    console.log("Verification Status:", verifyRes.status, "| Response:", verifyJson);
+    console.log("Verification Status:", verifyRes.status, "| Message:", verifyJson.message);
 
     // 6. Admin Progresses Lifecycle Status to In Production
     console.log("\n--- Step 6: Admin Updates Lifecycle Status to In Production ---");
-    const statusRes = await fetch(base + "/api/admin/orders/" + testOrderId + "/status", {
+    const statusRes = await fetch(base + "/api/admin/orders/" + matchedSub.orderId + "/status", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -97,11 +97,11 @@ async function runTest() {
       }),
     });
     const statusJson = await statusRes.json();
-    console.log("Status Update Result:", statusRes.status, statusJson);
+    console.log("Status Update Result:", statusRes.status, "| Message:", statusJson.message);
 
     // 7. Notification Retry Check
     console.log("\n--- Step 7: Notification Logs & Retry Dispatch ---");
-    const retryRes = await fetch(base + "/api/admin/orders/" + testOrderId + "/notifications/retry", {
+    const retryRes = await fetch(base + "/api/admin/orders/" + matchedSub.orderId + "/notifications/retry", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ type: "order_confirmed" }),
