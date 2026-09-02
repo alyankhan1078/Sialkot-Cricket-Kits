@@ -1624,8 +1624,9 @@ export async function getPaymentSubmissions(options?: {
   search?: string;
   orderId?: string;
 }): Promise<DBPaymentSubmission[]> {
-  let list = [...memoryPaymentSubmissions];
+  const list: DBPaymentSubmission[] = [...memoryPaymentSubmissions];
 
+  // 1. Fetch from Supabase payment_submissions table if available
   try {
     const sb = getAdminSupabase();
     if (sb) {
@@ -1638,77 +1639,78 @@ export async function getPaymentSubmissions(options?: {
       }
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
-        const mapped: DBPaymentSubmission[] = data.map((d: any) => ({
-          id: d.id,
-          orderId: d.order_id,
-          paymentMethod: d.payment_method,
-          senderName: d.sender_name,
-          senderCountry: d.sender_country,
-          provider: d.provider,
-          amountSent: Number(d.amount_sent),
-          currencySent: d.currency_sent,
-          transferReference: d.transfer_reference,
-          transferDate: d.transfer_date,
-          receiptStoragePath: d.receipt_storage_path,
-          receiptOriginalName: d.receipt_original_name,
-          receiptMimeType: d.receipt_mime_type,
-          receiptFileSize: Number(d.receipt_file_size || 0),
-          status: d.status,
-          customerNote: d.customer_note || undefined,
-          createdAt: d.created_at,
-          updatedAt: d.updated_at,
-        }));
-
-        for (const m of mapped) {
-          if (!list.some((l) => l.id === m.id)) {
-            list.push(m);
+        for (const d of data) {
+          if (!list.some((l) => l.id === d.id)) {
+            list.push({
+              id: d.id,
+              orderId: d.order_id,
+              paymentMethod: d.payment_method,
+              senderName: d.sender_name,
+              senderCountry: d.sender_country,
+              provider: d.provider,
+              amountSent: Number(d.amount_sent),
+              currencySent: d.currency_sent,
+              transferReference: d.transfer_reference,
+              transferDate: d.transfer_date,
+              receiptStoragePath: d.receipt_storage_path,
+              receiptOriginalName: d.receipt_original_name,
+              receiptMimeType: d.receipt_mime_type,
+              receiptFileSize: Number(d.receipt_file_size || 0),
+              status: d.status,
+              customerNote: d.customer_note || undefined,
+              createdAt: d.created_at,
+              updatedAt: d.updated_at,
+            });
           }
         }
       }
-
-      // 2. Synthesize from orders table to guarantee 100% visibility across edge isolates
-      try {
-        let ordQuery = sb.from("orders").select("*").order("created_at", { ascending: false });
-        if (options?.orderId) {
-          ordQuery = ordQuery.eq("id", options.orderId);
-        }
-        const { data: dbOrders } = await ordQuery;
-        if (dbOrders && dbOrders.length > 0) {
-          for (const o of dbOrders) {
-            if (!list.some((l) => l.orderId === o.id)) {
-              const notes = o.notes || "";
-              const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
-              const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
-              const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
-
-              list.push({
-                id: `psub_${o.id}`,
-                orderId: o.id,
-                paymentMethod: o.payment_method || "UBL Bank Transfer",
-                senderName: senderMatch ? senderMatch[1].trim() : o.customer_name,
-                senderCountry: senderMatch ? senderMatch[2].trim() : o.country,
-                provider: senderMatch ? senderMatch[3].trim() : "UBL Bank Transfer",
-                amountSent: Number(o.total_amount),
-                currencySent: "GBP",
-                transferReference: refMatch ? refMatch[1].trim() : `REF-${o.id}`,
-                transferDate: o.created_at ? o.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
-                receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "",
-                receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "receipt.jpg",
-                receiptMimeType: "image/jpeg",
-                receiptFileSize: 1024,
-                status: o.status === "completed" || o.status === "confirmed" ? "payment_verified" : (o.status as any || "payment_submitted"),
-                customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
-                createdAt: o.created_at,
-                updatedAt: o.updated_at || o.created_at,
-              });
-            }
-          }
-        }
-      } catch {}
     }
   } catch {}
 
-  // 3. Synthesize from memoryOrders to guarantee complete visibility in all runtimes
+  // 2. Fetch from Supabase orders table
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      let ordQuery = sb.from("orders").select("*").order("created_at", { ascending: false });
+      if (options?.orderId) {
+        ordQuery = ordQuery.eq("id", options.orderId);
+      }
+      const { data: dbOrders, error: ordErr } = await ordQuery;
+      if (!ordErr && dbOrders && dbOrders.length > 0) {
+        for (const o of dbOrders) {
+          if (!list.some((l) => l.orderId === o.id)) {
+            const notes = o.notes || "";
+            const refMatch = notes.match(/Transfer Reference:\s*([^\n\r]+)/i);
+            const receiptMatch = notes.match(/Payment Evidence:\s*Attached\s*\(([^)]+)\)/i);
+            const senderMatch = notes.match(/Sender:\s*([^(]+)\s*\(([^)]+)\)\s*via\s*([^\n\r]+)/i);
+
+            list.push({
+              id: `psub_${o.id}`,
+              orderId: o.id,
+              paymentMethod: o.payment_method || "UBL Bank Transfer",
+              senderName: senderMatch ? senderMatch[1].trim() : o.customer_name,
+              senderCountry: senderMatch ? senderMatch[2].trim() : o.country,
+              provider: senderMatch ? senderMatch[3].trim() : "UBL Bank Transfer",
+              amountSent: Number(o.total_amount),
+              currencySent: "GBP",
+              transferReference: refMatch ? refMatch[1].trim() : `REF-${o.id}`,
+              transferDate: o.created_at ? o.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+              receiptStoragePath: receiptMatch ? `storage://${receiptMatch[1].trim()}` : "",
+              receiptOriginalName: receiptMatch ? receiptMatch[1].trim() : "receipt.jpg",
+              receiptMimeType: "image/jpeg",
+              receiptFileSize: 1024,
+              status: o.status === "completed" || o.status === "confirmed" || o.status === "order_confirmed" ? "payment_verified" : (o.status as any || "payment_submitted"),
+              customerNote: notes.includes("Customer Note:") ? notes.split("Customer Note:")[1]?.split("\n")[0]?.trim() : undefined,
+              createdAt: o.created_at,
+              updatedAt: o.updated_at || o.created_at,
+            });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // 3. Synthesize from memoryOrders
   for (const o of memoryOrders) {
     if (!list.some((l) => l.orderId === o.id)) {
       const notes = o.notes || "";
@@ -1739,17 +1741,19 @@ export async function getPaymentSubmissions(options?: {
     }
   }
 
+  let result = list;
+
   if (options?.status && options.status !== "all") {
-    list = list.filter((p) => p.status === options.status);
+    result = result.filter((p) => p.status === options.status);
   }
 
   if (options?.orderId) {
-    list = list.filter((p) => p.orderId === options.orderId);
+    result = result.filter((p) => p.orderId === options.orderId);
   }
 
   if (options?.search) {
     const q = options.search.toLowerCase();
-    list = list.filter(
+    result = result.filter(
       (p) =>
         p.orderId.toLowerCase().includes(q) ||
         p.senderName.toLowerCase().includes(q) ||
@@ -1758,7 +1762,7 @@ export async function getPaymentSubmissions(options?: {
     );
   }
 
-  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function verifyAndConfirmOrder(
@@ -1766,12 +1770,49 @@ export async function verifyAndConfirmOrder(
   adminEmail: string,
   note?: string
 ): Promise<{ success: boolean; submission?: DBPaymentSubmission; order?: DBOrder; error?: string; alreadyConfirmed?: boolean }> {
-  const subIndex = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId || p.orderId === submissionId);
-  if (subIndex === -1) {
+  let subIndex = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId || p.orderId === submissionId);
+  let submission: DBPaymentSubmission | null = subIndex !== -1 ? memoryPaymentSubmissions[subIndex] : null;
+
+  if (!submission) {
+    submission = (await getPaymentSubmissionById(submissionId)) || (await getPaymentSubmissionByOrderId(submissionId));
+    if (submission) {
+      memoryPaymentSubmissions.unshift(submission);
+      subIndex = 0;
+    }
+  }
+
+  if (!submission) {
+    const orderId = submissionId.startsWith("psub_") ? submissionId.replace(/^psub_/, "") : submissionId;
+    const ord = await getOrderById(orderId);
+    if (ord) {
+      submission = {
+        id: `psub_${ord.id}`,
+        orderId: ord.id,
+        paymentMethod: ord.paymentMethod || "UBL Bank Transfer",
+        senderName: ord.customerName,
+        senderCountry: ord.country,
+        provider: ord.paymentMethod || "UBL Bank Transfer",
+        amountSent: ord.totalAmount,
+        currencySent: "GBP",
+        transferReference: `REF-${ord.id}`,
+        transferDate: new Date().toISOString().split("T")[0],
+        receiptStoragePath: "",
+        receiptOriginalName: "receipt.jpg",
+        receiptMimeType: "image/jpeg",
+        receiptFileSize: 1024,
+        status: "payment_submitted",
+        createdAt: ord.createdAt,
+        updatedAt: ord.updatedAt || ord.createdAt,
+      };
+      memoryPaymentSubmissions.unshift(submission);
+      subIndex = 0;
+    }
+  }
+
+  if (!submission) {
     return { success: false, error: "Payment submission record not found." };
   }
 
-  const submission = memoryPaymentSubmissions[subIndex];
   const orderId = submission.orderId;
   const existingOrder = await getOrderById(orderId);
 
