@@ -85,7 +85,36 @@ ${sitemapEntries
       });
     }
 
-    // 4. Image optimization endpoint
+    // 4. Root Favicon & Brand Icon Handlers for Googlebot & Browsers
+    if (
+      url.pathname === "/favicon.ico" ||
+      url.pathname === "/favicon.png" ||
+      url.pathname === "/icon.png" ||
+      url.pathname === "/icon-48.png" ||
+      url.pathname === "/icon-96.png" ||
+      url.pathname === "/icon-192.png" ||
+      url.pathname === "/apple-touch-icon.png" ||
+      url.pathname === "/apple-icon.png" ||
+      url.pathname === "/og.png"
+    ) {
+      try {
+        const assetRes = await env.ASSETS.fetch(request);
+        if (assetRes.status === 200) {
+          return assetRes;
+        }
+      } catch {}
+
+      try {
+        const fallbackRes = await env.ASSETS.fetch(
+          new Request(new URL("/assets/brand/sialkot-cricket-kits-logo.png", request.url))
+        );
+        if (fallbackRes.status === 200) {
+          return fallbackRes;
+        }
+      } catch {}
+    }
+
+    // 5. Image optimization endpoint
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
