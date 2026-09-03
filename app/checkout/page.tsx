@@ -62,7 +62,7 @@ import {
 } from "@/src/lib/validation";
 import { getAddressConfig, inferProvinceFromCity } from "@/src/lib/address-config";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -519,9 +519,7 @@ export default function CheckoutPage() {
   // Step labels mapping
   const stepLabels: Record<Step, string> = {
     1: "Contact & Delivery",
-    2: "Review Order",
-    3: "Payment Option",
-    4: "Transfer & Evidence",
+    2: "Payment & Verification",
   };
 
   // Order summary content renderer (used for both mobile collapsible accordion and desktop sticky card)
@@ -772,7 +770,7 @@ export default function CheckoutPage() {
           <div className="checkout-progress-mobile-header">
             <div className="checkout-progress-mobile-info">
               <span className="checkout-progress-mobile-step-badge">
-                Step {step} of 4
+                Step {step} of 2
               </span>
               <span className="checkout-progress-mobile-title">
                 {stepLabels[step]}
@@ -789,7 +787,7 @@ export default function CheckoutPage() {
             )}
           </div>
           <div className="checkout-progress-mobile-track">
-            {[1, 2, 3, 4].map((s) => (
+            {[1, 2].map((s) => (
               <div
                 key={s}
                 className={`checkout-progress-mobile-bar ${
@@ -804,9 +802,7 @@ export default function CheckoutPage() {
         <div className="checkout-progress-desktop">
           {[
             { s: 1, label: "Contact & Delivery" },
-            { s: 2, label: "Review Order" },
-            { s: 3, label: "Payment Option" },
-            { s: 4, label: "Transfer & Evidence" },
+            { s: 2, label: "Payment & Verification" },
           ].map(({ s, label }) => {
             const isActive = step === s;
             const isCompleted = step > s;
@@ -1399,285 +1395,23 @@ export default function CheckoutPage() {
                   }}
                   style={{ marginTop: 22 }}
                 >
-                  Proceed to Review Order <ArrowRight size={17} />
+                  Proceed to Payment &amp; Verification <ArrowRight size={17} />
                 </button>
               </div>
             )}
 
-            {/* ── STEP 2: REVIEW ORDER ── */}
+            {/* ── STEP 2: PAYMENT INSTRUCTIONS & EVIDENCE UPLOAD ── */}
             {step === 2 && (
               <div className="checkout-card">
                 <button className="checkout-back-btn" type="button" onClick={() => goToStep(1)}>
                   <ChevronLeft size={16} /> Back to Contact Details
                 </button>
 
-                <h2 className="checkout-step-heading">Step 2 — Review Your Order</h2>
+                <h2 className="checkout-step-heading">
+                  Step 2 — Payment &amp; Transfer Verification
+                </h2>
                 <p className="checkout-step-description">
-                  Verify your items and delivery destination before continuing to payment details.
-                </p>
-
-                <div
-                  style={{
-                    background: "rgba(242, 169, 40, 0.08)",
-                    border: "1px solid rgba(242, 169, 40, 0.3)",
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    fontSize: ".84rem",
-                    color: "#b45309",
-                    marginBottom: 16,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <Info size={16} style={{ flexShrink: 0 }} />
-                  <span>Provisional Order Reference: <strong>{provisionalRef}</strong></span>
-                </div>
-
-                {/* Items List or Custom Bat Specification */}
-                {isCustomOrder && customBatOrder ? (
-                  <div
-                    style={{
-                      background: "#ffffff",
-                      border: "1.5px solid #e2e8f0",
-                      borderRadius: 12,
-                      padding: "16px 18px",
-                      marginBottom: 20,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        borderBottom: "1px solid #f1f5f9",
-                        paddingBottom: 12,
-                        marginBottom: 12,
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div>
-                        <span
-                          style={{
-                            fontSize: ".72rem",
-                            fontWeight: 800,
-                            color: "#b45309",
-                            textTransform: "uppercase",
-                            letterSpacing: ".06em",
-                            display: "block",
-                            marginBottom: 2,
-                          }}
-                        >
-                          BESPOKE SPECIFICATION · CUSTOM BAT
-                        </span>
-                        <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
-                          Custom Cricket Bat — {customBatOrder.bat.constructionType}
-                        </h3>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span
-                          style={{
-                            fontSize: ".74rem",
-                            background: "rgba(242, 169, 40, 0.15)",
-                            color: "#b45309",
-                            fontWeight: 800,
-                            padding: "3px 10px",
-                            borderRadius: 999,
-                            display: "inline-block",
-                            marginBottom: 4,
-                          }}
-                        >
-                          {customBatOrder.bat.qualityLevel}
-                        </span>
-                        <div style={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>
-                          {formatPrice(customBatOrder.payment.orderValue)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                        gap: "10px 14px",
-                        fontSize: ".82rem",
-                        color: "#475569",
-                        marginBottom: 12,
-                      }}
-                    >
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
-                          Size / Category
-                        </span>
-                        <span>{customBatOrder.bat.size}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
-                          Blade Profile
-                        </span>
-                        <span>{customBatOrder.bat.profile}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
-                          Handle
-                        </span>
-                        <span>{customBatOrder.bat.handlePreference}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#0f172a", display: "block", fontSize: ".72rem", textTransform: "uppercase" }}>
-                          Target Weight
-                        </span>
-                        <span>{customBatOrder.bat.preferredWeight}</span>
-                      </div>
-                    </div>
-
-                    {customBatOrder.services.selectedServiceNames.length > 0 && (
-                      <div
-                        style={{
-                          fontSize: ".78rem",
-                          color: "#15803d",
-                          background: "rgba(34, 197, 94, 0.08)",
-                          padding: "8px 12px",
-                          borderRadius: 8,
-                          marginBottom: 10,
-                        }}
-                      >
-                        <strong>Included Services:</strong> {customBatOrder.services.selectedServiceNames.join(" · ")}
-                      </div>
-                    )}
-
-                    {customBatOrder.services.engraving && customBatOrder.services.engravingText && (
-                      <div
-                        style={{
-                          fontSize: ".84rem",
-                          background: "rgba(242, 169, 40, 0.08)",
-                          border: "1px dashed rgba(242, 169, 40, 0.6)",
-                          padding: "10px 12px",
-                          borderRadius: 8,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontWeight: 800, color: "#b45309" }}>Laser Engraving Text:</span>
-                          <span style={{ fontSize: ".72rem", color: "#15803d", fontWeight: 700 }}>✓ Included</span>
-                        </div>
-                        <div style={{ fontSize: "1.02rem", fontWeight: 900, color: "#0f172a", marginTop: 3 }}>
-                          &ldquo;{customBatOrder.services.engravingText}&rdquo;
-                        </div>
-                        <p style={{ margin: "4px 0 0", fontSize: ".72rem", color: "#64748b" }}>
-                          Please check spelling carefully. Your bat will be laser engraved exactly as entered.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                    {lines.map((line) => (
-                      <div
-                        key={line.product.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: "10px 12px",
-                          background: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 10,
-                        }}
-                      >
-                        <img
-                          src={line.product.image}
-                          alt={line.product.name}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            minWidth: 48,
-                            objectFit: "cover",
-                            borderRadius: 8,
-                            background: "#ffffff",
-                            border: "1px solid #cbd5e1",
-                          }}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <strong
-                            style={{
-                              fontSize: ".88rem",
-                              display: "block",
-                              color: "#0f172a",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {line.product.name}
-                          </strong>
-                          <span style={{ fontSize: ".76rem", color: "#64748b" }}>
-                            Qty: {line.quantity} · {formatPrice(line.product.price)} each
-                          </span>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <strong style={{ color: "#0f172a", fontSize: ".92rem" }}>
-                            {formatPrice(line.product.price * line.quantity)}
-                          </strong>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Totals Summary */}
-                <div style={{ background: "#f8fafc", padding: "14px 16px", borderRadius: 10, border: "1px solid #e2e8f0", marginBottom: 20 }}>
-                  <div className="order-summary-line">
-                    <span>Subtotal ({totalItemCount} items)</span>
-                    <strong>{formatPrice(subtotal)}</strong>
-                  </div>
-                  <div className="order-summary-line">
-                    <span>
-                      {shippingCalc.hasDestination
-                        ? `Tracked Courier (${shippingCalc.countryName})`
-                        : "Tracked Courier: Select destination"}
-                    </span>
-                    <strong>
-                      {shippingCalc.hasDestination
-                        ? formatPrice(shippingCalc.shippingFee)
-                        : "—"}
-                    </strong>
-                  </div>
-                  {shippingCalc.requiresQuotation && (
-                    <div style={{ marginTop: 6, padding: "8px 10px", background: "#fefce8", border: "1px solid #fde047", borderRadius: 6, fontSize: ".76rem", color: "#854d0e" }}>
-                      ⚠️ A delivery quotation is required for this destination.
-                    </div>
-                  )}
-                  <div className="order-summary-divider" />
-                  <div className="order-total-line">
-                    <span className="label">Total Order Value</span>
-                    <span className="value">
-                      {shippingCalc.hasDestination ? formatPrice(grandTotal) : formatPrice(subtotal)}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="checkout-primary-cta"
-                  onClick={() => goToStep(3)}
-                >
-                  Select Payment Option <ArrowRight size={17} />
-                </button>
-              </div>
-            )}
-
-            {/* ── STEP 3: SELECT PAYMENT METHOD ── */}
-            {step === 3 && (
-              <div className="checkout-card">
-                <button className="checkout-back-btn" type="button" onClick={() => goToStep(2)}>
-                  <ChevronLeft size={16} /> Back to Order Review
-                </button>
-
-                <h2 className="checkout-step-heading">Step 3 — Select Payment Option</h2>
-                <p className="checkout-step-description">
-                  Choose 100% full payment or a 50% advance production deposit. Card payments are handled via bank transfer until the official UBL card gateway is enabled.
+                  Choose your payment plan, transfer to the verified UBL account below, and upload your transfer receipt for verification.
                 </p>
 
                 {/* Advance Deposit Option */}
@@ -1718,61 +1452,6 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Primary Payment Option Card */}
-                <div
-                  style={{
-                    border: "2px solid #b45309",
-                    background: "rgba(242, 169, 40, 0.05)",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <Building2 size={20} color="#b45309" />
-                    <strong style={{ fontSize: ".98rem", color: "#0f172a" }}>
-                      Bank Wire / International Remittance (Wise, Remitly, etc.)
-                    </strong>
-                    <span style={{ background: "rgba(34, 197, 94, 0.15)", color: "#15803d", fontSize: ".72rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, marginLeft: "auto" }}>
-                      Recommended
-                    </span>
-                  </div>
-                  <p style={{ fontSize: ".84rem", color: "#475569", lineHeight: 1.5, margin: 0 }}>
-                    Transfer the final order amount using our verified UBL bank details. After completing your transfer via mobile banking, Taptap Send, Remitly, Wise, or exchange, upload your receipt screenshot on the next step.
-                  </p>
-                </div>
-
-                {/* Domestic Pakistan COD Notice */}
-                {formData.country === "Pakistan" && (
-                  <div style={{ padding: 12, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, marginBottom: 16, fontSize: ".82rem", color: "#475569" }}>
-                    💡 <em>For domestic Pakistan deliveries requiring partial advance verification, our team will coordinate on WhatsApp.</em>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="checkout-primary-cta"
-                  onClick={() => goToStep(4)}
-                >
-                  View UBL Bank Transfer Instructions <ArrowRight size={17} />
-                </button>
-              </div>
-            )}
-
-            {/* ── STEP 4: PAYMENT INSTRUCTIONS & EVIDENCE UPLOAD ── */}
-            {step === 4 && (
-              <div className="checkout-card">
-                <button className="checkout-back-btn" type="button" onClick={() => goToStep(3)}>
-                  <ChevronLeft size={16} /> Back to Payment Option
-                </button>
-
-                <h2 className="checkout-step-heading">
-                  Step 4 — Beneficiary &amp; Payment Verification
-                </h2>
-                <p className="checkout-step-description">
-                  Please complete your payment to the official UBL account below, select the payment service you used, and upload your transfer receipt for verification.
-                </p>
 
                 {/* Total Due Banner */}
                 <div
