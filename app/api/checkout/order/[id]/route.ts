@@ -7,9 +7,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const token = new URL(request.url).searchParams.get("token");
     const order = await getOrderById(id);
     if (!order) {
       return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+    }
+    if (!token || !order.trackingToken || token !== order.trackingToken) {
+      return NextResponse.json({ success: false, error: "Order access could not be verified" }, { status: 403 });
     }
     return NextResponse.json({ success: true, data: order });
   } catch (error: any) {

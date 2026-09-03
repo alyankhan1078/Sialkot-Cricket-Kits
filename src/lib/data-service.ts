@@ -216,6 +216,7 @@ export interface DBPaymentStatusHistory {
 export interface DBOrder {
   id: string;
   orderReference?: string;
+  trackingToken?: string;
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -346,7 +347,10 @@ let memorySettings: DBSettings = {
   safepaySecretKey: process.env.SAFEPAY_SECRET_KEY || "",
   safepayWebhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET || "",
   safepayEnvironment: (process.env.SAFEPAY_ENVIRONMENT as any) || "sandbox",
-  safepayEnabled: true,
+  safepayEnabled: Boolean(
+    (process.env.NEXT_PUBLIC_SAFEPAY_PUBLIC_KEY || process.env.SAFEPAY_API_KEY) &&
+      process.env.SAFEPAY_SECRET_KEY
+  ),
 
   // UBL Bank Detail Verification Lock
   ublDetailsVerifiedByAdmin: true,
@@ -394,7 +398,10 @@ let memorySettings: DBSettings = {
   // Stripe Card Processing
   stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
-  stripeEnabled: true,
+  stripeEnabled: Boolean(
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY &&
+      process.env.STRIPE_SECRET_KEY
+  ),
 };
 
 const memoryEnquiries: DBEnquiry[] = [];
@@ -1087,6 +1094,7 @@ export async function getOrders(options?: {
           return {
             id: o.id,
             orderReference: o.id,
+            trackingToken: o.tracking_token || undefined,
             customerName: o.customer_name,
             customerPhone: o.customer_phone || undefined,
             customerEmail: o.customer_email || undefined,
@@ -1160,6 +1168,7 @@ export async function getOrderById(id: string): Promise<DBOrder | null> {
         return {
           id: data.id,
           orderReference: data.id,
+          trackingToken: data.tracking_token || undefined,
           customerName: data.customer_name,
           customerPhone: data.customer_phone || undefined,
           customerEmail: data.customer_email || undefined,
@@ -1196,6 +1205,7 @@ export async function createOrder(
     ...data,
     id,
     orderReference: data.orderReference || id,
+    trackingToken: data.trackingToken || `${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`,
     paymentStatus: data.paymentStatus || "awaiting_payment",
     fulfilmentStatus: data.fulfilmentStatus || "new",
     status: data.status || data.paymentStatus || "pending",
@@ -1221,6 +1231,7 @@ export async function createOrder(
         total_amount: newOrder.totalAmount,
         status: sbStatus,
         payment_method: newOrder.paymentMethod || "Bank Transfer",
+        tracking_token: newOrder.trackingToken,
         notes: sbNotes,
         created_at: newOrder.createdAt,
         updated_at: newOrder.updatedAt,

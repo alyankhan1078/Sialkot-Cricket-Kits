@@ -484,7 +484,9 @@ export default function CheckoutPage() {
         } else {
           clearCart();
         }
-        router.push(`/checkout/success?orderId=${encodeURIComponent(data.orderId)}`);
+        router.push(
+          `/checkout/success?orderId=${encodeURIComponent(data.orderId)}&token=${encodeURIComponent(data.trackingToken || "")}`
+        );
       } else {
         if (data.errors) {
           setFieldErrors(data.errors);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Printer,
@@ -32,6 +33,7 @@ export default function StandaloneInvoicePage({
 }) {
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
+  const trackingToken = useSearchParams().get("token");
   const { formatPrice } = useStore();
 
   const [order, setOrder] = useState<DBOrder | null>(null);
@@ -45,7 +47,7 @@ export default function StandaloneInvoicePage({
       return;
     }
 
-    fetch(`/api/checkout/order/${encodeURIComponent(orderId)}`)
+    fetch(`/api/checkout/order/${encodeURIComponent(orderId)}?token=${encodeURIComponent(trackingToken || "")}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
@@ -54,7 +56,7 @@ export default function StandaloneInvoicePage({
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, trackingToken]);
 
   const handlePrint = () => {
     try {
@@ -121,7 +123,7 @@ export default function StandaloneInvoicePage({
       {/* ── TOP FLOATING SCREEN TOOLBAR (Hidden in Print) ── */}
       <div className="invoice-screen-bar">
         <Link
-          href={`/checkout/success?orderId=${encodeURIComponent(order.id)}`}
+          href={`/checkout/success?orderId=${encodeURIComponent(order.id)}&token=${encodeURIComponent(trackingToken || "")}`}
           className="btn-back-order"
         >
           <ArrowLeft size={16} /> Back to Order

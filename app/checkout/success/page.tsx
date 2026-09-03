@@ -35,6 +35,7 @@ import type { DBOrder } from "@/src/lib/data-service";
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
+  const trackingToken = searchParams.get("token");
   const { formatPrice } = useStore();
 
   const [order, setOrder] = useState<DBOrder | null>(null);
@@ -48,7 +49,7 @@ function OrderSuccessContent() {
       return;
     }
 
-    fetch(`/api/checkout/order/${encodeURIComponent(orderId)}`)
+    fetch(`/api/checkout/order/${encodeURIComponent(orderId)}?token=${encodeURIComponent(trackingToken || "")}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
@@ -57,7 +58,7 @@ function OrderSuccessContent() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, trackingToken]);
 
   const handlePrint = () => {
     try {
@@ -1087,7 +1088,7 @@ function OrderSuccessContent() {
 
             {order && (
               <Link
-                href={`/checkout/invoice/${encodeURIComponent(order.id)}`}
+                href={`/checkout/invoice/${encodeURIComponent(order.id)}?token=${encodeURIComponent(trackingToken || "")}`}
                 target="_blank"
                 style={{
                   display: "inline-flex",

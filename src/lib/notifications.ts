@@ -267,7 +267,7 @@ export async function sendOrderReceivedNotifications(
   order: DBOrder,
   _paymentSubmission?: DBPaymentSubmission
 ): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult; adminAlertResult: NotificationSendResult }> {
-  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}`;
+  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}?token=${encodeURIComponent(order.trackingToken || "")}`;
   const adminReviewLink = `https://sialkotcricketkits.com/admin/orders?search=${encodeURIComponent(order.id)}`;
   const totalFormatted = formatPrice(order.totalAmount);
 
@@ -437,7 +437,7 @@ Sialkot Cricket Kits
 export async function sendOrderConfirmedNotifications(
   order: DBOrder
 ): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult }> {
-  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}`;
+  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}?token=${encodeURIComponent(order.trackingToken || "")}`;
   const totalFormatted = formatPrice(order.totalAmount);
 
   // ── A. Customer Confirmation Email ──

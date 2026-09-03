@@ -479,6 +479,7 @@ export async function POST(request: Request) {
         success: true,
         orderId: newOrder.id,
         orderReference: newOrder.orderReference,
+        trackingToken: newOrder.trackingToken,
         customerFacingStatus: "Payment Under Verification",
         paymentStatus: "payment_submitted",
         message:
