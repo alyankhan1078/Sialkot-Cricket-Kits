@@ -12,7 +12,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized access to payment receipts" }, { status: 401 });
   }
 
-  const rawParams = context?.params ? await context.params : {};
+  const rawParams: { id?: string } = context?.params ? await context.params : {};
   let id = rawParams?.id;
   if (!id) {
     const segments = new URL(request.url).pathname.split("/").filter(Boolean);

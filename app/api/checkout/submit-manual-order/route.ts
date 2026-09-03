@@ -3,12 +3,13 @@ import {
   createOrder,
   getProductById,
   checkDuplicateTransferReference,
+  createPaymentSubmission,
   getOrderById,
   type OrderItem,
 } from "@/src/lib/data-service";
 import { calculateShippingFee } from "@/src/lib/shipping";
 import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
-import { getAdminSupabase } from "@/src/lib/supabase";
+import { requireAdminSupabase } from "@/src/lib/supabase";
 
 const ALLOWED_ORIGINS = [
   "https://sialkot-cricket-kits.alyankhan1078.workers.dev",
@@ -177,8 +178,14 @@ export async function POST(request: Request) {
       state: state,
       stateProvince: state,
       postalCode: postalCode,
-      policiesAccepted: policiesAccepted,
     };
+
+    if (!policiesAccepted) {
+      return NextResponse.json(
+        { success: false, error: "Please read and accept the checkout policies before submitting your order." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     const customerValidation = validateCheckoutCustomerInfo(customerValidationInput);
     if (!customerValidation.isValid) {
@@ -360,39 +367,20 @@ export async function POST(request: Request) {
     const safeUniqueName = `rcpt_${orderId}_${randomSuffix}${fileExt}`;
     let receiptStoragePath = `receipts/${safeUniqueName}`;
 
-    try {
-      const sb = getAdminSupabase();
-      if (sb) {
-        const bucketName = process.env.SUPABASE_RECEIPTS_BUCKET || "receipts";
-        let { error: sbUploadErr } = await sb.storage
-          .from(bucketName)
-          .upload(safeUniqueName, fileBytes, {
-            contentType: receiptFile.type || "application/octet-stream",
-            upsert: true,
-          });
+    const sb = requireAdminSupabase();
+    const bucketName = process.env.SUPABASE_RECEIPTS_BUCKET || "receipts";
+    const { error: sbUploadErr } = await sb.storage
+      .from(bucketName)
+      .upload(safeUniqueName, fileBytes, {
+        contentType: receiptFile.type || "application/octet-stream",
+        upsert: false,
+      });
 
-        if (sbUploadErr) {
-          // If receipts bucket was not found, fallback to products bucket
-          const fallbackUpload = await sb.storage
-            .from("products")
-            .upload(`receipts/${safeUniqueName}`, fileBytes, {
-              contentType: receiptFile.type || "application/octet-stream",
-              upsert: true,
-            });
-          if (!fallbackUpload.error) {
-            receiptStoragePath = `supabase://products/receipts/${safeUniqueName}`;
-          } else {
-            console.warn("[Receipt Storage Notice]:", sbUploadErr.message);
-            receiptStoragePath = `storage://${safeUniqueName}`;
-          }
-        } else {
-          receiptStoragePath = `supabase://${bucketName}/${safeUniqueName}`;
-        }
-      }
-    } catch (storageErr) {
-      console.warn("[Storage Catch Notice]:", storageErr);
-      receiptStoragePath = `storage://${safeUniqueName}`;
+    if (sbUploadErr) {
+      throw new Error(`Payment receipt could not be stored: ${sbUploadErr.message}`);
     }
+
+    receiptStoragePath = `supabase://${bucketName}/${safeUniqueName}`;
 
     const receiptOriginalName = receiptFile.name || "receipt.jpg";
 
@@ -453,6 +441,25 @@ export async function POST(request: Request) {
       paymentProvider: "ubl_bank",
       transferReference,
       notes: orderNotes,
+    });
+
+    await createPaymentSubmission({
+      id: `psub_${orderId}`,
+      orderId,
+      paymentMethod: `UBL Bank Transfer (${provider})`,
+      senderName,
+      senderCountry,
+      provider,
+      amountSent,
+      currencySent,
+      transferReference,
+      transferDate,
+      receiptStoragePath,
+      receiptOriginalName,
+      receiptMimeType: receiptFile.type,
+      receiptFileSize: receiptFile.size,
+      status: "payment_submitted",
+      customerNote: customerNote || undefined,
     });
 
     // ── Non-blocking Asynchronous Notification Dispatch (Never blocks or fails checkout) ──

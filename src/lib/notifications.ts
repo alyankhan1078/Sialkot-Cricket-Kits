@@ -15,6 +15,13 @@ export interface NotificationLog {
   sentAt: string;
 }
 
+export interface NotificationSendResult {
+  success: boolean;
+  providerMessageId?: string;
+  error?: string;
+  simulated?: boolean;
+}
+
 // In-memory notification audit log cache
 export const memoryNotificationLogs: NotificationLog[] = [];
 
@@ -103,7 +110,7 @@ export async function sendEmailDirect({
   html: string;
   text?: string;
   bcc?: string | string[];
-}): Promise<{ success: boolean; providerMessageId?: string; error?: string; simulated?: boolean }> {
+}): Promise<NotificationSendResult> {
   const resendApiKey = process.env.RESEND_API_KEY;
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
@@ -180,7 +187,7 @@ export async function sendWhatsAppDirect({
 }: {
   toPhone: string;
   message: string;
-}): Promise<{ success: boolean; providerMessageId?: string; error?: string; simulated?: boolean }> {
+}): Promise<NotificationSendResult> {
   // Normalize E.164 phone
   const cleanPhone = toPhone.replace(/[^0-9+]/g, "").replace(/^00/, "+");
   const metaAccessToken = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_WHATSAPP_TOKEN;
@@ -258,14 +265,14 @@ export async function sendWhatsAppDirect({
 // ─────────────────────────────────────────────────────────────────────────────
 export async function sendOrderReceivedNotifications(
   order: DBOrder,
-  paymentSubmission?: DBPaymentSubmission
-): Promise<{ customerEmailResult: any; customerWhatsAppResult: any; adminAlertResult: any }> {
+  _paymentSubmission?: DBPaymentSubmission
+): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult; adminAlertResult: NotificationSendResult }> {
   const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}`;
   const adminReviewLink = `https://sialkotcricketkits.com/admin/orders?search=${encodeURIComponent(order.id)}`;
   const totalFormatted = formatPrice(order.totalAmount);
 
   // ── A. Customer Email (Order Received) ──
-  let customerEmailResult = { success: false, error: "No email provided" };
+  let customerEmailResult: NotificationSendResult = { success: false, error: "No email provided" };
   if (order.customerEmail) {
     const subject = `We Have Received Your Order — Sialkot Cricket Kits #${order.id}`;
     const html = `
@@ -349,7 +356,7 @@ export async function sendOrderReceivedNotifications(
   }
 
   // ── B. Customer WhatsApp (Order Received) ──
-  let customerWhatsAppResult = { success: false, error: "No phone provided" };
+  let customerWhatsAppResult: NotificationSendResult = { success: false, error: "No phone provided" };
   if (order.customerPhone) {
     const waText = `Hello ${order.customerName},
 
@@ -429,12 +436,12 @@ Sialkot Cricket Kits
 // ─────────────────────────────────────────────────────────────────────────────
 export async function sendOrderConfirmedNotifications(
   order: DBOrder
-): Promise<{ customerEmailResult: any; customerWhatsAppResult: any }> {
+): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult }> {
   const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}`;
   const totalFormatted = formatPrice(order.totalAmount);
 
   // ── A. Customer Confirmation Email ──
-  let customerEmailResult = { success: false, error: "No email provided" };
+  let customerEmailResult: NotificationSendResult = { success: false, error: "No email provided" };
   if (order.customerEmail) {
     const subject = `Your Order Is Confirmed — Sialkot Cricket Kits #${order.id}`;
     const html = `
@@ -512,7 +519,7 @@ export async function sendOrderConfirmedNotifications(
   }
 
   // ── B. Customer Confirmation WhatsApp ──
-  let customerWhatsAppResult = { success: false, error: "No phone provided" };
+  let customerWhatsAppResult: NotificationSendResult = { success: false, error: "No phone provided" };
   if (order.customerPhone) {
     const waText = `Hello ${order.customerName},
 

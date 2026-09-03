@@ -21,4 +21,24 @@ export const getAdminSupabase = () => {
   });
 };
 
+/**
+ * Server-only client for privileged writes. Checkout and admin mutations must
+ * never fall back to the public key: doing so can make a failed database write
+ * look successful when RLS or production credentials are misconfigured.
+ */
+export const requireAdminSupabase = () => {
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      "Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing."
+    );
+  }
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+};
+
 export const isSupabaseConfigured = () => Boolean(supabaseUrl && (supabaseAnonKey || supabaseServiceRoleKey));

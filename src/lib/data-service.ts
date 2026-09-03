@@ -171,6 +171,7 @@ export type OrderPaymentStatus =
   | "paid"
   | "completed"
   | "confirmed"
+  | "order_confirmed"
   | "pending"
   | "payment_failed"
   | "payment_cancelled"
@@ -353,29 +354,29 @@ let memorySettings: DBSettings = {
   ublDetailsVerifiedBy: "Administrator",
 
   // Bank details (UBL)
-  bankName: "United Bank Limited (UBL)",
-  accountTitle: "ALYAN WAZIR",
-  accountNumber: "0881304929964",
-  iban: "PK93UNIL0109000304929964",
-  swiftBic: "UNILPKKA",
-  bankBranch: "0881-Wana",
+  bankName: process.env.UBL_BANK_NAME || "United Bank Limited (UBL)",
+  accountTitle: process.env.UBL_ACCOUNT_TITLE || "",
+  accountNumber: process.env.UBL_ACCOUNT_NUMBER || "",
+  iban: process.env.UBL_IBAN || "",
+  swiftBic: process.env.UBL_SWIFT_BIC || "",
+  bankBranch: process.env.UBL_BANK_BRANCH || "",
   bankEnabled: true,
 
   // Pakistani Wallets, Microfinance & Raast
-  raastId: "03231438214",
-  raastTitle: "ALYAN WAZIR",
+  raastId: process.env.RAAST_ID || "",
+  raastTitle: process.env.RAAST_TITLE || "",
   raastEnabled: true,
-  jazzcashNumber: "03231438214",
-  jazzcashTitle: "ALYAN WAZIR",
+  jazzcashNumber: process.env.JAZZCASH_NUMBER || "",
+  jazzcashTitle: process.env.JAZZCASH_TITLE || "",
   jazzcashEnabled: true,
-  nayapayNumber: "03231438214",
-  nayapayTitle: "ALYAN WAZIR",
+  nayapayNumber: process.env.NAYAPAY_NUMBER || "",
+  nayapayTitle: process.env.NAYAPAY_TITLE || "",
   nayapayEnabled: true,
-  sadapayNumber: "03231438214",
-  sadapayTitle: "ALYAN WAZIR",
+  sadapayNumber: process.env.SADAPAY_NUMBER || "",
+  sadapayTitle: process.env.SADAPAY_TITLE || "",
   sadapayEnabled: true,
-  easypaisaNumber: "03231438214",
-  easypaisaTitle: "ALYAN WAZIR",
+  easypaisaNumber: process.env.EASYPAISA_NUMBER || "",
+  easypaisaTitle: process.env.EASYPAISA_TITLE || "",
   easypaisaEnabled: true,
 
   // Payoneer & International Digital
@@ -402,209 +403,11 @@ let nextCategoryId = categoryOrder.length + 1;
 let nextFaqId = initialFaqs.length + 1;
 let nextOrderSequence = 101;
 
-// Seed realistic historical and current sales/orders across daily, weekly, monthly, yearly
-const now = new Date();
-const formatOffsetDate = (daysAgo: number, hoursOffset = 0) => {
-  const d = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - hoursOffset * 60 * 60 * 1000);
-  return d.toISOString();
-};
+// Runtime cache only. Real customer records are loaded from Supabase.
+let memoryOrders: DBOrder[] = [];
 
-let memoryOrders: DBOrder[] = [
-  // Today's Sales
-  {
-    id: "SCK-2026-042",
-    customerName: "Imran Siddiqui",
-    customerPhone: "+44 7911 123456",
-    customerEmail: "imran.s@gmail.com",
-    country: "United Kingdom",
-    items: [
-      { name: "Apex Pro Beauty Processed Bat", category: "Beauty Processed Bats", price: 185, quantity: 1 },
-      { name: "Gray-Nicolls Legend Batting Pads", category: "Batting Pads", price: 32, quantity: 1 },
-    ],
-    totalAmount: 217,
-    status: "completed",
-    paymentMethod: "Wise Transfer",
-    notes: "Shipped via DHL Express to London. Knocked-in.",
-    createdAt: formatOffsetDate(0, 2),
-    updatedAt: formatOffsetDate(0, 1),
-  },
-  {
-    id: "SCK-2026-041",
-    customerName: "Tariq Mahmood",
-    customerPhone: "+92 300 5554321",
-    customerEmail: "tariq.m@yahoo.com",
-    country: "Pakistan",
-    items: [
-      { name: "GM Original LE Batting Gloves", category: "Batting Gloves", price: 28, quantity: 2 },
-      { name: "DSC Fearless Intense Pro Bag", category: "Kit & Duffle Bags", price: 40, quantity: 1 },
-    ],
-    totalAmount: 96,
-    status: "completed",
-    paymentMethod: "Bank Transfer (UBL)",
-    notes: "Local delivery Lahore.",
-    createdAt: formatOffsetDate(0, 5),
-    updatedAt: formatOffsetDate(0, 4),
-  },
-  // Yesterday / This Week
-  {
-    id: "SCK-2026-040",
-    customerName: "Hamza Farooq",
-    customerPhone: "+971 50 9876543",
-    customerEmail: "h.farooq@outlook.com",
-    country: "United Arab Emirates",
-    items: [
-      { name: "VVIP Bonafide Original - Grade A+", category: "Bonafide Bats", price: 499, quantity: 1 },
-      { name: "Shrey Kit Bag", category: "Kit & Duffle Bags", price: 62, quantity: 1 },
-    ],
-    totalAmount: 561,
-    status: "completed",
-    paymentMethod: "Remitly",
-    notes: "Dubai priority air shipment.",
-    createdAt: formatOffsetDate(1, 4),
-    updatedAt: formatOffsetDate(1, 2),
-  },
-  {
-    id: "SCK-2026-039",
-    customerName: "David Campbell",
-    customerPhone: "+61 412 345678",
-    customerEmail: "d.campbell@cricketclub.com.au",
-    country: "Australia",
-    items: [
-      { name: "Bounce Edition Beauty Processed Bat", category: "Beauty Processed Bats", price: 180, quantity: 1 },
-      { name: "Gray-Nicolls Classic Gloves", category: "Batting Gloves", price: 25, quantity: 1 },
-      { name: "Gray-Nicolls Stratos Pads", category: "Batting Pads", price: 30, quantity: 1 },
-    ],
-    totalAmount: 235,
-    status: "completed",
-    paymentMethod: "Western Union",
-    notes: "Sydney delivery. Weight 1175g verified.",
-    createdAt: formatOffsetDate(3, 1),
-    updatedAt: formatOffsetDate(3, 1),
-  },
-  {
-    id: "SCK-2026-038",
-    customerName: "Zahid Qureshi",
-    customerPhone: "+92 333 4441122",
-    customerEmail: "zahid@qureshi.pk",
-    country: "Pakistan",
-    items: [
-      { name: "Monster Series Beauty Bat", category: "Beauty Processed Bats", price: 195, quantity: 1 },
-    ],
-    totalAmount: 195,
-    status: "completed",
-    paymentMethod: "Direct Transfer",
-    notes: "Custom name engraving requested.",
-    createdAt: formatOffsetDate(5, 3),
-    updatedAt: formatOffsetDate(5, 2),
-  },
-  // Earlier This Month
-  {
-    id: "SCK-2026-037",
-    customerName: "Bilal Aslam",
-    customerPhone: "+1 647 555 9988",
-    customerEmail: "bilal.aslam@gmail.com",
-    country: "Canada",
-    items: [
-      { name: "Special Edition - Grade A Bonafide Bat", category: "Bonafide Bats", price: 330, quantity: 1 },
-      { name: "Gray-Nicolls Legend Wheelie Bag", category: "Kit & Duffle Bags", price: 52, quantity: 1 },
-    ],
-    totalAmount: 382,
-    status: "completed",
-    paymentMethod: "TapTap Send",
-    notes: "Toronto delivery. Grain count 11 verified.",
-    createdAt: formatOffsetDate(10, 2),
-    updatedAt: formatOffsetDate(10, 1),
-  },
-  {
-    id: "SCK-2026-036",
-    customerName: "Fawad Khan",
-    customerPhone: "+92 321 8887766",
-    customerEmail: "fawad.k@gmail.com",
-    country: "Pakistan",
-    items: [
-      { name: "Silver Edition Beauty Bat", category: "Beauty Processed Bats", price: 125, quantity: 1 },
-      { name: "Gray-Nicolls Helmet - Green", category: "Helmets", price: 30, quantity: 1 },
-    ],
-    totalAmount: 155,
-    status: "completed",
-    paymentMethod: "Bank Transfer",
-    notes: "Islamabad club team.",
-    createdAt: formatOffsetDate(16, 6),
-    updatedAt: formatOffsetDate(16, 4),
-  },
-  {
-    id: "SCK-2026-035",
-    customerName: "Marcus Thornton",
-    customerPhone: "+44 7700 900123",
-    customerEmail: "marcus.t@leicestercricket.co.uk",
-    country: "United Kingdom",
-    items: [
-      { name: "Player Edition Bonafide Bat", category: "Bonafide Bats", price: 215, quantity: 2 },
-      { name: "SS Millennium Pro White Gloves", category: "Batting Gloves", price: 26, quantity: 2 },
-    ],
-    totalAmount: 482,
-    status: "completed",
-    paymentMethod: "Wise",
-    notes: "County league order.",
-    createdAt: formatOffsetDate(22, 3),
-    updatedAt: formatOffsetDate(22, 2),
-  },
-  // Earlier This Year
-  {
-    id: "SCK-2026-034",
-    customerName: "Ahmad Raza",
-    customerPhone: "+966 50 123 4567",
-    customerEmail: "ahmad.raza@saudi.com",
-    country: "Saudi Arabia",
-    items: [
-      { name: "VVIP Bat 45mm Edge", category: "Beauty Processed Bats", price: 245, quantity: 1 },
-      { name: "Gray-Nicolls Kit Bag Trolley", category: "Kit & Duffle Bags", price: 62, quantity: 1 },
-    ],
-    totalAmount: 307,
-    status: "completed",
-    paymentMethod: "MoneyGram",
-    notes: "Riyadh shipment.",
-    createdAt: formatOffsetDate(45, 5),
-    updatedAt: formatOffsetDate(45, 3),
-  },
-  {
-    id: "SCK-2026-033",
-    customerName: "Salman Butt",
-    customerPhone: "+92 301 9991122",
-    customerEmail: "salman@butt.pk",
-    country: "Pakistan",
-    items: [
-      { name: "Gray-Nicolls Playing Kit - Large", category: "Teamwear", price: 26, quantity: 10 },
-    ],
-    totalAmount: 260,
-    status: "completed",
-    paymentMethod: "Bank Transfer",
-    notes: "Academy batch teamwear order.",
-    createdAt: formatOffsetDate(60, 2),
-    updatedAt: formatOffsetDate(60, 1),
-  },
-  {
-    id: "SCK-2026-032",
-    customerName: "Usman Ghani",
-    customerPhone: "+1 214 555 7890",
-    customerEmail: "usman.ghani@dallascricket.org",
-    country: "United States",
-    items: [
-      { name: "VVIP Bonafide Original - Grade A+", category: "Bonafide Bats", price: 499, quantity: 1 },
-      { name: "Apex Pro Beauty Bat", category: "Beauty Processed Bats", price: 185, quantity: 1 },
-      { name: "Gray-Nicolls Legend Pads", category: "Batting Pads", price: 32, quantity: 2 },
-    ],
-    totalAmount: 748,
-    status: "completed",
-    paymentMethod: "Wise",
-    notes: "Texas premier league order.",
-    createdAt: formatOffsetDate(85, 4),
-    updatedAt: formatOffsetDate(85, 2),
-  },
-];
-
-// Admin password (default: admin123; can be updated from admin panel)
-let adminPasswordHash = "admin123";
+// Never provide a source-code password fallback.
+let adminPasswordHash = "";
 const activeSessions = new Set<string>();
 
 // ─── Product Operations ──────────────────────────────────────────────────────
@@ -1234,51 +1037,6 @@ export async function deleteEnquiry(id: number): Promise<boolean> {
 }
 
 export function sanitizeOrderRecord(order: DBOrder): DBOrder {
-  if (!order) return order;
-
-  const phone = (order.customerPhone || "").replace(/\s+/g, "");
-  const email = (order.customerEmail || "").toLowerCase();
-  const address = (order.address || "").toLowerCase();
-  const notes = (order.notes || "");
-
-  const isLegacyPersonalRecord =
-    phone.includes("03449832129") ||
-    phone.includes("923449832129") ||
-    phone.includes("03499585519") ||
-    phone.includes("923499585519") ||
-    email.includes("alyankhan1078@gmail.com") ||
-    email.includes("aliyankhan10@gmail.com") ||
-    address.includes("awami kuthab") ||
-    address.includes("nazir market") ||
-    address.includes("south waziristan") ||
-    address.includes("wana") ||
-    address.includes("29540");
-
-  if (isLegacyPersonalRecord) {
-    return {
-      ...order,
-      customerName: "ALYAN WAZIR",
-      customerPhone: "+92 323 1438214",
-      customerEmail: "sialkotcricketkits@gmail.com",
-      address: "House No. 207, Gulshan Street, Model Town",
-      city: "Sialkot",
-      state: "Punjab",
-      postalCode: "51310",
-      country: "Pakistan",
-      notes: notes
-        .replace(/AWAMI KUTHAB KHANA[^,\n]*/gi, "House No. 207, Gulshan Street, Model Town, Sialkot")
-        .replace(/NAZIR MARKET[^,\n]*/gi, "")
-        .replace(/SOUTH WAZIRISTAN[^,\n]*/gi, "Sialkot")
-        .replace(/WANA SWLTD[^,\n]*/gi, "")
-        .replace(/29540/g, "51310")
-        .replace(/alyankhan1078@gmail\.com/gi, "sialkotcricketkits@gmail.com")
-        .replace(/aliyankhan10@gmail\.com/gi, "sialkotcricketkits@gmail.com")
-        .replace(/\+?92\s*344\s*9832129/gi, "+92 323 1438214")
-        .replace(/\+?92\s*349\s*9585519/gi, "+92 323 1438214")
-        .replace(/\+?92\s*327\s*5756188/gi, "+92 323 1438214"),
-    };
-  }
-
   return order;
 }
 
@@ -1453,7 +1211,7 @@ export async function createOrder(
       const sbStatus = mapToSupabaseStatus(newOrder.status);
       const sbNotes = `[Status: ${newOrder.status}]\n${newOrder.notes || ""}`;
 
-      await sb.from("orders").upsert({
+      const { error } = await sb.from("orders").upsert({
         id: newOrder.id,
         customer_name: newOrder.customerName,
         customer_phone: newOrder.customerPhone || null,
@@ -1467,9 +1225,18 @@ export async function createOrder(
         created_at: newOrder.createdAt,
         updated_at: newOrder.updatedAt,
       }, { onConflict: "id" });
+
+      if (error) {
+        memoryOrders = memoryOrders.filter((order) => order.id !== newOrder.id);
+        throw new Error(`Order could not be saved: ${error.message}`);
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      memoryOrders = memoryOrders.filter((order) => order.id !== newOrder.id);
+      throw new Error("Order database is not configured on the server.");
     }
   } catch (err) {
     console.error("[Supabase createOrder Error]:", err);
+    throw err;
   }
 
   return newOrder;
@@ -1532,6 +1299,32 @@ let memoryPaymentStatusHistory: DBPaymentStatusHistory[] = [];
 let nextSubmissionSeq = 1;
 let nextHistorySeq = 1;
 
+function mapPaymentSubmissionRow(data: any): DBPaymentSubmission {
+  return {
+    id: data.id,
+    orderId: data.order_id,
+    paymentMethod: data.payment_method,
+    senderName: data.sender_name,
+    senderCountry: data.sender_country,
+    provider: data.provider,
+    amountSent: Number(data.amount_sent),
+    currencySent: data.currency_sent,
+    transferReference: data.transfer_reference,
+    transferDate: data.transfer_date,
+    receiptStoragePath: data.receipt_storage_path,
+    receiptOriginalName: data.receipt_original_name,
+    receiptMimeType: data.receipt_mime_type,
+    receiptFileSize: Number(data.receipt_file_size || 0),
+    status: data.status,
+    customerNote: data.customer_note || undefined,
+    rejectionReason: data.rejection_reason || undefined,
+    verifiedBy: data.verified_by || undefined,
+    verifiedAt: data.verified_at || undefined,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
 export async function createPaymentSubmission(
   data: Omit<DBPaymentSubmission, "id" | "createdAt" | "updatedAt"> & { id?: string }
 ): Promise<DBPaymentSubmission> {
@@ -1561,7 +1354,7 @@ export async function createPaymentSubmission(
   try {
     const sb = getAdminSupabase();
     if (sb) {
-      await sb.from("payment_submissions").upsert({
+      const { error } = await sb.from("payment_submissions").upsert({
         id: submission.id,
         order_id: submission.orderId,
         payment_method: submission.paymentMethod,
@@ -1581,8 +1374,19 @@ export async function createPaymentSubmission(
         created_at: submission.createdAt,
         updated_at: submission.updatedAt,
       }, { onConflict: "id" });
+
+      if (error) {
+        memoryPaymentSubmissions = memoryPaymentSubmissions.filter((item) => item.id !== submission.id);
+        throw new Error(`Payment submission could not be saved: ${error.message}`);
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      memoryPaymentSubmissions = memoryPaymentSubmissions.filter((item) => item.id !== submission.id);
+      throw new Error("Payment verification database is not configured on the server.");
     }
-  } catch {}
+  } catch (err) {
+    console.error("[Supabase createPaymentSubmission Error]:", err);
+    throw err;
+  }
 
   return submission;
 }
@@ -1604,26 +1408,7 @@ export async function getPaymentSubmissionByOrderId(orderId: string): Promise<DB
     if (sb) {
       const { data, error } = await sb.from("payment_submissions").select("*").eq("order_id", orderId).maybeSingle();
       if (!error && data) {
-        return {
-          id: data.id,
-          orderId: data.order_id,
-          paymentMethod: data.payment_method,
-          senderName: data.sender_name,
-          senderCountry: data.sender_country,
-          provider: data.provider,
-          amountSent: Number(data.amount_sent),
-          currencySent: data.currency_sent,
-          transferReference: data.transfer_reference,
-          transferDate: data.transfer_date,
-          receiptStoragePath: data.receipt_storage_path,
-          receiptOriginalName: data.receipt_original_name,
-          receiptMimeType: data.receipt_mime_type,
-          receiptFileSize: Number(data.receipt_file_size || 0),
-          status: data.status,
-          customerNote: data.customer_note || undefined,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
+        return mapPaymentSubmissionRow(data);
       }
     }
   } catch {}
@@ -1673,6 +1458,36 @@ export async function getPaymentSubmissions(options?: {
   search?: string;
   orderId?: string;
 }): Promise<DBPaymentSubmission[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      let query = sb.from("payment_submissions").select("*").order("created_at", { ascending: false });
+      if (options?.status && options.status !== "all") query = query.eq("status", options.status);
+      if (options?.orderId) query = query.eq("order_id", options.orderId);
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+
+      let persisted = (data || []).map(mapPaymentSubmissionRow);
+      if (options?.search) {
+        const q = options.search.toLowerCase();
+        persisted = persisted.filter(
+          (p) =>
+            p.orderId.toLowerCase().includes(q) ||
+            p.senderName.toLowerCase().includes(q) ||
+            p.transferReference.toLowerCase().includes(q) ||
+            p.provider.toLowerCase().includes(q)
+        );
+      }
+
+      if (persisted.length > 0 || options?.status || options?.orderId || options?.search) {
+        return persisted;
+      }
+    }
+  } catch (err) {
+    console.error("[Supabase getPaymentSubmissions Error]:", err);
+  }
+
   const allOrders = await getOrders();
   const list: DBPaymentSubmission[] = [];
 
@@ -1807,6 +1622,24 @@ export async function verifyAndConfirmOrder(
     updatedAt: nowStr,
   };
 
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { error } = await sb
+        .from("payment_submissions")
+        .update({
+          status: "payment_verified",
+          verified_by: adminEmail,
+          verified_at: nowStr,
+          updated_at: nowStr,
+        })
+        .eq("id", submission.id);
+      if (error) throw new Error(error.message);
+    }
+  } catch (err) {
+    return { success: false, error: `Payment verification could not be saved: ${err instanceof Error ? err.message : "database error"}` };
+  }
+
   // 2. Update Associated Order
   const updatedOrder = await updateOrder(orderId, {
     paymentStatus: "payment_verified",
@@ -1818,7 +1651,7 @@ export async function verifyAndConfirmOrder(
   });
 
   // 3. Record Audit History
-  memoryPaymentStatusHistory.unshift({
+  const verificationHistory: DBPaymentStatusHistory = {
     id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
     paymentSubmissionId: submission.id,
     orderId: submission.orderId,
@@ -1827,7 +1660,23 @@ export async function verifyAndConfirmOrder(
     changedBy: adminEmail,
     internalNote: note || "Verified by admin against official UBL bank records; order confirmed",
     createdAt: nowStr,
-  });
+  };
+  memoryPaymentStatusHistory.unshift(verificationHistory);
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("payment_status_history").insert({
+        id: verificationHistory.id,
+        payment_submission_id: verificationHistory.paymentSubmissionId,
+        order_id: verificationHistory.orderId,
+        old_status: verificationHistory.oldStatus,
+        new_status: verificationHistory.newStatus,
+        changed_by: verificationHistory.changedBy,
+        internal_note: verificationHistory.internalNote || null,
+        created_at: verificationHistory.createdAt,
+      });
+    }
+  } catch {}
 
   // 4. Dispatch Automated Confirmation Notifications if not already confirmed
   if (!alreadyConfirmed && updatedOrder) {
@@ -1874,7 +1723,7 @@ export async function updateOrderStatus(
     id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
     paymentSubmissionId: existingOrder.paymentSubmissionId || `psub_${orderId}`,
     orderId,
-    oldStatus: existingOrder.status,
+    oldStatus: (existingOrder.paymentStatus || "awaiting_payment") as PaymentStatus,
     newStatus: newStatus as any,
     changedBy: adminEmail,
     internalNote: note || `Order status updated to ${newStatus}`,
@@ -1902,7 +1751,14 @@ export async function rejectPaymentSubmission(
   rejectionReason: string,
   requestReupload: boolean = false
 ): Promise<{ success: boolean; submission?: DBPaymentSubmission; error?: string }> {
-  const index = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId);
+  let index = memoryPaymentSubmissions.findIndex((p) => p.id === submissionId);
+  if (index === -1) {
+    const persisted = await getPaymentSubmissionById(submissionId);
+    if (persisted) {
+      memoryPaymentSubmissions.unshift(persisted);
+      index = 0;
+    }
+  }
   if (index === -1) {
     return { success: false, error: "Payment submission not found" };
   }
@@ -1920,6 +1776,24 @@ export async function rejectPaymentSubmission(
   };
 
   const submission = memoryPaymentSubmissions[index];
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { error } = await sb
+        .from("payment_submissions")
+        .update({
+          status: newStatus,
+          rejection_reason: rejectionReason,
+          verified_by: adminEmail,
+          updated_at: nowStr,
+        })
+        .eq("id", submission.id);
+      if (error) throw new Error(error.message);
+    }
+  } catch (err) {
+    return { success: false, error: `Payment rejection could not be saved: ${err instanceof Error ? err.message : "database error"}` };
+  }
 
   // Update Order
   await updateOrder(submission.orderId, {
@@ -1944,6 +1818,28 @@ export async function rejectPaymentSubmission(
 }
 
 export async function getPaymentStatusHistory(submissionIdOrOrderId: string): Promise<DBPaymentStatusHistory[]> {
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb
+        .from("payment_status_history")
+        .select("*")
+        .or(`payment_submission_id.eq.${submissionIdOrOrderId},order_id.eq.${submissionIdOrOrderId}`)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        return data.map((row: any) => ({
+          id: row.id,
+          paymentSubmissionId: row.payment_submission_id,
+          orderId: row.order_id,
+          oldStatus: row.old_status,
+          newStatus: row.new_status,
+          changedBy: row.changed_by,
+          internalNote: row.internal_note || undefined,
+          createdAt: row.created_at,
+        }));
+      }
+    }
+  } catch {}
   return memoryPaymentStatusHistory.filter(
     (h) => h.paymentSubmissionId === submissionIdOrOrderId || h.orderId === submissionIdOrOrderId
   );
@@ -1958,6 +1854,22 @@ export async function checkDuplicateTransferReference(
   }
 
   const cleanRef = transferReference.trim().toLowerCase();
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb
+        .from("payment_submissions")
+        .select("order_id,transfer_reference")
+        .ilike("transfer_reference", transferReference.trim());
+      if (!error && data) {
+        const matchedOrders = data
+          .filter((row: any) => row.transfer_reference.trim().toLowerCase() === cleanRef)
+          .map((row: any) => row.order_id)
+          .filter((orderId: string) => !excludeOrderId || orderId !== excludeOrderId);
+        return { isDuplicate: matchedOrders.length > 0, matchedOrders };
+      }
+    }
+  } catch {}
   const matches = memoryPaymentSubmissions.filter(
     (p) =>
       p.transferReference.trim().toLowerCase() === cleanRef &&
@@ -2138,7 +2050,7 @@ export async function generateSalesCsv(startDate?: string, endDate?: string): Pr
 }
 
 // ─── Auth Operations ──────────────────────────────────────────────────────────
-const SESSION_SECRET = process.env.ADMIN_PASSWORD || "sialkot_cricket_kits_secure_admin_2026";
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || "";
 
 function computeSimpleSig(input: string): string {
   let hash = 0x811c9dc5;
@@ -2150,13 +2062,8 @@ function computeSimpleSig(input: string): string {
 }
 
 export function verifyAdminPassword(password: string): boolean {
-  const currentExpected = process.env.ADMIN_PASSWORD || adminPasswordHash || "admin123";
-  return (
-    password === currentExpected ||
-    password === adminPasswordHash ||
-    password === "admin123" ||
-    password === "sialkot_cricket_kits_secure_admin_2026"
-  );
+  const currentExpected = process.env.ADMIN_PASSWORD || adminPasswordHash;
+  return Boolean(currentExpected) && password === currentExpected;
 }
 
 export function updateAdminPassword(newPassword: string): void {
@@ -2164,6 +2071,7 @@ export function updateAdminPassword(newPassword: string): void {
 }
 
 export function createAdminSession(): string {
+  if (!SESSION_SECRET) throw new Error("Admin session secret is not configured.");
   const timestamp = Date.now();
   const raw = `${timestamp}:${SESSION_SECRET}`;
   const sig = computeSimpleSig(raw);
@@ -2173,7 +2081,7 @@ export function createAdminSession(): string {
 }
 
 export function validateAdminSession(token?: string): boolean {
-  if (!token) return false;
+  if (!token || !SESSION_SECRET) return false;
   if (activeSessions.has(token)) return true;
 
   // Verify signed token structure across distributed Cloudflare Workers isolates
