@@ -2063,7 +2063,7 @@ const SESSION_SECRET =
   process.env.ADMIN_PASSWORD ||
   "sialkot_cricket_kits_secure_admin_2026";
 
-let adminPasswordHash = "admin123";
+let adminPasswordHash = "";
 const activeSessions = new Set<string>();
 const authorizedAdminEmails = new Set<string>([
   "sialkotcricketkits@gmail.com",
@@ -2112,11 +2112,15 @@ export function verifyAdminPassword(password: string): boolean {
   if (!password || typeof password !== "string") return false;
   const trimmed = password.trim();
   const envPassword = process.env.ADMIN_PASSWORD ? process.env.ADMIN_PASSWORD.trim() : "";
+
+  if (adminPasswordHash) {
+    return trimmed === adminPasswordHash.trim() || (Boolean(envPassword) && trimmed === envPassword);
+  }
+
   return (
     trimmed === "admin123" ||
     trimmed === "sialkot_cricket_kits_secure_admin_2026" ||
-    (Boolean(envPassword) && trimmed === envPassword) ||
-    (Boolean(adminPasswordHash) && trimmed === adminPasswordHash.trim())
+    (Boolean(envPassword) && trimmed === envPassword)
   );
 }
 
