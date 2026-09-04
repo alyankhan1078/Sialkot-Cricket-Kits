@@ -91,17 +91,7 @@ export const orders = sqliteTable("orders", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
-// ─── Admin Sessions ───────────────────────────────────────────────────────────
-export const adminSessions = sqliteTable("admin_sessions", {
-  id: text("id").primaryKey(), // random UUID
-  expiresAt: text("expires_at").notNull(),
-});
 
-// ─── Admin Config (password hash stored here) ─────────────────────────────────
-export const adminConfig = sqliteTable("admin_config", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type Product = typeof products.$inferSelect;

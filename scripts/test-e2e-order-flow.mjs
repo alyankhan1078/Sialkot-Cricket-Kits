@@ -45,7 +45,7 @@ async function runTest() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email: process.env.ADMIN_EMAIL || "alyankhan1078@gmail.com",
-      password: process.env.SUPABASE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "",
+      password: process.env.SUPABASE_ADMIN_PASSWORD || "",
     }),
   });
   const authCookie = loginRes.headers.get("set-cookie");
