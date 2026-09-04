@@ -191,8 +191,6 @@ CREATE POLICY "Allow full access for service role on orders" ON orders FOR ALL T
 INSERT INTO categories (name, sort_order, active) VALUES
 ${categoryOrder.map((name, idx) => `  (${escapeSql(name)}, ${idx + 1}, true)`).join(',\n')};
 
--- Insert Admin Config (Default Password: admin123)
-INSERT INTO admin_config (key, value) VALUES ('admin_password', 'admin123');
 
 -- Insert Site Settings
 INSERT INTO site_settings (key, value, label) VALUES

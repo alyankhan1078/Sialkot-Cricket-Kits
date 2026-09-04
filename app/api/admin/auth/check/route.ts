@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticatedAdmin } from "@/src/lib/admin-auth";
+import { getAuthenticatedAdminUser, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 
 export async function GET(request: NextRequest) {
-  const isAuth = isAuthenticatedAdmin(request);
-  return NextResponse.json({ authenticated: isAuth });
+  const adminUser = await getAuthenticatedAdminUser(request);
+  const headers = getAdminResponseHeaders();
+
+  if (!adminUser) {
+    return NextResponse.json({ authenticated: false }, { status: 200, headers });
+  }
+
+  return NextResponse.json(
+    {
+      authenticated: true,
+      user: {
+        id: adminUser.id,
+        email: adminUser.email,
+        role: adminUser.role,
+      },
+    },
+    { status: 200, headers }
+  );
 }

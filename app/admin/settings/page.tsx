@@ -98,10 +98,8 @@ export default function AdminSettingsPage() {
   const [passwordMsg, setPasswordMsg] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const [authorizedEmails, setAuthorizedEmails] = useState<string[]>([]);
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [addingEmail, setAddingEmail] = useState(false);
-  const [revokingSessions, setRevokingSessions] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("alyankhan1078@gmail.com");
+  const [sendingResetEmail, setSendingResetEmail] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -116,8 +114,8 @@ export default function AdminSettingsPage() {
     fetch("/api/admin/auth/password")
       .then((res) => res.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.emails)) {
-          setAuthorizedEmails(res.emails);
+        if (res.success && res.email) {
+          setAdminEmail(res.email);
         }
       })
       .catch(() => {});
@@ -156,9 +154,9 @@ export default function AdminSettingsPage() {
       showToast("New passwords do not match", "warning");
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordMsg("New password must be at least 6 characters");
-      showToast("New password must be at least 6 characters", "warning");
+    if (newPassword.length < 8) {
+      setPasswordMsg("New password must be at least 8 characters");
+      showToast("New password must be at least 8 characters", "warning");
       return;
     }
 
@@ -169,12 +167,12 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/admin/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ newPassword }),
       });
       const data = await res.json();
       if (data.success) {
-        setPasswordMsg("Password updated successfully! All other sessions signed out.");
-        showToast("Admin password updated successfully!", "success");
+        setPasswordMsg("Password updated successfully in Supabase Auth!");
+        showToast("Admin password updated successfully in Supabase Auth!", "success");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -190,59 +188,24 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleAddAuthorizedEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdminEmail || !newAdminEmail.includes("@")) {
-      showToast("Please enter a valid email address", "warning");
-      return;
-    }
-
-    setAddingEmail(true);
+  const handleSendResetEmail = async () => {
+    setSendingResetEmail(true);
     try {
       const res = await fetch("/api/admin/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newEmail: newAdminEmail }),
+        body: JSON.stringify({ action: "send_reset_email" }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Authorized admin email registered!", "success");
-        if (Array.isArray(data.emails)) {
-          setAuthorizedEmails(data.emails);
-        }
-        setNewAdminEmail("");
+        showToast(`Password reset link dispatched to ${adminEmail}`, "success");
       } else {
-        showToast(data.error || "Failed to add email", "error");
+        showToast(data.error || "Failed to send reset email", "error");
       }
     } catch {
-      showToast("Network error while adding admin email", "error");
+      showToast("Network error while requesting password reset", "error");
     } finally {
-      setAddingEmail(false);
-    }
-  };
-
-  const handleRevokeAllSessions = async () => {
-    if (!confirm("Are you sure you want to sign out all other devices? You will remain signed in on this device.")) {
-      return;
-    }
-
-    setRevokingSessions(true);
-    try {
-      const res = await fetch("/api/admin/auth/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "revoke_all_sessions" }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast("All other device sessions revoked successfully!", "success");
-      } else {
-        showToast(data.error || "Failed to revoke sessions", "error");
-      }
-    } catch {
-      showToast("Network error while revoking sessions", "error");
-    } finally {
-      setRevokingSessions(false);
+      setSendingResetEmail(false);
     }
   };
 
@@ -797,14 +760,77 @@ export default function AdminSettingsPage() {
       {/* Tab 3: Security & Access Control */}
       {activeTab === "security" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 640 }}>
-          {/* 1. Change Admin Password Card */}
+          {/* 1. Authorised Admin Identity & Role Card */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <ShieldCheck size={20} color="#10b981" />
+              <span>Supabase Auth · Role-Based Access</span>
+            </h2>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+              This management console is secured strictly by Supabase Auth with immutable role claim: <code>app_metadata.role = "admin"</code>.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.25rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.75rem 1rem",
+                  background: "rgba(15, 23, 42, 0.6)",
+                  border: "1px solid var(--adm-card-border)",
+                  borderRadius: "10px",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <div>
+                  <div style={{ color: "#ffffff", fontWeight: 700 }}>{adminEmail}</div>
+                  <div style={{ color: "#64748b", fontSize: "0.74rem" }}>Immutable Administrator Account</div>
+                </div>
+                <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "3px 10px", borderRadius: 999, fontWeight: 800 }}>
+                  Role: admin
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "rgba(59, 130, 246, 0.08)",
+                border: "1px solid rgba(59, 130, 246, 0.25)",
+                borderRadius: "10px",
+                padding: "0.85rem 1rem",
+                fontSize: "0.82rem",
+                color: "#93c5fd",
+                lineHeight: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}
+            >
+              <div>
+                🔒 <strong>Password Reset Security:</strong> Official password resets are dispatched exclusively to the authorised Gmail address above.
+              </div>
+              <button
+                type="button"
+                onClick={handleSendResetEmail}
+                className="admin-btn admin-btn-secondary"
+                disabled={sendingResetEmail}
+                style={{ alignSelf: "flex-start", fontSize: "0.8rem", padding: "0.5rem 1rem" }}
+              >
+                <Send size={14} />
+                <span>{sendingResetEmail ? "Dispatching..." : "Send Password Reset Link to Gmail"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Direct Password Update in Supabase */}
           <form onSubmit={handleUpdatePassword} className="admin-card">
             <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Lock size={20} color="#f59e0b" />
-              <span>Change Admin Password</span>
+              <span>Update Supabase Admin Password</span>
             </h2>
             <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-              Set a strong, unique password to secure your admin dashboard. Updating your password will automatically sign out all other devices.
+              Enter a new secure password (min 8 characters) to update your Supabase Auth account.
             </p>
 
             {passwordMsg && (
@@ -824,18 +850,7 @@ export default function AdminSettingsPage() {
             )}
 
             <div className="admin-form-group">
-              <label>Current Password</label>
-              <input
-                type="password"
-                className="admin-input"
-                placeholder="Enter current password to verify identity"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="admin-form-group">
-              <label>New Password (min 6 characters)</label>
+              <label>New Password (min 8 characters)</label>
               <input
                 type="password"
                 className="admin-input"
@@ -864,99 +879,21 @@ export default function AdminSettingsPage() {
               style={{ width: "100%", justifyContent: "center", marginTop: "0.5rem" }}
               disabled={savingPassword}
             >
-              {savingPassword ? "Updating Password..." : "Update Admin Password"}
+              {savingPassword ? "Updating Supabase Password..." : "Save Password to Supabase"}
             </button>
           </form>
 
-          {/* 2. Authorized Admin Emails Card */}
-          <div className="admin-card">
-            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <ShieldCheck size={20} color="#10b981" />
-              <span>Authentic Admin Emails</span>
-            </h2>
-            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-              Only sign-in attempts using these verified email addresses will be permitted to access the admin dashboard.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.25rem" }}>
-              {authorizedEmails.map((em) => (
-                <div
-                  key={em}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0.65rem 0.9rem",
-                    background: "rgba(15, 23, 42, 0.6)",
-                    border: "1px solid var(--adm-card-border)",
-                    borderRadius: "8px",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  <span style={{ color: "#ffffff", fontWeight: 600 }}>{em}</span>
-                  <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>
-                    Authorized Admin
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleAddAuthorizedEmail} style={{ display: "flex", gap: "0.5rem" }}>
-              <input
-                type="email"
-                className="admin-input"
-                placeholder="Add another authentic email..."
-                value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <button
-                type="submit"
-                className="admin-btn admin-btn-secondary"
-                disabled={addingEmail}
-                style={{ whiteSpace: "nowrap" }}
-              >
-                {addingEmail ? "Adding..." : "Add Email"}
-              </button>
-            </form>
-          </div>
-
-          {/* 3. Device & Active Session Security Card */}
+          {/* 3. Session Security Card */}
           <div className="admin-card">
             <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Lock size={20} color="#3b82f6" />
-              <span>Device Security &amp; Active Sessions</span>
+              <span>Session Policy &amp; Security</span>
             </h2>
-            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-              If you suspect any unauthorized access or signed in from a shared computer, revoke all active sessions immediately.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0.75rem 1rem",
-                background: "rgba(59, 130, 246, 0.1)",
-                border: "1px solid rgba(59, 130, 246, 0.25)",
-                borderRadius: "8px",
-                marginBottom: "1.25rem",
-                fontSize: "0.82rem",
-                color: "#93c5fd",
-              }}
-            >
-              <span>🔒 <strong>Protected Device Mode:</strong> Rate-limiting and IP lockout are actively monitoring failed attempts.</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.82rem", color: "#94a3b8" }}>
+              <div>🛡️ <strong>Session Lifetime:</strong> 12 hours (43,200 seconds) with HttpOnly, Secure SameSite cookies.</div>
+              <div>⚡ <strong>No-Store Cache Control:</strong> Authenticated admin data is never cached on intermediaries or browser disk.</div>
+              <div>🚫 <strong>Public Registration:</strong> Self-service registration is strictly disabled.</div>
             </div>
-
-            <button
-              type="button"
-              onClick={handleRevokeAllSessions}
-              className="admin-btn admin-btn-danger"
-              style={{ width: "100%", justifyContent: "center" }}
-              disabled={revokingSessions}
-            >
-              {revokingSessions ? "Revoking Sessions..." : "Sign Out of All Other Devices"}
-            </button>
           </div>
         </div>
       )}

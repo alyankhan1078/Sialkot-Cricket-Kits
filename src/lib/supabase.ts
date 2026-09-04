@@ -45,6 +45,17 @@ export const requireAdminSupabase = () => {
   });
 };
 
+export const getSupabaseAuthClient = () => {
+  const key = supabaseAnonKey || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!key) return null;
+  return createClient(supabaseUrl, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+};
+
 export const isSupabaseConfigured = () =>
   Boolean(
     supabaseUrl &&

@@ -12,7 +12,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:push:supabase": "node scripts/push-to-supabase.js",
-    "db:gen:supabase-sql": "node scripts/generate-supabase-sql.js"
+    "db:gen:supabase-sql": "node scripts/generate-supabase-sql.js",
+    "admin:setup": "node scripts/setup-admin-user.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

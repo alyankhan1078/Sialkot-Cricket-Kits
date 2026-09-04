@@ -43,7 +43,10 @@ async function runTest() {
   const loginRes = await fetch(base + "/api/admin/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: "admin123" }),
+    body: JSON.stringify({
+      email: process.env.ADMIN_EMAIL || "alyankhan1078@gmail.com",
+      password: process.env.SUPABASE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "",
+    }),
   });
   const authCookie = loginRes.headers.get("set-cookie");
   console.log("Admin Login Status:", loginRes.status, "| Cookie received:", Boolean(authCookie));

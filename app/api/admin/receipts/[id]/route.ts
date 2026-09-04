@@ -8,7 +8,7 @@ export async function GET(
   context?: { params?: Promise<{ id: string }> | { id: string } }
 ) {
   // 1. Authorize Administrator
-  if (!validateAdminSessionFromRequest(request)) {
+  if (!(await validateAdminSessionFromRequest(request))) {
     return NextResponse.json({ error: "Unauthorized access to payment receipts" }, { status: 401 });
   }
 

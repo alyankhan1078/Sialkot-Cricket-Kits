@@ -1,103 +1,122 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticatedAdmin } from "@/src/lib/admin-auth";
 import {
-  updateAdminPassword,
-  addAuthorizedAdminEmail,
-  getAuthorizedAdminEmails,
-  createAdminSession,
-  revokeAllAdminSessions,
-} from "@/src/lib/data-service";
+  getAuthenticatedAdminUser,
+  AUTHORIZED_ADMIN_EMAIL,
+  getAdminResponseHeaders,
+} from "@/src/lib/admin-auth";
+import { getAdminSupabase, getSupabaseAuthClient } from "@/src/lib/supabase";
 
 export async function GET(request: NextRequest) {
-  if (!isAuthenticatedAdmin(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const adminUser = await getAuthenticatedAdminUser(request);
+  const headers = getAdminResponseHeaders();
+
+  if (!adminUser) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
-  return NextResponse.json({
-    success: true,
-    emails: getAuthorizedAdminEmails(),
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      email: AUTHORIZED_ADMIN_EMAIL,
+      role: adminUser.role,
+      id: adminUser.id,
+    },
+    { status: 200, headers }
+  );
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthenticatedAdmin(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const adminUser = await getAuthenticatedAdminUser(request);
+  const headers = getAdminResponseHeaders();
+
+  if (!adminUser) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
-    const body = await request.json();
-    const { currentPassword, newPassword, newEmail, action } = body;
+    const body = await request.json().catch(() => ({}));
+    const { newPassword, action } = body;
 
-    if (action === "revoke_all_sessions") {
-      revokeAllAdminSessions();
-      const userAgent = request.headers.get("user-agent") || "current-device";
-      const freshToken = createAdminSession(userAgent);
-      const res = NextResponse.json({
-        success: true,
-        message: "All other device sessions have been revoked successfully.",
-      });
-      res.cookies.set("sck_admin_token", freshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
-      });
-      return res;
-    }
+    const sbAdmin = getAdminSupabase();
+    const sbClient = getSupabaseAuthClient();
 
-    if (newEmail) {
-      if (!newEmail.includes("@")) {
+    // 1. Action: Trigger official password reset email to authorized Gmail
+    if (action === "send_reset_email") {
+      const sb = sbClient || sbAdmin;
+      if (!sb) {
         return NextResponse.json(
-          { success: false, error: "Please enter a valid email address." },
-          { status: 400 }
+          { success: false, error: "Supabase client unavailable" },
+          { status: 500, headers }
         );
       }
-      addAuthorizedAdminEmail(newEmail);
-      return NextResponse.json({
-        success: true,
-        message: `Authorized admin email "${newEmail}" registered successfully.`,
-        emails: getAuthorizedAdminEmails(),
+
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "https://sialkotcricketkits.com";
+
+      const { error } = await sb.auth.resetPasswordForEmail(AUTHORIZED_ADMIN_EMAIL, {
+        redirectTo: `${siteUrl}/admin`,
       });
-    }
 
-    if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: error.message || "Failed to dispatch reset email" },
+          { status: 400, headers }
+        );
+      }
+
       return NextResponse.json(
-        { success: false, error: "Password must be at least 6 characters long." },
-        { status: 400 }
+        {
+          success: true,
+          message: `Password reset link sent securely to ${AUTHORIZED_ADMIN_EMAIL}.`,
+        },
+        { status: 200, headers }
       );
     }
 
-    const result = await updateAdminPassword(newPassword, currentPassword);
+    // 2. Action: Direct secure password change
+    if (newPassword) {
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        return NextResponse.json(
+          { success: false, error: "New password must be at least 8 characters." },
+          { status: 400, headers }
+        );
+      }
 
-    if (!result.success) {
+      if (!sbAdmin) {
+        return NextResponse.json(
+          { success: false, error: "Supabase Admin Service Role unavailable." },
+          { status: 500, headers }
+        );
+      }
+
+      const { error } = await sbAdmin.auth.admin.updateUserById(adminUser.id, {
+        password: newPassword,
+      });
+
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: error.message || "Failed to update password in Supabase." },
+          { status: 400, headers }
+        );
+      }
+
       return NextResponse.json(
-        { success: false, error: result.error || "Failed to update password." },
-        { status: 400 }
+        {
+          success: true,
+          message: "Admin password updated successfully in Supabase Auth.",
+        },
+        { status: 200, headers }
       );
     }
 
-    // Re-issue fresh session token for the current device
-    const userAgent = request.headers.get("user-agent") || "current-device";
-    const freshToken = createAdminSession(userAgent);
-    const response = NextResponse.json({
-      success: true,
-      message: "Admin password updated successfully. All other device sessions have been signed out.",
-    });
-
-    response.cookies.set("sck_admin_token", freshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return response;
-  } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Failed to process security update request." },
-      { status: 500 }
+      { success: false, error: "Invalid action or missing parameters." },
+      { status: 400, headers }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err?.message || "Failed to process security update." },
+      { status: 500, headers }
     );
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import { getOrderById, getPaymentSubmissionByOrderId } from "@/src/lib/data-service";
 import {
   sendOrderReceivedNotifications,
@@ -11,8 +11,9 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
@@ -22,7 +23,7 @@ export async function POST(
 
     const order = await getOrderById(id);
     if (!order) {
-      return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Order not found" }, { status: 404, headers });
     }
 
     if (type === "order_confirmed" || order.status === "order_confirmed" || order.paymentStatus === "payment_verified") {
@@ -33,7 +34,7 @@ export async function POST(
         message: "Order confirmation notification retried.",
         result,
         logs,
-      });
+      }, { status: 200, headers });
     } else {
       const submission = await getPaymentSubmissionByOrderId(id);
       const result = await sendOrderReceivedNotifications(order, submission || undefined);
@@ -43,12 +44,12 @@ export async function POST(
         message: "Order received notification retried.",
         result,
         logs,
-      });
+      }, { status: 200, headers });
     }
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || "Internal server error" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }
@@ -57,18 +58,19 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
     const { id } = await context.params;
     const logs = await getNotificationLogsForOrder(id);
-    return NextResponse.json({ success: true, data: logs });
+    return NextResponse.json({ success: true, data: logs }, { status: 200, headers });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || "Failed to load notification logs" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

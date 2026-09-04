@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import {
   getPaymentSubmissions,
   getPaymentStatusHistory,
@@ -9,8 +9,9 @@ import {
 import { getNotificationLogsForOrder } from "@/src/lib/notifications";
 
 export async function GET(request: NextRequest) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
@@ -45,11 +46,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: enriched,
-    });
+    }, { status: 200, headers });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || "Failed to load payment submissions" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

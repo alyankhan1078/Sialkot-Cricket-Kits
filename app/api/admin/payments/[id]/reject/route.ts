@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders, AUTHORIZED_ADMIN_EMAIL } from "@/src/lib/admin-auth";
 import { rejectPaymentSubmission } from "@/src/lib/data-service";
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
@@ -18,15 +19,15 @@ export async function POST(
     if (!rejectionReason || !rejectionReason.trim()) {
       return NextResponse.json(
         { success: false, error: "A clear rejection reason is required." },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
-    const verifiedAdmin = adminEmail || "admin@sialkotcricketkits.co.uk";
+    const verifiedAdmin = adminEmail || AUTHORIZED_ADMIN_EMAIL;
     const result = await rejectPaymentSubmission(id, verifiedAdmin, rejectionReason.trim(), !!requestReupload);
 
     if (!result.success || !result.submission) {
-      return NextResponse.json({ success: false, error: result.error || "Rejection failed" }, { status: 400 });
+      return NextResponse.json({ success: false, error: result.error || "Rejection failed" }, { status: 400, headers });
     }
 
     return NextResponse.json({
@@ -35,11 +36,11 @@ export async function POST(
       message: requestReupload
         ? "Payment submission marked as re-upload requested."
         : "Payment submission rejected.",
-    });
+    }, { status: 200, headers });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || "Internal server error during rejection" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

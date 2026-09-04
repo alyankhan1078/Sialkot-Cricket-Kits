@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import { getAdminSupabase } from "@/src/lib/supabase";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -8,8 +8,9 @@ const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: Request) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {

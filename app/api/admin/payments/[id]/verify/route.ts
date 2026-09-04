@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders, AUTHORIZED_ADMIN_EMAIL } from "@/src/lib/admin-auth";
 import { verifyAndConfirmOrder } from "@/src/lib/data-service";
 import { sendOrderConfirmedNotifications } from "@/src/lib/notifications";
 
@@ -7,8 +7,9 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized access" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized access" }, { status: 401, headers });
   }
 
   try {
@@ -22,17 +23,17 @@ export async function POST(
           success: false,
           error: "You must confirm that this transaction was verified in the official UBL bank account / app.",
         },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
-    const verifiedAdmin = adminEmail || "sialkotcricketkits@gmail.com";
+    const verifiedAdmin = adminEmail || AUTHORIZED_ADMIN_EMAIL;
     const result = await verifyAndConfirmOrder(id, verifiedAdmin, note);
 
     if (!result.success || !result.submission) {
       return NextResponse.json(
         { success: false, error: result.error || "Payment verification failed" },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -49,11 +50,11 @@ export async function POST(
       order: result.order,
       alreadyConfirmed: result.alreadyConfirmed,
       message: "Payment successfully verified. Order status updated to Order Confirmed.",
-    });
+    }, { status: 200, headers });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || "Internal server error during payment verification" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

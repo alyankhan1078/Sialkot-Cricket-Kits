@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { generateSalesCsv } from "@/src/lib/data-service";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 
 export async function GET(request: Request) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
   }
 
   const { searchParams } = new URL(request.url);
@@ -22,10 +23,10 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
       },
     });
   } catch {
-    return NextResponse.json({ error: "Failed to generate sales report" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate sales report" }, { status: 500, headers });
   }
 }

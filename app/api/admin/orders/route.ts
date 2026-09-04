@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getOrders, createOrder, getPaymentSubmissionByOrderId } from "@/src/lib/data-service";
-import { validateAdminSessionFromRequest } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import { getNotificationLogsForOrder } from "@/src/lib/notifications";
 
 export async function GET(request: Request) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   const { searchParams } = new URL(request.url);
@@ -31,15 +32,16 @@ export async function GET(request: Request) {
       })
     );
 
-    return NextResponse.json({ success: true, data: enriched, count: enriched.length });
+    return NextResponse.json({ success: true, data: enriched, count: enriched.length }, { status: 200, headers });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || "Failed to fetch orders" }, { status: 500 });
+    return NextResponse.json({ success: false, error: err?.message || "Failed to fetch orders" }, { status: 500, headers });
   }
 }
 
 export async function POST(request: Request) {
-  if (!validateAdminSessionFromRequest(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
@@ -47,13 +49,13 @@ export async function POST(request: Request) {
     if (!body.customerName || !body.items || !body.totalAmount) {
       return NextResponse.json(
         { success: false, error: "Customer name, items, and total amount are required" },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
     const newOrder = await createOrder(body);
-    return NextResponse.json({ success: true, data: newOrder });
+    return NextResponse.json({ success: true, data: newOrder }, { status: 200, headers });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || "Failed to create order" }, { status: 500 });
+    return NextResponse.json({ success: false, error: err?.message || "Failed to create order" }, { status: 500, headers });
   }
 }

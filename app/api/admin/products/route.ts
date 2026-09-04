@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticatedAdmin } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import { createProduct, getProducts } from "@/src/lib/data-service";
 
 export async function GET(request: NextRequest) {
-  if (!isAuthenticatedAdmin(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
     const products = await getProducts({ includeInactive: true });
-    return NextResponse.json({ success: true, data: products });
+    return NextResponse.json({ success: true, data: products }, { status: 200, headers });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch products" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to fetch products" }, { status: 500, headers });
   }
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthenticatedAdmin(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const headers = getAdminResponseHeaders();
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers });
   }
 
   try {
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!name || !category || price === undefined || !image) {
       return NextResponse.json(
         { success: false, error: "Missing required fields: name, category, price, image" },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -56,8 +58,8 @@ export async function POST(request: NextRequest) {
       sortOrder: 0,
     });
 
-    return NextResponse.json({ success: true, data: newProduct });
+    return NextResponse.json({ success: true, data: newProduct }, { status: 200, headers });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to create product" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to create product" }, { status: 500, headers });
   }
 }

@@ -70,8 +70,8 @@ Configure these variables in your **Cloudflare Dashboard → Workers & Pages →
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | `https://yokiizorrqopfhbvrtpa.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Anon Key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only Service Role Key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Never expose to browser) |
-| `SUPABASE_RECEIPTS_BUCKET` | Private Storage Bucket | `receipts` |
-| `ADMIN_PASSWORD` | Admin Dashboard Password | `your_secure_password` |
+| `ADMIN_EMAIL` | Authorised Administrator Email | `alyankhan1078@gmail.com` |
+| `ADMIN_USER_ID` | (Optional) Supabase Auth Admin UUID | `your-supabase-user-uuid` |
 | `BUSINESS_EMAIL` | Business Alert Email | `sialkotcricketkits@gmail.com` |
 | `BUSINESS_WHATSAPP` | Business WhatsApp Contact | `+923231438214` |
 | `RESEND_API_KEY` | Resend Transactional Email Key | `re_xxxxxxxxxxxx` |

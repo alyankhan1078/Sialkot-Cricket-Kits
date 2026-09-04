@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticatedAdmin } from "@/src/lib/admin-auth";
+import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
 import { getCategories, getEnquiries, getFaqs, getProducts } from "@/src/lib/data-service";
 
 export async function GET(request: NextRequest) {
-  if (!isAuthenticatedAdmin(request)) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  if (!(await isAuthenticatedAdmin(request))) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401, headers: getAdminResponseHeaders() });
   }
 
   try {

@@ -112,10 +112,6 @@ async function runSync() {
     await supabase.from('site_settings').upsert(settingsPayload, { onConflict: 'key' });
     console.log('   ✅ Synced site settings.');
 
-    console.log('5. Syncing Admin Config...');
-    await supabase.from('admin_config').upsert({ key: 'admin_password', value: 'admin123' }, { onConflict: 'key' });
-    console.log('   ✅ Synced admin configuration.');
-
     console.log('\n🎉 ALL DATABASE TABLES AND 145 PRODUCTS SUCCESSFULLY SYNCED TO SUPABASE!');
   } catch (err) {
     console.error('\n❌ Sync Error:', err.message);

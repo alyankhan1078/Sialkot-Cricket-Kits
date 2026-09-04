@@ -191,8 +191,6 @@ INSERT INTO categories (name, sort_order, active) VALUES
   ('Other Accessories', 13, true),
   ('Teamwear', 14, true);
 
--- Insert Admin Config (Default Password: admin123)
-INSERT INTO admin_config (key, value) VALUES ('admin_password', 'admin123');
 
 -- Insert Site Settings
 INSERT INTO site_settings (key, value, label) VALUES

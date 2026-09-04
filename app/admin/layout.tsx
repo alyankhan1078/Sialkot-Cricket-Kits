@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isAuthVerified, setIsAuthVerified] = useState(false);
 
   const isLoginPage = pathname === "/admin" || pathname === "/admin/";
 
@@ -31,10 +32,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         .then((res) => res.json())
         .then((data) => {
           if (!data.authenticated) {
-            router.push("/admin");
+            router.replace("/admin");
+          } else {
+            setIsAuthVerified(true);
           }
         })
-        .catch(() => router.push("/admin"));
+        .catch(() => router.replace("/admin"));
 
       // Fetch stats for unread badge
       fetch("/api/admin/stats")
@@ -45,12 +48,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }
         })
         .catch(() => {});
+    } else {
+      setIsAuthVerified(true);
     }
   }, [pathname, isLoginPage, router]);
 
   const handleLogout = async () => {
-    await fetch("/api/admin/auth/logout", { method: "POST" });
-    router.push("/admin");
+    try {
+      await fetch("/api/admin/auth/logout", { method: "POST" });
+    } finally {
+      router.replace("/admin");
+    }
   };
 
   if (isLoginPage) {
@@ -58,6 +66,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminFeedbackProvider>
         <div className="admin-body">{children}</div>
       </AdminFeedbackProvider>
+    );
+  }
+
+  if (!isAuthVerified) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          background: "#0b1120",
+          color: "#94a3b8",
+          fontSize: "0.9rem",
+          fontWeight: 600,
+        }}
+      >
+        <span>Verifying Administrator Access...</span>
+      </div>
     );
   }
 
