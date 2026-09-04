@@ -339,14 +339,27 @@ function CartDrawer() {
     targetCategories.push("Batting Gloves", "Batting Pads", "Beauty Processed Bats", "Other Accessories", "Kit & Duffle Bags");
   }
 
-  // Pick top 6 complementary products not already in the customer's cart
-  const suggestedProducts = products
-    .filter(
-      (p) =>
-        targetCategories.includes(p.category) &&
-        !cart.some((ci) => ci.productId === p.id)
-    )
-    .slice(0, 6);
+  // Pick top complementary products not already in the customer's cart, prioritizing Batting Gloves first
+  const candidateProducts = products.filter(
+    (p) =>
+      targetCategories.includes(p.category) &&
+      !cart.some((ci) => ci.productId === p.id)
+  );
+
+  // Strictly sort candidates according to targetCategories priority (Batting Gloves first, then Pads, Helmets, Bags)
+  candidateProducts.sort((a, b) => {
+    const rankA = targetCategories.indexOf(a.category);
+    const rankB = targetCategories.indexOf(b.category);
+    const priorityA = rankA === -1 ? 999 : rankA;
+    const priorityB = rankB === -1 ? 999 : rankB;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    // Within the same category, featured products come first
+    return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+  });
+
+  const suggestedProducts = candidateProducts.slice(0, 8);
 
   const handleAddSuggested = (productId: string) => {
     addToCart(productId, 1);
