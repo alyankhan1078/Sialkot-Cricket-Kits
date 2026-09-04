@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminSession, verifyAdminPassword } from "@/src/lib/data-service";
+import { createAdminSession, verifyAdminLogin } from "@/src/lib/data-service";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { password } = body;
+    const { email, password } = body;
 
-    if (!password || !verifyAdminPassword(password)) {
+    const clientIp =
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "admin-client";
+
+    const userAgent = request.headers.get("user-agent") || "generic-device";
+
+    const verification = await verifyAdminLogin({ email, password, clientIp });
+
+    if (!verification.success) {
       return NextResponse.json(
-        { success: false, error: "Invalid password" },
+        { success: false, error: verification.error || "Authentication failed" },
         { status: 401 }
       );
     }
 
-    const sessionToken = createAdminSession();
-    const response = NextResponse.json({ success: true, message: "Logged in successfully" });
+    const sessionToken = createAdminSession(userAgent);
+    const response = NextResponse.json({
+      success: true,
+      message: "Authenticated successfully. Welcome back, Admin.",
+    });
 
     // Set HTTP-only secure cookie
     response.cookies.set("sck_admin_token", sessionToken, {
@@ -28,7 +41,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Login failed" },
+      { success: false, error: "Login request failed. Please try again." },
       { status: 500 }
     );
   }

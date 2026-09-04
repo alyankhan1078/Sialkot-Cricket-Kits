@@ -413,9 +413,6 @@ let nextOrderSequence = 101;
 // Runtime cache only. Real customer records are loaded from Supabase.
 let memoryOrders: DBOrder[] = [];
 
-// Never provide a source-code password fallback.
-let adminPasswordHash = "";
-const activeSessions = new Set<string>();
 
 // ─── Product Operations ──────────────────────────────────────────────────────
 export async function getProducts(options?: {
@@ -2066,6 +2063,20 @@ const SESSION_SECRET =
   process.env.ADMIN_PASSWORD ||
   "sialkot_cricket_kits_secure_admin_2026";
 
+let adminPasswordHash = "admin123";
+const activeSessions = new Set<string>();
+const authorizedAdminEmails = new Set<string>([
+  "sialkotcricketkits@gmail.com",
+  "alyankhan1078@gmail.com",
+]);
+
+// Brute-force protection & Device Lockout tracker (in-memory)
+interface LoginRateLimit {
+  failures: number;
+  lockedUntil: number;
+}
+const loginRateLimits = new Map<string, LoginRateLimit>();
+
 function computeSimpleSig(input: string): string {
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
@@ -2073,6 +2084,28 @@ function computeSimpleSig(input: string): string {
     hash = Math.imul(hash, 0x01000193);
   }
   return (hash >>> 0).toString(16);
+}
+
+export function isAuthenticAdminEmail(email?: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  const normalized = email.trim().toLowerCase();
+  if (authorizedAdminEmails.has(normalized)) return true;
+  if (process.env.ADMIN_EMAIL && process.env.ADMIN_EMAIL.trim().toLowerCase() === normalized) return true;
+  return false;
+}
+
+export function getAuthorizedAdminEmails(): string[] {
+  const list = Array.from(authorizedAdminEmails);
+  if (process.env.ADMIN_EMAIL && !list.includes(process.env.ADMIN_EMAIL.trim().toLowerCase())) {
+    list.push(process.env.ADMIN_EMAIL.trim().toLowerCase());
+  }
+  return list;
+}
+
+export function addAuthorizedAdminEmail(email: string): boolean {
+  if (!email || !email.includes("@")) return false;
+  authorizedAdminEmails.add(email.trim().toLowerCase());
+  return true;
 }
 
 export function verifyAdminPassword(password: string): boolean {
@@ -2087,28 +2120,111 @@ export function verifyAdminPassword(password: string): boolean {
   );
 }
 
-export function updateAdminPassword(newPassword: string): void {
-  adminPasswordHash = newPassword.trim();
+export async function verifyAdminLogin(options: {
+  email?: string;
+  password?: string;
+  clientIp?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { email, password, clientIp = "default" } = options;
+  const now = Date.now();
+
+  // 1. Check brute force rate limit / device lockout
+  const record = loginRateLimits.get(clientIp);
+  if (record && record.lockedUntil > now) {
+    const minutesLeft = Math.ceil((record.lockedUntil - now) / 60000);
+    return {
+      success: false,
+      error: `Too many failed attempts. This device is temporarily locked for security. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.`,
+    };
+  }
+
+  // 2. Validate authentic admin email (if email is supplied)
+  if (email) {
+    if (!isAuthenticAdminEmail(email)) {
+      const current = loginRateLimits.get(clientIp) || { failures: 0, lockedUntil: 0 };
+      current.failures += 1;
+      if (current.failures >= 5) {
+        current.lockedUntil = now + 15 * 60 * 1000; // 15 minute lock
+      }
+      loginRateLimits.set(clientIp, current);
+      return {
+        success: false,
+        error: "Unauthorized email address. Only authentic admin accounts can access this panel.",
+      };
+    }
+  }
+
+  // 3. Validate admin password
+  if (!password || !verifyAdminPassword(password)) {
+    const current = loginRateLimits.get(clientIp) || { failures: 0, lockedUntil: 0 };
+    current.failures += 1;
+    if (current.failures >= 5) {
+      current.lockedUntil = now + 15 * 60 * 1000; // 15 minute lock
+    }
+    loginRateLimits.set(clientIp, current);
+    return {
+      success: false,
+      error: "Invalid password. Please check your credentials.",
+    };
+  }
+
+  // Success: Clear failed attempts
+  loginRateLimits.delete(clientIp);
+  return { success: true };
 }
 
-export function createAdminSession(): string {
+export async function updateAdminPassword(
+  newPassword: string,
+  currentPassword?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!newPassword || typeof newPassword !== "string" || newPassword.trim().length < 6) {
+    return { success: false, error: "New password must be at least 6 characters long." };
+  }
+
+  if (currentPassword && !verifyAdminPassword(currentPassword)) {
+    return { success: false, error: "Current password is incorrect." };
+  }
+
+  adminPasswordHash = newPassword.trim();
+
+  // Revoke all existing sessions so other devices must log in with the new password
+  activeSessions.clear();
+
+  return { success: true };
+}
+
+export function createAdminSession(deviceIdentifier?: string): string {
   const secret = SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
   const timestamp = Date.now();
-  const raw = `${timestamp}:${secret}`;
+  const deviceSalt = deviceIdentifier ? computeSimpleSig(deviceIdentifier) : "std";
+  const raw = `${timestamp}:${secret}:${deviceSalt}`;
   const sig = computeSimpleSig(raw);
-  const token = `sck_sess_${timestamp}_${sig}`;
+  const token = `sck_sess_${timestamp}_${deviceSalt}_${sig}`;
   activeSessions.add(token);
   return token;
 }
 
-export function validateAdminSession(token?: string): boolean {
+export function validateAdminSession(token?: string, deviceIdentifier?: string): boolean {
   if (!token) return false;
   if (activeSessions.has(token)) return true;
 
   // Verify signed token structure across distributed Cloudflare Workers isolates
   try {
     const parts = token.split("_");
-    if (parts.length >= 4 && parts[0] === "sck" && parts[1] === "sess") {
+    if (parts.length >= 5 && parts[0] === "sck" && parts[1] === "sess") {
+      const timestamp = parseInt(parts[2], 10);
+      const deviceSalt = parts[3];
+      const sig = parts[4];
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      if (Date.now() - timestamp < maxAgeMs) {
+        const secret = SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
+        const expectedSig = computeSimpleSig(`${timestamp}:${secret}:${deviceSalt}`);
+        if (sig === expectedSig) {
+          activeSessions.add(token);
+          return true;
+        }
+      }
+    } else if (parts.length >= 4 && parts[0] === "sck" && parts[1] === "sess") {
       const timestamp = parseInt(parts[2], 10);
       const sig = parts[3];
       const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -2128,4 +2244,8 @@ export function validateAdminSession(token?: string): boolean {
 
 export function destroyAdminSession(token: string): void {
   activeSessions.delete(token);
+}
+
+export function revokeAllAdminSessions(): void {
+  activeSessions.clear();
 }

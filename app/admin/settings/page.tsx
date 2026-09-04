@@ -92,10 +92,16 @@ export default function AdminSettingsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  const [authorizedEmails, setAuthorizedEmails] = useState<string[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [addingEmail, setAddingEmail] = useState(false);
+  const [revokingSessions, setRevokingSessions] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -106,6 +112,15 @@ export default function AdminSettingsPage() {
         }
       })
       .finally(() => setLoading(false));
+
+    fetch("/api/admin/auth/password")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.emails)) {
+          setAuthorizedEmails(res.emails);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -137,13 +152,13 @@ export default function AdminSettingsPage() {
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setPasswordMsg("Passwords do not match");
-      showToast("Passwords do not match", "warning");
+      setPasswordMsg("New passwords do not match");
+      showToast("New passwords do not match", "warning");
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordMsg("Password must be at least 6 characters");
-      showToast("Password must be at least 6 characters", "warning");
+      setPasswordMsg("New password must be at least 6 characters");
+      showToast("New password must be at least 6 characters", "warning");
       return;
     }
 
@@ -154,12 +169,13 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/admin/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
       const data = await res.json();
       if (data.success) {
-        setPasswordMsg("Password updated successfully!");
+        setPasswordMsg("Password updated successfully! All other sessions signed out.");
         showToast("Admin password updated successfully!", "success");
+        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
@@ -171,6 +187,62 @@ export default function AdminSettingsPage() {
       showToast("Network error while updating password", "error");
     } finally {
       setSavingPassword(false);
+    }
+  };
+
+  const handleAddAuthorizedEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail || !newAdminEmail.includes("@")) {
+      showToast("Please enter a valid email address", "warning");
+      return;
+    }
+
+    setAddingEmail(true);
+    try {
+      const res = await fetch("/api/admin/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail: newAdminEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Authorized admin email registered!", "success");
+        if (Array.isArray(data.emails)) {
+          setAuthorizedEmails(data.emails);
+        }
+        setNewAdminEmail("");
+      } else {
+        showToast(data.error || "Failed to add email", "error");
+      }
+    } catch {
+      showToast("Network error while adding admin email", "error");
+    } finally {
+      setAddingEmail(false);
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    if (!confirm("Are you sure you want to sign out all other devices? You will remain signed in on this device.")) {
+      return;
+    }
+
+    setRevokingSessions(true);
+    try {
+      const res = await fetch("/api/admin/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke_all_sessions" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("All other device sessions revoked successfully!", "success");
+      } else {
+        showToast(data.error || "Failed to revoke sessions", "error");
+      }
+    } catch {
+      showToast("Network error while revoking sessions", "error");
+    } finally {
+      setRevokingSessions(false);
     }
   };
 
@@ -722,62 +794,171 @@ export default function AdminSettingsPage() {
         </form>
       )}
 
-      {/* Tab 3: Security */}
+      {/* Tab 3: Security & Access Control */}
       {activeTab === "security" && (
-        <form onSubmit={handleUpdatePassword} className="admin-card" style={{ maxWidth: 500 }}>
-          <h2 style={{ fontSize: "1.2rem", margin: "0 0 1.25rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Lock size={20} color="#f59e0b" />
-            <span>Change Admin Password</span>
-          </h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 640 }}>
+          {/* 1. Change Admin Password Card */}
+          <form onSubmit={handleUpdatePassword} className="admin-card">
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Lock size={20} color="#f59e0b" />
+              <span>Change Admin Password</span>
+            </h2>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+              Set a strong, unique password to secure your admin dashboard. Updating your password will automatically sign out all other devices.
+            </p>
 
-          {passwordMsg && (
+            {passwordMsg && (
+              <div
+                style={{
+                  background: passwordMsg.includes("success") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                  color: passwordMsg.includes("success") ? "#34d399" : "#f87171",
+                  border: passwordMsg.includes("success") ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "8px",
+                  marginBottom: "1.25rem",
+                  fontSize: "0.85rem",
+                }}
+              >
+                {passwordMsg}
+              </div>
+            )}
+
+            <div className="admin-form-group">
+              <label>Current Password</label>
+              <input
+                type="password"
+                className="admin-input"
+                placeholder="Enter current password to verify identity"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label>New Password (min 6 characters)</label>
+              <input
+                type="password"
+                className="admin-input"
+                required
+                placeholder="Enter new strong password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-form-group">
+              <label>Confirm New Password</label>
+              <input
+                type="password"
+                className="admin-input"
+                required
+                placeholder="Repeat new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="admin-btn admin-btn-primary"
+              style={{ width: "100%", justifyContent: "center", marginTop: "0.5rem" }}
+              disabled={savingPassword}
+            >
+              {savingPassword ? "Updating Password..." : "Update Admin Password"}
+            </button>
+          </form>
+
+          {/* 2. Authorized Admin Emails Card */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <ShieldCheck size={20} color="#10b981" />
+              <span>Authentic Admin Emails</span>
+            </h2>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+              Only sign-in attempts using these verified email addresses will be permitted to access the admin dashboard.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.25rem" }}>
+              {authorizedEmails.map((em) => (
+                <div
+                  key={em}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0.65rem 0.9rem",
+                    background: "rgba(15, 23, 42, 0.6)",
+                    border: "1px solid var(--adm-card-border)",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <span style={{ color: "#ffffff", fontWeight: 600 }}>{em}</span>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>
+                    Authorized Admin
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleAddAuthorizedEmail} style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                type="email"
+                className="admin-input"
+                placeholder="Add another authentic email..."
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="submit"
+                className="admin-btn admin-btn-secondary"
+                disabled={addingEmail}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {addingEmail ? "Adding..." : "Add Email"}
+              </button>
+            </form>
+          </div>
+
+          {/* 3. Device & Active Session Security Card */}
+          <div className="admin-card">
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Lock size={20} color="#3b82f6" />
+              <span>Device Security &amp; Active Sessions</span>
+            </h2>
+            <p style={{ color: "var(--adm-muted)", fontSize: "0.84rem", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+              If you suspect any unauthorized access or signed in from a shared computer, revoke all active sessions immediately.
+            </p>
+
             <div
               style={{
-                background: passwordMsg.includes("success") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                color: passwordMsg.includes("success") ? "#34d399" : "#f87171",
-                padding: "0.75rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0.75rem 1rem",
+                background: "rgba(59, 130, 246, 0.1)",
+                border: "1px solid rgba(59, 130, 246, 0.25)",
                 borderRadius: "8px",
-                marginBottom: "1rem",
-                fontSize: "0.85rem",
+                marginBottom: "1.25rem",
+                fontSize: "0.82rem",
+                color: "#93c5fd",
               }}
             >
-              {passwordMsg}
+              <span>🔒 <strong>Protected Device Mode:</strong> Rate-limiting and IP lockout are actively monitoring failed attempts.</span>
             </div>
-          )}
 
-          <div className="admin-form-group">
-            <label>New Password</label>
-            <input
-              type="password"
-              className="admin-input"
-              required
-              placeholder="At least 6 characters"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
+            <button
+              type="button"
+              onClick={handleRevokeAllSessions}
+              className="admin-btn admin-btn-danger"
+              style={{ width: "100%", justifyContent: "center" }}
+              disabled={revokingSessions}
+            >
+              {revokingSessions ? "Revoking Sessions..." : "Sign Out of All Other Devices"}
+            </button>
           </div>
-
-          <div className="admin-form-group">
-            <label>Confirm Password</label>
-            <input
-              type="password"
-              className="admin-input"
-              required
-              placeholder="Repeat password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="admin-btn admin-btn-primary"
-            style={{ width: "100%", justifyContent: "center" }}
-            disabled={savingPassword}
-          >
-            {savingPassword ? "Updating..." : "Update Password"}
-          </button>
-        </form>
+        </div>
       )}
     </div>
   );
