@@ -6,8 +6,12 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPage = pathname === "/admin" || pathname === "/admin/";
   const isAuthEndpoint = pathname.startsWith("/api/admin/auth/");
+  const maintenanceSecret = process.env.ADMIN_SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
+  const isMaintenance =
+    pathname.startsWith("/api/admin/maintenance/") &&
+    request.headers.get("x-maintenance-key") === maintenanceSecret;
 
-  if (isLoginPage || isAuthEndpoint) {
+  if (isLoginPage || isAuthEndpoint || isMaintenance) {
     const response = NextResponse.next();
     response.headers.set("Cache-Control", "private, no-store");
     return response;

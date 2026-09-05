@@ -1,7 +1,8 @@
-import { products as initialProducts, categoryOrder, type Product as ProductType } from "../data/products.ts";
+import { categoryOrder } from "../data/products.ts";
 import { faqs as initialFaqs } from "../data/faqs.ts";
-import { getAdminSupabase } from "./supabase.ts";
+import { getAdminSupabase, requireAdminSupabase } from "./supabase.ts";
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 
 export interface DBProduct {
   id: string;
@@ -34,6 +35,7 @@ export interface DBProductImage {
   id: string;
   productId: string;
   url: string;
+  storagePath?: string;
   alt: string;
   position: number;
   isMain: boolean;
@@ -287,33 +289,7 @@ export interface SalesStats {
   dailyTrend: Array<{ date: string; label: string; revenue: number; orders: number }>;
 }
 
-// Default in-memory state initialized with all catalogue products & FAQs
-let memoryProducts: DBProduct[] = initialProducts.map((p, index) => ({
-  id: p.id,
-  name: p.name,
-  category: p.category,
-  price: p.price,
-  stock: String(p.stock),
-  rightStock: p.rightStock !== undefined ? String(p.rightStock) : undefined,
-  leftStock: p.leftStock !== undefined ? String(p.leftStock) : undefined,
-  image: p.image,
-  images: p.images,
-  description: p.description,
-  shortDescription: p.shortDescription,
-  openingStatement: p.openingStatement,
-  highlights: p.highlights,
-  bestFor: p.bestFor,
-  specifications: p.specifications,
-  seoTitle: p.seoTitle,
-  seoDescription: p.seoDescription,
-  imageAlt: p.imageAlt,
-  disclosureType: p.disclosureType,
-  featured: !!p.featured,
-  active: true,
-  sortOrder: index,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-}));
+// No in-memory product storage. Supabase is the single source of truth.
 
 let memoryCategories: DBCategory[] = categoryOrder.map((name, index) => ({
   id: index + 1,
@@ -414,74 +390,97 @@ let nextOrderSequence = 101;
 let memoryOrders: DBOrder[] = [];
 
 
-// ─── Product Operations ──────────────────────────────────────────────────────
+// ─── Helper: Map DB row to DBProduct ──────────────────────────────────────────
+function mapDbRowToProduct(d: any): DBProduct {
+  return {
+    id: d.id,
+    name: d.name,
+    category: d.category,
+    price: Number(d.price),
+    stock: d.stock || "Available",
+    rightStock: d.right_stock || undefined,
+    leftStock: d.left_stock || undefined,
+    image: d.image,
+    images: Array.isArray(d.images) ? d.images : typeof d.images === "string" ? JSON.parse(d.images) : undefined,
+    description: d.description || "",
+    shortDescription: d.short_description || undefined,
+    openingStatement: d.opening_statement || undefined,
+    highlights: Array.isArray(d.highlights) ? d.highlights : undefined,
+    bestFor: d.best_for || undefined,
+    specifications: Array.isArray(d.specifications) ? d.specifications : undefined,
+    seoTitle: d.seo_title || undefined,
+    seoDescription: d.seo_description || undefined,
+    imageAlt: d.image_alt || undefined,
+    disclosureType: d.disclosure_type || undefined,
+    featured: Boolean(d.featured),
+    active: Boolean(d.active),
+    sortOrder: d.sort_order || 0,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+  };
+}
+
+function mapDbRowToProductImage(d: any): DBProductImage {
+  return {
+    id: d.id,
+    productId: d.product_id,
+    url: d.url,
+    storagePath: d.storage_path || undefined,
+    alt: d.alt || "",
+    position: d.position ?? 0,
+    isMain: Boolean(d.is_main),
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+  };
+}
+
+/** Revalidate storefront pages after product mutations */
+export function revalidateProductPages(productId?: string) {
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/shop", "page");
+    if (productId) {
+      revalidatePath(`/product/${productId}`, "page");
+    }
+  } catch (e) {
+    // revalidatePath may throw if called outside a server context (e.g. during build)
+    console.warn("[revalidateProductPages] skipped:", e);
+  }
+}
+
+// ─── Product Operations (Supabase-only, no in-memory fallback) ───────────────
 export async function getProducts(options?: {
   category?: string;
   featured?: boolean;
   search?: string;
   includeInactive?: boolean;
 }): Promise<DBProduct[]> {
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      let query = sb.from("products").select("*").order("sort_order", { ascending: true });
-      if (!options?.includeInactive) {
-        query = query.eq("active", true);
-      }
-      if (options?.category && options.category !== "All") {
-        query = query.ilike("category", options.category);
-      }
-      if (options?.featured !== undefined) {
-        query = query.eq("featured", options.featured);
-      }
-
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        const mapped: DBProduct[] = data.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          category: d.category,
-          price: Number(d.price),
-          stock: d.stock || "Available",
-          rightStock: d.right_stock || undefined,
-          leftStock: d.left_stock || undefined,
-          image: d.image,
-          images: Array.isArray(d.images) ? d.images : typeof d.images === "string" ? JSON.parse(d.images) : undefined,
-          description: d.description || "",
-          featured: Boolean(d.featured),
-          active: Boolean(d.active),
-          sortOrder: d.sort_order || 0,
-          createdAt: d.created_at,
-          updatedAt: d.updated_at,
-        }));
-
-        // Merge with memory
-        for (const mp of memoryProducts) {
-          if (!mapped.some((p) => p.id === mp.id)) {
-            mapped.push(mp);
-          }
-        }
-        memoryProducts = mapped;
-      }
-    }
-  } catch (err) {
-    console.error("[Supabase getProducts Error]:", err);
+  const sb = getAdminSupabase();
+  if (!sb) {
+    console.error("[getProducts] Supabase client unavailable");
+    return [];
   }
 
-  let list = [...memoryProducts];
-
+  let query = sb.from("products").select("*").order("sort_order", { ascending: true });
   if (!options?.includeInactive) {
-    list = list.filter((p) => p.active);
+    query = query.eq("active", true);
   }
-
   if (options?.category && options.category !== "All") {
-    list = list.filter((p) => p.category.toLowerCase() === options.category?.toLowerCase());
+    query = query.ilike("category", options.category);
   }
-
   if (options?.featured !== undefined) {
-    list = list.filter((p) => p.featured === options.featured);
+    query = query.eq("featured", options.featured);
   }
 
+  const { data, error } = await query;
+  if (error) {
+    console.error("[getProducts] Supabase error:", error.message);
+    throw new Error(`Failed to fetch products: ${error.message}`);
+  }
+
+  let list = (data || []).map(mapDbRowToProduct);
+
+  // Client-side search filter (Supabase doesn't have built-in full-text on multiple columns easily)
   if (options?.search) {
     const q = options.search.toLowerCase();
     list = list.filter(
@@ -492,186 +491,168 @@ export async function getProducts(options?: {
     );
   }
 
-  return list.sort((a, b) => a.sortOrder - b.sortOrder);
+  return list;
 }
 
 export async function getProductById(id: string): Promise<DBProduct | null> {
-  const found = memoryProducts.find((p) => p.id === id);
-  if (found) return found;
+  const sb = getAdminSupabase();
+  if (!sb) {
+    console.error("[getProductById] Supabase client unavailable");
+    return null;
+  }
 
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      const { data, error } = await sb.from("products").select("*").eq("id", id).maybeSingle();
-      if (!error && data) {
-        return {
-          id: data.id,
-          name: data.name,
-          category: data.category,
-          price: Number(data.price),
-          stock: data.stock || "Available",
-          rightStock: data.right_stock || undefined,
-          leftStock: data.left_stock || undefined,
-          image: data.image,
-          images: Array.isArray(data.images) ? data.images : typeof data.images === "string" ? JSON.parse(data.images) : undefined,
-          description: data.description || "",
-          featured: Boolean(data.featured),
-          active: Boolean(data.active),
-          sortOrder: data.sort_order || 0,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-      }
-    }
-  } catch {}
+  const { data, error } = await sb.from("products").select("*").eq("id", id).maybeSingle();
+  if (error) {
+    console.error("[getProductById] Supabase error:", error.message);
+    return null;
+  }
+  if (!data) return null;
 
-  return null;
+  return mapDbRowToProduct(data);
 }
 
 export async function createProduct(data: Omit<DBProduct, "createdAt" | "updatedAt">): Promise<DBProduct> {
-  const newProduct: DBProduct = {
-    ...data,
-    sortOrder: data.sortOrder ?? memoryProducts.length,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  memoryProducts.push(newProduct);
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      await sb.from("products").upsert({
-        id: newProduct.id,
-        name: newProduct.name,
-        category: newProduct.category,
-        price: newProduct.price,
-        stock: newProduct.stock,
-        right_stock: newProduct.rightStock || null,
-        left_stock: newProduct.leftStock || null,
-        image: newProduct.image,
-        images: newProduct.images || [newProduct.image],
-        description: newProduct.description,
-        featured: newProduct.featured,
-        active: newProduct.active,
-        sort_order: newProduct.sortOrder,
-        created_at: newProduct.createdAt,
-        updated_at: newProduct.updatedAt,
-      }, { onConflict: "id" });
-    }
-  } catch (err) {
-    console.error("[Supabase createProduct Error]:", err);
+  const { data: inserted, error } = await sb
+    .from("products")
+    .insert({
+      id: data.id,
+      name: data.name,
+      category: data.category,
+      price: data.price,
+      stock: data.stock,
+      right_stock: data.rightStock || null,
+      left_stock: data.leftStock || null,
+      image: data.image || "/assets/products/bat-collection.webp",
+      images: data.images || [],
+      description: data.description || "",
+      featured: data.featured ?? false,
+      active: data.active ?? true,
+      sort_order: data.sortOrder ?? 0,
+      created_at: now,
+      updated_at: now,
+    })
+    .select()
+    .single();
+
+  if (error || !inserted) {
+    const errId = crypto.randomUUID().slice(0, 8);
+    console.error(`[createProduct] Error ${errId}:`, error?.message);
+    throw new Error(`Database error creating product [ref: ${errId}]`);
   }
 
-  return newProduct;
+  revalidateProductPages(inserted.id);
+  return mapDbRowToProduct(inserted);
 }
 
 export async function updateProduct(id: string, data: Partial<DBProduct>): Promise<DBProduct | null> {
-  const index = memoryProducts.findIndex((p) => p.id === id);
-  if (index === -1) return null;
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  memoryProducts[index] = {
-    ...memoryProducts[index],
-    ...data,
-    updatedAt: new Date().toISOString(),
-  };
+  // Build update payload with only provided fields
+  const payload: Record<string, any> = { updated_at: now };
+  if (data.name !== undefined) payload.name = data.name;
+  if (data.category !== undefined) payload.category = data.category;
+  if (data.price !== undefined) payload.price = data.price;
+  if (data.stock !== undefined) payload.stock = data.stock;
+  if (data.rightStock !== undefined) payload.right_stock = data.rightStock || null;
+  if (data.leftStock !== undefined) payload.left_stock = data.leftStock || null;
+  if (data.image !== undefined) payload.image = data.image;
+  if (data.images !== undefined) payload.images = data.images;
+  if (data.description !== undefined) payload.description = data.description;
+  if (data.shortDescription !== undefined) payload.short_description = data.shortDescription;
+  if (data.openingStatement !== undefined) payload.opening_statement = data.openingStatement;
+  if (data.highlights !== undefined) payload.highlights = data.highlights;
+  if (data.bestFor !== undefined) payload.best_for = data.bestFor;
+  if (data.specifications !== undefined) payload.specifications = data.specifications;
+  if (data.seoTitle !== undefined) payload.seo_title = data.seoTitle;
+  if (data.seoDescription !== undefined) payload.seo_description = data.seoDescription;
+  if (data.imageAlt !== undefined) payload.image_alt = data.imageAlt;
+  if (data.disclosureType !== undefined) payload.disclosure_type = data.disclosureType;
+  if (data.featured !== undefined) payload.featured = data.featured;
+  if (data.active !== undefined) payload.active = data.active;
+  if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
 
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      const p = memoryProducts[index];
-      await sb.from("products").update({
-        name: p.name,
-        category: p.category,
-        price: p.price,
-        stock: p.stock,
-        right_stock: p.rightStock || null,
-        left_stock: p.leftStock || null,
-        image: p.image,
-        images: p.images || [p.image],
-        description: p.description,
-        featured: p.featured,
-        active: p.active,
-        sort_order: p.sortOrder,
-        updated_at: p.updatedAt,
-      }).eq("id", id);
-    }
-  } catch (err) {
-    console.error("[Supabase updateProduct Error]:", err);
+  const { data: updated, error } = await sb
+    .from("products")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error || !updated) {
+    const errId = crypto.randomUUID().slice(0, 8);
+    console.error(`[updateProduct] Error ${errId}:`, error?.message);
+    throw new Error(`Database error updating product [ref: ${errId}]`);
   }
 
-  return memoryProducts[index];
+  revalidateProductPages(id);
+  return mapDbRowToProduct(updated);
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  const initialLength = memoryProducts.length;
-  memoryProducts = memoryProducts.filter((p) => p.id !== id);
-  memoryProductImages.delete(id);
+  const sb = requireAdminSupabase();
 
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      await sb.from("products").delete().eq("id", id);
-    }
-  } catch (err) {
-    console.error("[Supabase deleteProduct Error]:", err);
-  }
+  // 1. Get all product images to clean up Storage objects
+  const { data: imageRows } = await sb
+    .from("product_images")
+    .select("id, storage_path")
+    .eq("product_id", id);
 
-  return memoryProducts.length < initialLength;
-}
+  // 2. Delete Storage objects for images that have storage_path
+  if (imageRows && imageRows.length > 0) {
+    const storagePaths = imageRows
+      .map((r: any) => r.storage_path)
+      .filter((p: string | null) => p);
 
-// In-memory product image storage keyed by productId
-const memoryProductImages = new Map<string, DBProductImage[]>();
-
-// ─── Product Image Operations ───────────────────────────────────────────────
-export async function getProductImages(productId: string): Promise<DBProductImage[]> {
-  if (memoryProductImages.has(productId)) {
-    const list = memoryProductImages.get(productId) || [];
-    return [...list].sort((a, b) => a.position - b.position);
-  }
-
-  // Auto-initialize from product.image and product.images
-  const product = memoryProducts.find((p) => p.id === productId);
-  if (!product) return [];
-
-  const imagesList: DBProductImage[] = [];
-  const nowStr = new Date().toISOString();
-
-  // Primary main image
-  if (product.image) {
-    imagesList.push({
-      id: `img_${productId}_main`,
-      productId,
-      url: product.image,
-      alt: `${product.name} - Main View`,
-      position: 0,
-      isMain: true,
-      createdAt: nowStr,
-      updatedAt: nowStr,
-    });
-  }
-
-  // Additional gallery images
-  if (product.images && product.images.length > 0) {
-    let pos = 1;
-    for (const gUrl of product.images) {
-      if (gUrl !== product.image) {
-        imagesList.push({
-          id: `img_${productId}_gallery_${pos}`,
-          productId,
-          url: gUrl,
-          alt: `${product.name} - View ${pos}`,
-          position: pos,
-          isMain: false,
-          createdAt: nowStr,
-          updatedAt: nowStr,
-        });
-        pos++;
+    if (storagePaths.length > 0) {
+      const { error: storageErr } = await sb.storage
+        .from("product-images")
+        .remove(storagePaths);
+      if (storageErr) {
+        console.warn(`[deleteProduct] Storage cleanup warning:`, storageErr.message);
       }
     }
   }
 
-  memoryProductImages.set(productId, imagesList);
-  return imagesList;
+  // 3. Delete product_images rows (CASCADE should handle this, but be explicit)
+  await sb.from("product_images").delete().eq("product_id", id);
+
+  // 4. Delete the product itself
+  const { error, count } = await sb
+    .from("products")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    const errId = crypto.randomUUID().slice(0, 8);
+    console.error(`[deleteProduct] Error ${errId}:`, error.message);
+    throw new Error(`Database error deleting product [ref: ${errId}]`);
+  }
+
+  revalidateProductPages(id);
+  return true;
+}
+
+// ─── Product Image Operations (Supabase product_images table) ────────────────
+export async function getProductImages(productId: string): Promise<DBProductImage[]> {
+  const sb = getAdminSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from("product_images")
+    .select("*")
+    .eq("product_id", productId)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("[getProductImages] Supabase error:", error.message);
+    return [];
+  }
+
+  return (data || []).map(mapDbRowToProductImage);
 }
 
 export async function saveProductImages(
@@ -679,77 +660,140 @@ export async function saveProductImages(
   images: Array<{
     id?: string;
     url: string;
+    storagePath?: string;
     alt?: string;
     isMain?: boolean;
     position?: number;
   }>
 ): Promise<DBProductImage[]> {
-  const nowStr = new Date().toISOString();
-  let mainSet = false;
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  const normalized: DBProductImage[] = images.map((img, index) => {
+  // Normalize
+  let mainSet = false;
+  const normalized = images.map((img, index) => {
     const isMain = img.isMain ?? (index === 0 && !mainSet);
     if (isMain) mainSet = true;
     return {
-      id: img.id || `img_${productId}_${Date.now()}_${index}`,
-      productId,
+      id: img.id || crypto.randomUUID(),
+      product_id: productId,
       url: img.url,
+      storage_path: img.storagePath || null,
       alt: img.alt || "",
       position: img.position ?? index,
-      isMain,
-      createdAt: nowStr,
-      updatedAt: nowStr,
+      is_main: isMain,
+      updated_at: now,
     };
   });
 
-  // Ensure at least one image is main if there are images
-  if (normalized.length > 0 && !normalized.some((img) => img.isMain)) {
-    normalized[0].isMain = true;
+  // Ensure at least one main
+  if (normalized.length > 0 && !normalized.some((img) => img.is_main)) {
+    normalized[0].is_main = true;
   }
 
   normalized.sort((a, b) => a.position - b.position);
-  memoryProductImages.set(productId, normalized);
 
-  // Sync with product record
-  const product = memoryProducts.find((p) => p.id === productId);
-  if (product) {
-    const mainImg = normalized.find((img) => img.isMain) || normalized[0];
-    if (mainImg) {
-      product.image = mainImg.url;
-    }
-    product.images = normalized.map((img) => img.url);
-    product.updatedAt = nowStr;
+  // Delete existing rows and re-insert (atomic save)
+  const { error: deleteError } = await sb
+    .from("product_images")
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteError) {
+    console.error("[saveProductImages] Delete error:", deleteError.message);
+    throw new Error("Failed to save product images");
   }
 
-  return normalized;
+  if (normalized.length > 0) {
+    const { error: insertError } = await sb
+      .from("product_images")
+      .insert(normalized.map(img => ({
+        id: img.id,
+        product_id: img.product_id,
+        url: img.url,
+        storage_path: img.storage_path,
+        alt: img.alt,
+        position: img.position,
+        is_main: img.is_main,
+        created_at: now,
+        updated_at: now,
+      })));
+
+    if (insertError) {
+      console.error("[saveProductImages] Insert error:", insertError.message);
+      throw new Error("Failed to save product images");
+    }
+  }
+
+  // Sync main image + images array to the products table
+  const mainImg = normalized.find((img) => img.is_main) || normalized[0];
+  const imageUrls = normalized.map((img) => img.url);
+  const productUpdate: Record<string, any> = {
+    images: imageUrls,
+    updated_at: now,
+  };
+  if (mainImg) {
+    productUpdate.image = mainImg.url;
+  }
+
+  await sb.from("products").update(productUpdate).eq("id", productId);
+
+  // Return the saved images
+  return await getProductImages(productId);
 }
 
 export async function addProductImage(
   productId: string,
-  image: { url: string; alt?: string; isMain?: boolean }
+  image: { url: string; storagePath?: string; alt?: string; isMain?: boolean }
 ): Promise<DBProductImage> {
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
   const current = await getProductImages(productId);
-  const nowStr = new Date().toISOString();
   const isMain = image.isMain ?? current.length === 0;
 
-  if (isMain) {
-    current.forEach((img) => (img.isMain = false));
+  // If setting as main, unset existing main
+  if (isMain && current.length > 0) {
+    await sb
+      .from("product_images")
+      .update({ is_main: false, updated_at: now })
+      .eq("product_id", productId)
+      .eq("is_main", true);
   }
 
-  const newImg: DBProductImage = {
-    id: `img_${productId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-    productId,
-    url: image.url,
-    alt: image.alt || "",
-    position: current.length,
-    isMain,
-    createdAt: nowStr,
-    updatedAt: nowStr,
-  };
+  const newId = crypto.randomUUID();
+  const { data: inserted, error } = await sb
+    .from("product_images")
+    .insert({
+      id: newId,
+      product_id: productId,
+      url: image.url,
+      storage_path: image.storagePath || null,
+      alt: image.alt || "",
+      position: current.length,
+      is_main: isMain,
+      created_at: now,
+      updated_at: now,
+    })
+    .select()
+    .single();
 
-  current.push(newImg);
-  await saveProductImages(productId, current);
-  return newImg;
+  if (error || !inserted) {
+    const errId = crypto.randomUUID().slice(0, 8);
+    console.error(`[addProductImage] Error ${errId}:`, error?.message);
+    throw new Error(`Failed to add product image [ref: ${errId}]`);
+  }
+
+  // Sync products table
+  const allImages = await getProductImages(productId);
+  const mainImgRow = allImages.find((i) => i.isMain) || allImages[0];
+  await sb.from("products").update({
+    image: mainImgRow?.url || image.url,
+    images: allImages.map((i) => i.url),
+    updated_at: now,
+  }).eq("id", productId);
+
+  revalidateProductPages(productId);
+  return mapDbRowToProductImage(inserted);
 }
 
 export async function updateProductImage(
@@ -757,76 +801,187 @@ export async function updateProductImage(
   imageId: string,
   data: Partial<DBProductImage>
 ): Promise<DBProductImage | null> {
-  const current = await getProductImages(productId);
-  const target = current.find((img) => img.id === imageId);
-  if (!target) return null;
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
+
+  const payload: Record<string, any> = { updated_at: now };
+  if (data.url !== undefined) payload.url = data.url;
+  if (data.storagePath !== undefined) payload.storage_path = data.storagePath;
+  if (data.alt !== undefined) payload.alt = data.alt;
+  if (data.position !== undefined) payload.position = data.position;
 
   if (data.isMain) {
-    current.forEach((img) => (img.isMain = false));
+    // Unset all other main images for this product
+    await sb
+      .from("product_images")
+      .update({ is_main: false, updated_at: now })
+      .eq("product_id", productId)
+      .eq("is_main", true);
+    payload.is_main = true;
+  } else if (data.isMain === false) {
+    payload.is_main = false;
   }
 
-  Object.assign(target, data, { updatedAt: new Date().toISOString() });
-  await saveProductImages(productId, current);
-  return target;
+  const { data: updated, error } = await sb
+    .from("product_images")
+    .update(payload)
+    .eq("id", imageId)
+    .eq("product_id", productId)
+    .select()
+    .single();
+
+  if (error || !updated) return null;
+
+  // Sync products table
+  const allImages = await getProductImages(productId);
+  const mainImgRow = allImages.find((i) => i.isMain) || allImages[0];
+  if (mainImgRow) {
+    await sb.from("products").update({
+      image: mainImgRow.url,
+      images: allImages.map((i) => i.url),
+      updated_at: now,
+    }).eq("id", productId);
+  }
+
+  revalidateProductPages(productId);
+  return mapDbRowToProductImage(updated);
 }
 
 export async function deleteProductImage(productId: string, imageId: string): Promise<boolean> {
-  const current = await getProductImages(productId);
-  const index = current.findIndex((img) => img.id === imageId);
-  if (index === -1) return false;
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  const wasMain = current[index].isMain;
-  current.splice(index, 1);
+  // Get the image to find its storage_path and is_main status
+  const { data: imgRow } = await sb
+    .from("product_images")
+    .select("*")
+    .eq("id", imageId)
+    .eq("product_id", productId)
+    .single();
 
-  // If deleted image was main, make the first remaining image main
-  if (wasMain && current.length > 0) {
-    current[0].isMain = true;
+  if (!imgRow) return false;
+
+  const wasMain = imgRow.is_main;
+  const storagePath = imgRow.storage_path;
+
+  // Delete the DB row
+  const { error } = await sb
+    .from("product_images")
+    .delete()
+    .eq("id", imageId);
+
+  if (error) {
+    console.error("[deleteProductImage] DB error:", error.message);
+    throw new Error("Failed to delete product image");
+  }
+
+  // Delete from Storage if applicable
+  if (storagePath) {
+    const { error: storageErr } = await sb.storage
+      .from("product-images")
+      .remove([storagePath]);
+    if (storageErr) {
+      console.warn("[deleteProductImage] Storage cleanup warning:", storageErr.message);
+    }
+  }
+
+  // If deleted was main, promote next image
+  if (wasMain) {
+    const remaining = await getProductImages(productId);
+    if (remaining.length > 0) {
+      await sb
+        .from("product_images")
+        .update({ is_main: true, updated_at: now })
+        .eq("id", remaining[0].id);
+    }
   }
 
   // Re-index positions
-  current.forEach((img, idx) => {
-    img.position = idx;
-  });
+  const remaining = await getProductImages(productId);
+  for (let i = 0; i < remaining.length; i++) {
+    if (remaining[i].position !== i) {
+      await sb
+        .from("product_images")
+        .update({ position: i, updated_at: now })
+        .eq("id", remaining[i].id);
+    }
+  }
 
-  await saveProductImages(productId, current);
+  // Sync products table
+  const allImages = await getProductImages(productId);
+  const mainImgRow = allImages.find((i) => i.isMain) || allImages[0];
+  await sb.from("products").update({
+    image: mainImgRow?.url || "/assets/products/bat-collection.webp",
+    images: allImages.map((i) => i.url),
+    updated_at: now,
+  }).eq("id", productId);
+
+  revalidateProductPages(productId);
   return true;
 }
 
 export async function setMainProductImage(productId: string, imageId: string): Promise<boolean> {
-  const current = await getProductImages(productId);
-  const target = current.find((img) => img.id === imageId);
-  if (!target) return false;
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  current.forEach((img) => {
-    img.isMain = img.id === imageId;
-  });
+  // Unset all main for this product
+  await sb
+    .from("product_images")
+    .update({ is_main: false, updated_at: now })
+    .eq("product_id", productId);
 
-  await saveProductImages(productId, current);
+  // Set the target as main
+  const { error } = await sb
+    .from("product_images")
+    .update({ is_main: true, updated_at: now })
+    .eq("id", imageId)
+    .eq("product_id", productId);
+
+  if (error) {
+    console.error("[setMainProductImage] error:", error.message);
+    throw new Error("Failed to set main image");
+  }
+
+  // Sync products table
+  const { data: mainRow } = await sb
+    .from("product_images")
+    .select("url")
+    .eq("id", imageId)
+    .single();
+
+  if (mainRow) {
+    await sb.from("products").update({
+      image: mainRow.url,
+      updated_at: now,
+    }).eq("id", productId);
+  }
+
+  revalidateProductPages(productId);
   return true;
 }
 
 export async function reorderProductImages(productId: string, orderedImageIds: string[]): Promise<DBProductImage[]> {
-  const current = await getProductImages(productId);
-  const reordered: DBProductImage[] = [];
+  const sb = requireAdminSupabase();
+  const now = new Date().toISOString();
 
-  orderedImageIds.forEach((id, idx) => {
-    const found = current.find((img) => img.id === id);
-    if (found) {
-      found.position = idx;
-      reordered.push(found);
-    }
-  });
+  // Update positions
+  for (let i = 0; i < orderedImageIds.length; i++) {
+    await sb
+      .from("product_images")
+      .update({ position: i, updated_at: now })
+      .eq("id", orderedImageIds[i])
+      .eq("product_id", productId);
+  }
 
-  // Include any images that weren't in orderedImageIds
-  current.forEach((img) => {
-    if (!orderedImageIds.includes(img.id)) {
-      img.position = reordered.length;
-      reordered.push(img);
-    }
-  });
+  // Sync products.images order
+  const allImages = await getProductImages(productId);
+  await sb.from("products").update({
+    images: allImages.map((i) => i.url),
+    updated_at: now,
+  }).eq("id", productId);
 
-  await saveProductImages(productId, reordered);
-  return reordered;
+  revalidateProductPages(productId);
+  return allImages;
 }
 
 // ─── Category Operations ─────────────────────────────────────────────────────

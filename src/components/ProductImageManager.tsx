@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Upload,
   Star,
@@ -11,18 +10,24 @@ import {
   GripVertical,
   Eye,
   RefreshCw,
-  Plus,
   Save,
   RotateCcw,
-  CheckCircle2,
   AlertTriangle,
   Image as ImageIcon,
-  ArrowLeft,
-  Link as LinkIcon,
-  Search,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
-import type { DBProductImage, DBProduct } from "@/src/lib/data-service";
+import type { DBProductImage } from "@/src/lib/data-service";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
+
+interface UploadingFile {
+  id: string;
+  file: File;
+  progress: "uploading" | "success" | "error";
+  previewUrl: string;
+  errorMessage?: string;
+}
 
 interface ProductImageManagerProps {
   productId: string;
@@ -39,14 +44,10 @@ export function ProductImageManager({
 }: ProductImageManagerProps) {
   const { showToast, confirmAction } = useAdminFeedback();
   const [images, setImages] = useState<DBProductImage[]>([]);
-  const [initialImages, setInitialImages] = useState<DBProductImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState("");
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [productName, setProductName] = useState(initialProductName || "");
-  const [productCategory, setProductCategory] = useState("");
-  const [allProducts, setAllProducts] = useState<DBProduct[]>([]);
 
   // Drag & drop reordering state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -58,263 +59,250 @@ export function ProductImageManager({
   // Replace image state
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
 
-  // Direct URL input state
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [customUrl, setCustomUrl] = useState("");
-  const [customAlt, setCustomAlt] = useState("");
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasUnsavedChanges = JSON.stringify(images) !== JSON.stringify(initialImages);
-
-  // Fetch product info & images
-  const loadProductAndImages = async (idToLoad: string) => {
+  // Load images from DB
+  const loadImages = useCallback(async () => {
     setLoading(true);
     try {
-      const [prodRes, imgRes, allProdRes] = await Promise.all([
-        fetch(`/api/admin/products/${idToLoad}`).then((r) => r.json()),
-        fetch(`/api/admin/products/${idToLoad}/images`).then((r) => r.json()),
-        fetch(`/api/admin/products`).then((r) => r.json()),
+      const [prodRes, imgRes] = await Promise.all([
+        fetch(`/api/admin/products/${productId}`).then((r) => r.json()),
+        fetch(`/api/admin/products/${productId}/images`).then((r) => r.json()),
       ]);
 
       if (prodRes.success && prodRes.data) {
         setProductName(prodRes.data.name);
-        setProductCategory(prodRes.data.category);
       }
 
       if (imgRes.success && Array.isArray(imgRes.data)) {
         setImages(imgRes.data);
-        setInitialImages(JSON.parse(JSON.stringify(imgRes.data)));
-      }
-
-      if (allProdRes.success && Array.isArray(allProdRes.data)) {
-        setAllProducts(allProdRes.data);
       }
     } catch {
-      showToast("Failed to load product media", "error");
+      showToast("Failed to load product images", "error");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadProductAndImages(productId);
   }, [productId]);
 
-  // Handle saving changes
-  const handleSaveChanges = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/admin/products/${productId}/images`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images }),
-      });
+  useEffect(() => {
+    loadImages();
+  }, [loadImages]);
 
-      const json = await res.json();
-      if (json.success) {
-        setImages(json.data);
-        setInitialImages(JSON.parse(JSON.stringify(json.data)));
-        showToast("Product images updated and published successfully!", "success");
-        if (onSaved) onSaved(json.data);
-      } else {
-        showToast(json.error || "Failed to save images", "error");
-      }
-    } catch {
-      showToast("Network error while saving images", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Upload a file to Storage, then create a DB row
+  const uploadAndPersistImage = async (file: File, uploadId: string): Promise<DBProductImage | null> => {
+    // 1. Upload to Storage
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("productId", productId);
 
-  // Handle Cancel / Reset
-  const handleCancelChanges = () => {
-    if (!hasUnsavedChanges) return;
-    confirmAction({
-      title: "Discard Unsaved Changes?",
-      message: "Are you sure you want to revert all image changes made during this session?",
-      confirmText: "Discard Changes",
-      cancelText: "Keep Editing",
-      danger: true,
-      onConfirm: () => {
-        setImages(JSON.parse(JSON.stringify(initialImages)));
-        showToast("Image changes discarded", "info");
-      },
+    const uploadRes = await fetch("/api/admin/upload", {
+      method: "POST",
+      body: formData,
     });
+    const uploadData = await uploadRes.json();
+
+    if (!uploadRes.ok || !uploadData.success) {
+      throw new Error(uploadData.error || "Upload failed");
+    }
+
+    // 2. Create DB row
+    const dbRes = await fetch(`/api/admin/products/${productId}/images`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: uploadData.data.url,
+        storagePath: uploadData.data.storagePath,
+        alt: `${productName || "Product"} - View`,
+        isMain: images.length === 0,
+      }),
+    });
+    const dbData = await dbRes.json();
+
+    if (!dbRes.ok || !dbData.success) {
+      // Rollback: delete the uploaded file from Storage
+      try {
+        await fetch("/api/admin/upload/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storagePaths: [uploadData.data.storagePath] }),
+        });
+      } catch {}
+      throw new Error(dbData.error || "Failed to save image record");
+    }
+
+    return dbData.data;
   };
 
-  // Upload file handler
+  // Handle file upload (multiple files)
   const handleFileUpload = async (files: FileList | File[]) => {
     const validFiles = Array.from(files).filter((file) => {
-      const isImage = ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type);
+      const isImage = ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type);
       const isUnderLimit = file.size <= 10 * 1024 * 1024;
-      if (!isImage) showToast(`${file.name}: Invalid format. Use JPG, PNG, or WebP.`, "warning");
-      if (!isUnderLimit) showToast(`${file.name}: Exceeds 10MB limit.`, "warning");
+      if (!isImage) showToast(`${file.name}: Invalid format. Use JPG, PNG, WebP, or AVIF.`, "warning");
+      if (!isUnderLimit) showToast(`${file.name}: Exceeds 10 MB limit.`, "warning");
       return isImage && isUnderLimit;
     });
 
     if (validFiles.length === 0) return;
 
-    setUploading(true);
-    const newUploadedImages: DBProductImage[] = [...images];
+    // Create preview entries
+    const previews: UploadingFile[] = validFiles.map((file) => ({
+      id: `upload_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      file,
+      progress: "uploading" as const,
+      previewUrl: URL.createObjectURL(file),
+    }));
 
-    const readFileAsDataUrl = (f: File): Promise<string> => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve("");
-        reader.readAsDataURL(f);
-      });
-    };
+    setUploadingFiles((prev) => [...prev, ...previews]);
 
-    for (let i = 0; i < validFiles.length; i++) {
-      const file = validFiles[i];
-      setUploadProgress(`Processing ${i + 1} of ${validFiles.length}: ${file.name}...`);
+    // Upload each file sequentially to avoid overwhelming the server
+    for (const preview of previews) {
+      try {
+        const savedImage = await uploadAndPersistImage(preview.file, preview.id);
+        if (savedImage) {
+          setImages((prev) => [...prev, savedImage]);
+        }
+        setUploadingFiles((prev) =>
+          prev.map((p) => (p.id === preview.id ? { ...p, progress: "success" } : p))
+        );
+      } catch (err: any) {
+        setUploadingFiles((prev) =>
+          prev.map((p) =>
+            p.id === preview.id
+              ? { ...p, progress: "error", errorMessage: err.message || "Upload failed" }
+              : p
+          )
+        );
+        showToast(`Failed to upload ${preview.file.name}: ${err.message}`, "error");
+      }
+    }
 
+    // Clear successful uploads after a delay
+    setTimeout(() => {
+      setUploadingFiles((prev) => prev.filter((p) => p.progress === "error"));
+    }, 3000);
+  };
+
+  // Retry a failed upload
+  const handleRetryUpload = async (uploadItem: UploadingFile) => {
+    setUploadingFiles((prev) =>
+      prev.map((p) => (p.id === uploadItem.id ? { ...p, progress: "uploading", errorMessage: undefined } : p))
+    );
+
+    try {
+      const savedImage = await uploadAndPersistImage(uploadItem.file, uploadItem.id);
+      if (savedImage) {
+        setImages((prev) => [...prev, savedImage]);
+      }
+      setUploadingFiles((prev) =>
+        prev.map((p) => (p.id === uploadItem.id ? { ...p, progress: "success" } : p))
+      );
+      setTimeout(() => {
+        setUploadingFiles((prev) => prev.filter((p) => p.id !== uploadItem.id));
+      }, 2000);
+    } catch (err: any) {
+      setUploadingFiles((prev) =>
+        prev.map((p) =>
+          p.id === uploadItem.id
+            ? { ...p, progress: "error", errorMessage: err.message }
+            : p
+        )
+      );
+    }
+  };
+
+  // Handle image replacement — upload new file, update DB row, optionally delete old
+  const handleReplaceFile = async (file: File) => {
+    if (!replacingImageId) return;
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type)) {
+      showToast("Invalid format. Use JPG, PNG, WebP, or AVIF.", "warning");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("File exceeds 10 MB limit.", "warning");
+      return;
+    }
+
+    const oldImage = images.find((img) => img.id === replacingImageId);
+    if (!oldImage) return;
+
+    showToast(`Replacing image with ${file.name}...`, "info");
+
+    try {
+      // Upload new file
       const formData = new FormData();
       formData.append("file", file);
       formData.append("productId", productId);
 
-      let finalUrl = "";
-
-      try {
-        const res = await fetch("/api/admin/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        if (data.success && data.data?.url) {
-          finalUrl = data.data.url;
-        }
-      } catch {
-        // Fallback to local Data URL
-      }
-
-      if (!finalUrl) {
-        finalUrl = await readFileAsDataUrl(file);
-      }
-
-      if (finalUrl) {
-        const isFirstImage = newUploadedImages.length === 0;
-        newUploadedImages.push({
-          id: `img_${productId}_${Date.now()}_${i}`,
-          productId,
-          url: finalUrl,
-          alt: `${productName || "Product"} - View ${newUploadedImages.length + 1}`,
-          position: newUploadedImages.length,
-          isMain: isFirstImage,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      } else {
-        showToast(`Could not process ${file.name}`, "error");
-      }
-    }
-
-    setImages(newUploadedImages);
-    setUploading(false);
-    setUploadProgress("");
-    showToast(`${validFiles.length} image(s) added! Click "Save Image Changes" to publish.`, "success");
-  };
-
-  // Handle image replacement
-  const handleReplaceFile = async (file: File) => {
-    if (!replacingImageId) return;
-
-    if (!["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type)) {
-      showToast("Invalid format. Use JPG, PNG, or WebP.", "warning");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast("File exceeds 10MB limit.", "warning");
-      return;
-    }
-
-    setUploading(true);
-    setUploadProgress(`Replacing picture with ${file.name}...`);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("productId", productId);
-
-    let finalUrl = "";
-
-    try {
-      const res = await fetch("/api/admin/upload", {
+      const uploadRes = await fetch("/api/admin/upload", {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (data.success && data.data?.url) {
-        finalUrl = data.data.url;
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok || !uploadData.success) {
+        throw new Error(uploadData.error || "Upload failed");
       }
-    } catch {
-      // Fallback
+
+      // Update DB row with new URL and storage path
+      const updateRes = await fetch(`/api/admin/products/${productId}/images/${replacingImageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: uploadData.data.url,
+          storagePath: uploadData.data.storagePath,
+        }),
+      });
+      const updateData = await updateRes.json();
+
+      if (!updateRes.ok || !updateData.success) {
+        // Rollback: delete new upload
+        await fetch("/api/admin/upload/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storagePaths: [uploadData.data.storagePath] }),
+        });
+        throw new Error(updateData.error || "Failed to update image record");
+      }
+
+      // Delete old Storage object
+      if (oldImage.storagePath) {
+        await fetch("/api/admin/upload/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storagePaths: [oldImage.storagePath] }),
+        }).catch(() => {});
+      }
+
+      // Refresh from DB
+      await loadImages();
+      showToast("Image replaced successfully!", "success");
+    } catch (err: any) {
+      showToast(`Failed to replace image: ${err.message}`, "error");
+    } finally {
+      setReplacingImageId(null);
     }
-
-    if (!finalUrl) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === replacingImageId
-              ? { ...img, url: dataUrl, updatedAt: new Date().toISOString() }
-              : img
-          )
-        );
-        showToast("Image replaced! Click Save to apply.", "success");
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === replacingImageId
-            ? { ...img, url: finalUrl, updatedAt: new Date().toISOString() }
-            : img
-        )
-      );
-      showToast("Image replaced! Click Save to apply.", "success");
-    }
-
-    setUploading(false);
-    setUploadProgress("");
-    setReplacingImageId(null);
-  };
-
-  // Add URL image
-  const handleAddUrlImage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customUrl.trim()) return;
-
-    const newImg: DBProductImage = {
-      id: `img_${productId}_${Date.now()}`,
-      productId,
-      url: customUrl.trim(),
-      alt: customAlt.trim() || `${productName} View ${images.length + 1}`,
-      position: images.length,
-      isMain: images.length === 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setImages((prev) => [...prev, newImg]);
-    setCustomUrl("");
-    setCustomAlt("");
-    setShowUrlInput(false);
-    showToast("Image URL added to gallery! Click Save to publish.", "info");
   };
 
   // Set Main Image
-  const handleSetMain = (imageId: string) => {
-    setImages((prev) =>
-      prev.map((img) => ({
-        ...img,
-        isMain: img.id === imageId,
-      }))
-    );
-    showToast("Selected as primary main image", "info");
+  const handleSetMain = async (imageId: string) => {
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ setMain: true }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to set main image");
+      }
+      await loadImages();
+      showToast("Main image updated!", "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to set main image", "error");
+    }
   };
 
   // Delete Image
@@ -327,17 +315,55 @@ export function ProductImageManager({
       confirmText: "Delete Picture",
       cancelText: "Keep Picture",
       danger: true,
-      onConfirm: () => {
-        setImages((prev) => {
-          const filtered = prev.filter((item) => item.id !== img.id);
-          if (img.isMain && filtered.length > 0) {
-            filtered[0].isMain = true;
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/products/${productId}/images/${img.id}`, {
+            method: "DELETE",
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || "Failed to delete image");
           }
-          return filtered.map((item, idx) => ({ ...item, position: idx }));
-        });
-        showToast("Picture removed from gallery", "info");
+          await loadImages();
+          showToast("Image deleted successfully", "success");
+        } catch (err: any) {
+          showToast(err.message || "Failed to delete image", "error");
+        }
       },
     });
+  };
+
+  // Save reordered images
+  const handleSaveOrder = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/images`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: images.map((img, idx) => ({
+            id: img.id,
+            url: img.url,
+            storagePath: img.storagePath,
+            alt: img.alt,
+            isMain: img.isMain,
+            position: idx,
+          })),
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to save image order");
+      }
+      setImages(json.data);
+      showToast("Image gallery saved!", "success");
+      if (onSaved) onSaved(json.data);
+    } catch (err: any) {
+      showToast(err.message || "Failed to save images", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Move image position
@@ -348,41 +374,32 @@ export function ProductImageManager({
     const updated = [...images];
     const [movedItem] = updated.splice(index, 1);
     updated.splice(targetIndex, 0, movedItem);
-
-    // Re-index
     const reindexed = updated.map((img, idx) => ({ ...img, position: idx }));
     setImages(reindexed);
   };
 
-  // Drag and Drop reordering handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
+  // Drag and Drop
+  const handleDragStart = (index: number) => setDraggedIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
     setDragOverIndex(index);
   };
-
   const handleDrop = (index: number) => {
     if (draggedIndex === null || draggedIndex === index) {
       setDraggedIndex(null);
       setDragOverIndex(null);
       return;
     }
-
     const updated = [...images];
     const [draggedItem] = updated.splice(draggedIndex, 1);
     updated.splice(index, 0, draggedItem);
-
-    const reindexed = updated.map((img, idx) => ({ ...img, position: idx }));
-    setImages(reindexed);
+    setImages(updated.map((img, idx) => ({ ...img, position: idx })));
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
 
-  // Update alt text
+  // Update alt text (local, saved via handleSaveOrder)
   const handleAltChange = (id: string, newAlt: string) => {
     setImages((prev) =>
       prev.map((img) => (img.id === id ? { ...img, alt: newAlt } : img))
@@ -392,122 +409,57 @@ export function ProductImageManager({
   if (loading) {
     return (
       <div style={{ color: "var(--adm-muted)", padding: "3rem", textAlign: "center" }}>
-        Loading Product Media Studio...
+        <Loader2 size={24} style={{ animation: "spin 1s linear infinite", marginBottom: "1rem" }} />
+        <div>Loading Product Media...</div>
       </div>
     );
   }
 
   return (
     <div className="product-image-manager">
-      {/* ── Hidden File Inputs ── */}
+      {/* Hidden File Inputs */}
       <input
         type="file"
         ref={fileInputRef}
         multiple
-        accept="image/jpeg,image/png,image/webp,image/jpg"
+        accept="image/jpeg,image/png,image/webp,image/avif"
         style={{ display: "none" }}
         onChange={(e) => {
           if (e.target.files) handleFileUpload(e.target.files);
+          e.target.value = "";
         }}
       />
       <input
         type="file"
         ref={replaceFileInputRef}
-        accept="image/jpeg,image/png,image/webp,image/jpg"
+        accept="image/jpeg,image/png,image/webp,image/avif"
         style={{ display: "none" }}
         onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            handleReplaceFile(e.target.files[0]);
-          }
+          if (e.target.files?.[0]) handleReplaceFile(e.target.files[0]);
+          e.target.value = "";
         }}
       />
 
-      {/* ── Header Navigation ── */}
-      {showBackLink && (
-        <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link
-            href="/admin/products"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              color: "var(--adm-muted)",
-              textDecoration: "none",
-              fontSize: "0.875rem",
-            }}
-          >
-            <ArrowLeft size={16} /> Back to Products
-          </Link>
-
-          {/* Quick Product Switcher */}
-          {allProducts.length > 1 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>Switch Product:</span>
-              <select
-                className="admin-select"
-                style={{ width: "auto", minWidth: "220px", padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}
-                value={productId}
-                onChange={(e) => {
-                  window.location.href = `/admin/products/${e.target.value}/images`;
-                }}
-              >
-                {allProducts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.category})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Studio Banner Header ── */}
+      {/* Studio Banner Header */}
       <div className="admin-header" style={{ marginBottom: "1.5rem" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
-            <h1>{productName || "Product Media Manager"}</h1>
-            {hasUnsavedChanges && (
-              <span
-                className="admin-badge"
-                style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", fontSize: "0.75rem" }}
-              >
-                ● Unsaved Changes
-              </span>
-            )}
-          </div>
-          <p>
-            Category: <strong style={{ color: "var(--adm-primary)" }}>{productCategory}</strong> · Product Database ID:{" "}
-            <code style={{ background: "#09101d", padding: "0.15rem 0.4rem", borderRadius: "4px", color: "#cbd5e1" }}>
-              {productId}
-            </code>
+          <h2 style={{ margin: 0, fontSize: "1.15rem" }}>Product Images & Gallery</h2>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.825rem", color: "var(--adm-muted)" }}>
+            Upload, reorder, and manage product photographs. Changes to order and alt text require saving.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-          {hasUnsavedChanges && (
-            <button
-              onClick={handleCancelChanges}
-              className="admin-btn admin-btn-secondary"
-              disabled={saving}
-            >
-              <RotateCcw size={16} />
-              <span>Cancel</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleSaveChanges}
-            className="admin-btn admin-btn-primary"
-            disabled={saving || uploading}
-          >
-            <Save size={16} />
-            <span>{saving ? "Saving Media..." : "Save Image Changes"}</span>
-          </button>
-        </div>
+        <button
+          onClick={handleSaveOrder}
+          className="admin-btn admin-btn-primary"
+          disabled={saving}
+        >
+          <Save size={16} />
+          <span>{saving ? "Saving..." : "Save Gallery Order"}</span>
+        </button>
       </div>
 
-      {/* ── Upload & Actions Toolbar ── */}
+      {/* Upload Drop Zone */}
       <div
         className="admin-card"
         style={{
@@ -520,12 +472,12 @@ export function ProductImageManager({
           justifyContent: "center",
           textAlign: "center",
           gap: "1rem",
-          position: "relative",
+          marginBottom: "1.5rem",
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          if (e.dataTransfer.files?.length > 0) {
             handleFileUpload(e.dataTransfer.files);
           }
         }}
@@ -547,89 +499,81 @@ export function ProductImageManager({
           </div>
           <div style={{ textAlign: "left" }}>
             <strong style={{ color: "#fff", fontSize: "1rem", display: "block" }}>
-              Upload Photos for {productName}
+              Upload Photos
             </strong>
             <span style={{ color: "var(--adm-muted)", fontSize: "0.825rem" }}>
-              Drag and drop images here, or browse files (Supports JPG, PNG, WebP up to 10MB)
+              Drag & drop images here, or click to browse. JPG, PNG, WebP, AVIF up to 10 MB. Up to 10+ images per product.
             </span>
           </div>
         </div>
 
-        {uploading && (
-          <div style={{ color: "var(--adm-primary)", fontWeight: 600, fontSize: "0.9rem" }}>
-            ⏳ {uploadProgress}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="admin-btn admin-btn-primary"
-            disabled={uploading}
-          >
-            <Upload size={16} />
-            <span>Select Images to Upload</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            className="admin-btn admin-btn-secondary"
-          >
-            <LinkIcon size={16} />
-            <span>{showUrlInput ? "Hide URL Input" : "Add Image by URL / Path"}</span>
-          </button>
-        </div>
-
-        {/* URL Input Form */}
-        {showUrlInput && (
-          <form
-            onSubmit={handleAddUrlImage}
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              width: "100%",
-              maxWidth: "650px",
-              marginTop: "0.75rem",
-              background: "#09101d",
-              padding: "1rem",
-              borderRadius: "8px",
-              border: "1px solid var(--adm-card-border)",
-            }}
-          >
-            <input
-              className="admin-input"
-              style={{ flex: 2 }}
-              placeholder="e.g. /assets/products/item-001.webp or https://..."
-              value={customUrl}
-              onChange={(e) => setCustomUrl(e.target.value)}
-              required
-            />
-            <input
-              className="admin-input"
-              style={{ flex: 1 }}
-              placeholder="SEO Alt text"
-              value={customAlt}
-              onChange={(e) => setCustomAlt(e.target.value)}
-            />
-            <button type="submit" className="admin-btn admin-btn-primary">
-              <Plus size={16} />
-              <span>Add</span>
-            </button>
-          </form>
-        )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="admin-btn admin-btn-primary"
+          disabled={uploadingFiles.some((f) => f.progress === "uploading")}
+        >
+          <Upload size={16} />
+          <span>Select Images to Upload</span>
+        </button>
       </div>
 
-      {/* ── Image Gallery Grid ── */}
+      {/* Upload Progress */}
+      {uploadingFiles.length > 0 && (
+        <div className="admin-card" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
+          <h3 style={{ fontSize: "0.9rem", margin: "0 0 0.75rem", color: "#fff" }}>Upload Progress</h3>
+          {uploadingFiles.map((uf) => (
+            <div
+              key={uf.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.5rem 0",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
+              <img
+                src={uf.previewUrl}
+                alt=""
+                style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "6px" }}
+              />
+              <span style={{ flex: 1, fontSize: "0.85rem", color: "#cbd5e1" }}>
+                {uf.file.name}
+              </span>
+              {uf.progress === "uploading" && (
+                <Loader2 size={16} style={{ color: "var(--adm-primary)", animation: "spin 1s linear infinite" }} />
+              )}
+              {uf.progress === "success" && (
+                <CheckCircle2 size={16} style={{ color: "#10b981" }} />
+              )}
+              {uf.progress === "error" && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <XCircle size={16} style={{ color: "#ef4444" }} />
+                  <span style={{ fontSize: "0.75rem", color: "#f87171" }}>{uf.errorMessage}</span>
+                  <button
+                    onClick={() => handleRetryUpload(uf)}
+                    className="admin-btn admin-btn-secondary"
+                    style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Image Gallery Grid */}
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div>
-            <h2 style={{ fontSize: "1.2rem", color: "#fff", margin: 0 }}>
-              Product Image Gallery ({images.length} pictures)
+            <h2 style={{ fontSize: "1.1rem", color: "#fff", margin: 0 }}>
+              Gallery ({images.length} {images.length === 1 ? "image" : "images"})
             </h2>
             <span style={{ fontSize: "0.825rem", color: "var(--adm-muted)" }}>
-              Drag to reorder · Star to set Main/Cover picture · Click eye to preview
+              Drag to reorder · Star to set main image · Click eye to preview
             </span>
           </div>
           {images.length > 0 && (
@@ -645,17 +589,17 @@ export function ProductImageManager({
             style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--adm-muted)" }}
           >
             <ImageIcon size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
-            <h3 style={{ color: "#fff", margin: "0 0 0.5rem" }}>No pictures attached yet</h3>
+            <h3 style={{ color: "#fff", margin: "0 0 0.5rem" }}>No images yet</h3>
             <p style={{ margin: 0, fontSize: "0.9rem" }}>
-              Upload your first picture above to set the product cover and gallery.
+              Upload your first image above to set the product cover and gallery.
             </p>
           </div>
         ) : (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: "1.5rem",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: "1.25rem",
             }}
           >
             {images.map((img, index) => {
@@ -667,9 +611,10 @@ export function ProductImageManager({
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDrop={() => handleDrop(index)}
+                  onDragEnd={() => { setDraggedIndex(null); setDragOverIndex(null); }}
                   className="admin-card"
                   style={{
-                    padding: "1rem",
+                    padding: "0.75rem",
                     display: "flex",
                     flexDirection: "column",
                     position: "relative",
@@ -679,169 +624,99 @@ export function ProductImageManager({
                       : img.isMain
                       ? "2px solid #10b981"
                       : "1px solid var(--adm-card-border)",
-                    boxShadow: img.isMain ? "0 0 20px rgba(16, 185, 129, 0.2)" : "none",
-                    borderRadius: "12px",
-                    transition: "all 0.2s",
+                    boxShadow: img.isMain ? "0 0 20px rgba(16, 185, 129, 0.15)" : "none",
+                    borderRadius: "10px",
                     cursor: "grab",
+                    transition: "border 0.2s, box-shadow 0.2s",
                   }}
                 >
-                  {/* Position Badge & Main Indicator */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: "0.75rem",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <GripVertical size={16} color="var(--adm-muted)" />
+                  {/* Position Badge */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <GripVertical size={14} color="var(--adm-muted)" />
                       <span
                         className="admin-badge"
                         style={{
                           background: img.isMain ? "var(--adm-primary)" : "#1e2d42",
                           color: img.isMain ? "#000" : "#fff",
                           fontWeight: 700,
+                          fontSize: "0.7rem",
                         }}
                       >
-                        {img.isMain ? "★ MAIN COVER" : `#${index + 1}`}
+                        {img.isMain ? "★ MAIN" : `#${index + 1}`}
                       </span>
                     </div>
 
-                    <div style={{ display: "flex", gap: "0.25rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleMove(index, "left")}
-                        disabled={index === 0}
+                    <div style={{ display: "flex", gap: "0.2rem" }}>
+                      <button type="button" onClick={() => handleMove(index, "left")} disabled={index === 0}
                         className="admin-btn admin-btn-secondary"
-                        style={{ padding: "0.25rem 0.5rem", opacity: index === 0 ? 0.3 : 1 }}
-                        title="Move left"
-                      >
-                        <MoveLeft size={13} />
+                        style={{ padding: "0.2rem 0.4rem", opacity: index === 0 ? 0.3 : 1 }} title="Move left">
+                        <MoveLeft size={12} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMove(index, "right")}
-                        disabled={index === images.length - 1}
+                      <button type="button" onClick={() => handleMove(index, "right")} disabled={index === images.length - 1}
                         className="admin-btn admin-btn-secondary"
-                        style={{ padding: "0.25rem 0.5rem", opacity: index === images.length - 1 ? 0.3 : 1 }}
-                        title="Move right"
-                      >
-                        <MoveRight size={13} />
+                        style={{ padding: "0.2rem 0.4rem", opacity: index === images.length - 1 ? 0.3 : 1 }} title="Move right">
+                        <MoveRight size={12} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Responsive Image Box (object-fit: contain) */}
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "220px",
-                      background: "#070d17",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                    }}
-                  >
+                  {/* Image Preview */}
+                  <div style={{
+                    width: "100%", height: "200px", background: "#070d17", borderRadius: "8px",
+                    overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+                    position: "relative", border: "1px solid rgba(255,255,255,0.05)",
+                  }}>
                     <img
                       src={img.url}
                       alt={img.alt || productName}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "contain",
-                        padding: "0.5rem",
-                      }}
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: "0.5rem" }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/assets/products/bat-collection.webp";
+                        (e.target as HTMLImageElement).style.opacity = "0.3";
                       }}
                     />
-
-                    {/* Quick Lightbox Preview Button */}
                     <button
-                      type="button"
-                      onClick={() => setPreviewImage(img)}
+                      type="button" onClick={() => setPreviewImage(img)}
                       style={{
-                        position: "absolute",
-                        top: "8px",
-                        right: "8px",
-                        background: "rgba(0, 0, 0, 0.7)",
-                        backdropFilter: "blur(4px)",
-                        border: "none",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        padding: "0.4rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                      title="Enlarge preview"
-                    >
+                        position: "absolute", top: "6px", right: "6px",
+                        background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "6px",
+                        color: "#fff", padding: "0.3rem", cursor: "pointer",
+                      }} title="Preview full size">
                       <Eye size={14} />
                     </button>
                   </div>
 
-                  {/* SEO Alt Text Input */}
-                  <div style={{ margin: "0.85rem 0 0.5rem" }}>
-                    <label style={{ fontSize: "0.75rem", color: "var(--adm-muted)", display: "block", marginBottom: "0.25rem" }}>
-                      SEO Alt Text
+                  {/* Alt Text */}
+                  <div style={{ margin: "0.6rem 0 0.4rem" }}>
+                    <label style={{ fontSize: "0.7rem", color: "var(--adm-muted)", display: "block", marginBottom: "0.2rem" }}>
+                      Alt Text
                     </label>
                     <input
                       className="admin-input"
-                      style={{ padding: "0.45rem 0.75rem", fontSize: "0.825rem" }}
+                      style={{ padding: "0.35rem 0.6rem", fontSize: "0.8rem" }}
                       value={img.alt}
-                      placeholder="Descriptive keywords (e.g. Back view, edge profile)..."
+                      placeholder="Describe this image..."
                       onChange={(e) => handleAltChange(img.id, e.target.value)}
                     />
                   </div>
 
-                  {/* Image Action Buttons */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "0.5rem",
-                      marginTop: "auto",
-                      paddingTop: "0.5rem",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleSetMain(img.id)}
+                  {/* Action Buttons */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "auto", paddingTop: "0.35rem" }}>
+                    <button type="button" onClick={() => handleSetMain(img.id)}
                       className={`admin-btn ${img.isMain ? "admin-btn-primary" : "admin-btn-secondary"}`}
-                      style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.8rem", justifyContent: "center" }}
-                    >
-                      <Star size={14} fill={img.isMain ? "currentColor" : "none"} />
-                      <span>{img.isMain ? "Main Image" : "Set as Main"}</span>
+                      style={{ flex: 1, padding: "0.35rem 0.4rem", fontSize: "0.75rem", justifyContent: "center" }}>
+                      <Star size={12} fill={img.isMain ? "currentColor" : "none"} />
+                      <span>{img.isMain ? "Main" : "Set Main"}</span>
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReplacingImageId(img.id);
-                        replaceFileInputRef.current?.click();
-                      }}
+                    <button type="button" onClick={() => { setReplacingImageId(img.id); replaceFileInputRef.current?.click(); }}
                       className="admin-btn admin-btn-secondary"
-                      style={{ padding: "0.45rem 0.6rem" }}
-                      title="Replace this picture with new file"
-                    >
-                      <RefreshCw size={14} />
+                      style={{ padding: "0.35rem 0.5rem" }} title="Replace image">
+                      <RefreshCw size={12} />
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteImage(img)}
+                    <button type="button" onClick={() => handleDeleteImage(img)}
                       className="admin-btn admin-btn-danger"
-                      style={{ padding: "0.45rem 0.6rem" }}
-                      title="Delete picture"
-                    >
-                      <Trash2 size={14} />
+                      style={{ padding: "0.35rem 0.5rem" }} title="Delete image">
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -851,7 +726,7 @@ export function ProductImageManager({
         )}
       </div>
 
-      {/* ── High-Resolution Lightbox Modal ── */}
+      {/* Lightbox Modal */}
       {previewImage && (
         <div className="admin-modal-backdrop" onClick={() => setPreviewImage(null)}>
           <div
@@ -861,53 +736,27 @@ export function ProductImageManager({
           >
             <div className="admin-modal-header">
               <div style={{ textAlign: "left" }}>
-                <h3 style={{ margin: 0 }}>{productName} — Full Resolution View</h3>
+                <h3 style={{ margin: 0 }}>{productName} — Full Resolution</h3>
                 <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
                   {previewImage.alt || "Product image preview"}
                 </span>
               </div>
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="admin-modal-close"
-              >
-                ✕
-              </button>
+              <button onClick={() => setPreviewImage(null)} className="admin-modal-close">✕</button>
             </div>
-
-            <div
-              style={{
-                background: "#070d17",
-                borderRadius: "10px",
-                padding: "1rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "400px",
-                maxHeight: "65vh",
-                overflow: "hidden",
-                margin: "1rem 0",
-              }}
-            >
+            <div style={{
+              background: "#070d17", borderRadius: "10px", padding: "1rem",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              minHeight: "400px", maxHeight: "65vh", overflow: "hidden", margin: "1rem 0",
+            }}>
               <img
                 src={previewImage.url}
                 alt={previewImage.alt || productName}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "60vh",
-                  objectFit: "contain",
-                }}
+                style={{ maxWidth: "100%", maxHeight: "60vh", objectFit: "contain" }}
               />
             </div>
-
-            <div className="admin-modal-actions" style={{ justifyContent: "space-between" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--adm-muted)" }}>
-                URL: <code style={{ color: "var(--adm-primary)" }}>{previewImage.url}</code>
-              </span>
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="admin-btn admin-btn-primary"
-              >
-                Close Preview
+            <div className="admin-modal-actions" style={{ justifyContent: "flex-end" }}>
+              <button onClick={() => setPreviewImage(null)} className="admin-btn admin-btn-primary">
+                Close
               </button>
             </div>
           </div>

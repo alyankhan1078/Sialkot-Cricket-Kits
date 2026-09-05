@@ -51,6 +51,15 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "yokiizorrqopfhbvrtpa.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
   env: {
     NEXT_PUBLIC_SITE_URL: "https://sialkotcricketkits.com",
   },

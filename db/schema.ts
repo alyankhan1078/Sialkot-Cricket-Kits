@@ -25,6 +25,7 @@ export const productImages = sqliteTable("product_images", {
   id: text("id").primaryKey(), // e.g. "img_apex_pro_01" or uuid
   productId: text("product_id").notNull(),
   url: text("url").notNull(),
+  storagePath: text("storage_path"),
   alt: text("alt").notNull().default(""),
   position: integer("position").notNull().default(0),
   isMain: integer("is_main", { mode: "boolean" }).notNull().default(false),

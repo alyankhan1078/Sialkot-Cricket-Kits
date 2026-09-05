@@ -38,36 +38,56 @@ export default function AdminProductsPage() {
   const handleToggleFeatured = async (product: DBProduct) => {
     try {
       const newStatus = !product.featured;
-      await fetch(`/api/admin/products/${product.id}`, {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ featured: newStatus }),
       });
-      showToast(
-        newStatus ? `"${product.name}" is now featured on homepage` : `Removed "${product.name}" from featured`,
-        "success"
-      );
-      fetchProducts();
+      if (res.status === 401) {
+        showToast("Session expired. Please log in again.", "error");
+        router.push("/admin/login");
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        showToast(
+          newStatus ? `"${product.name}" is now featured on homepage` : `Removed "${product.name}" from featured`,
+          "success"
+        );
+        fetchProducts();
+      } else {
+        showToast(json.error || "Failed to update featured status", "error");
+      }
     } catch {
-      showToast("Failed to update featured status", "error");
+      showToast("Network error while updating featured status", "error");
     }
   };
 
   const handleToggleActive = async (product: DBProduct) => {
     try {
       const newActive = !product.active;
-      await fetch(`/api/admin/products/${product.id}`, {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: newActive }),
       });
-      showToast(
-        newActive ? `"${product.name}" is now visible in shop` : `"${product.name}" is now hidden`,
-        "info"
-      );
-      fetchProducts();
+      if (res.status === 401) {
+        showToast("Session expired. Please log in again.", "error");
+        router.push("/admin/login");
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        showToast(
+          newActive ? `"${product.name}" is now visible in shop` : `"${product.name}" is now hidden`,
+          "info"
+        );
+        fetchProducts();
+      } else {
+        showToast(json.error || "Failed to update product visibility", "error");
+      }
     } catch {
-      showToast("Failed to update product visibility", "error");
+      showToast("Network error while updating product visibility", "error");
     }
   };
 

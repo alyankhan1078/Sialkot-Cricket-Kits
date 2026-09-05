@@ -18,7 +18,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404, headers });
     }
     return NextResponse.json({ success: true, data: product }, { status: 200, headers });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("[GET /api/admin/products/[id]]", error?.message);
     return NextResponse.json({ success: false, error: "Failed to fetch product" }, { status: 500, headers });
   }
 }
@@ -35,13 +36,42 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const updated = await updateProduct(id, body);
+
+    // Server-side validation for provided fields
+    if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim().length === 0)) {
+      return NextResponse.json(
+        { success: false, error: "Product name cannot be empty", code: "VALIDATION_ERROR" },
+        { status: 400, headers }
+      );
+    }
+    if (body.price !== undefined && (isNaN(Number(body.price)) || Number(body.price) < 0)) {
+      return NextResponse.json(
+        { success: false, error: "Price must be a valid non-negative number", code: "VALIDATION_ERROR" },
+        { status: 400, headers }
+      );
+    }
+    if (body.name !== undefined && body.name.length > 300) {
+      return NextResponse.json(
+        { success: false, error: "Product name too long (max 300 chars)", code: "VALIDATION_ERROR" },
+        { status: 400, headers }
+      );
+    }
+
+    // Sanitize numeric fields
+    const updateData: Record<string, any> = { ...body };
+    if (updateData.price !== undefined) updateData.price = Number(updateData.price);
+
+    const updated = await updateProduct(id, updateData);
     if (!updated) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404, headers });
     }
     return NextResponse.json({ success: true, data: updated }, { status: 200, headers });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to update product" }, { status: 500, headers });
+  } catch (error: any) {
+    console.error("[PUT /api/admin/products/[id]]", error?.message);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to update product" },
+      { status: 500, headers }
+    );
   }
 }
 
@@ -61,7 +91,11 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404, headers });
     }
     return NextResponse.json({ success: true, message: "Product deleted" }, { status: 200, headers });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to delete product" }, { status: 500, headers });
+  } catch (error: any) {
+    console.error("[DELETE /api/admin/products/[id]]", error?.message);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to delete product" },
+      { status: 500, headers }
+    );
   }
 }
