@@ -62,6 +62,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_SITE_URL: "https://sialkotcricketkits.com",
+    NEXT_PUBLIC_SUPABASE_URL: "https://yokiizorrqopfhbvrtpa.supabase.co",
   },
   async redirects() {
     return [

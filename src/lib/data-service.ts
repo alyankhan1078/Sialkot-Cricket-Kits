@@ -1,4 +1,4 @@
-import { categoryOrder } from "../data/products.ts";
+import { categoryOrder, products as staticProducts } from "../data/products.ts";
 import { faqs as initialFaqs } from "../data/faqs.ts";
 import { getAdminSupabase, requireAdminSupabase } from "./supabase.ts";
 import crypto from "crypto";
@@ -448,7 +448,46 @@ export function revalidateProductPages(productId?: string) {
   }
 }
 
-// ─── Product Operations (Supabase-only, no in-memory fallback) ───────────────
+function getFallbackStaticProducts(options?: {
+  category?: string;
+  featured?: boolean;
+  search?: string;
+}): DBProduct[] {
+  let list: DBProduct[] = staticProducts.map((p, idx) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    price: p.price,
+    stock: p.stockStatus === "in_stock" ? "Available" : "0",
+    image: p.image,
+    images: p.gallery && p.gallery.length > 0 ? p.gallery : [p.image],
+    description: p.description || "",
+    featured: Boolean(p.featured),
+    active: true,
+    sortOrder: idx,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
+
+  if (options?.category && options.category !== "All") {
+    list = list.filter((p) => p.category.toLowerCase() === options.category?.toLowerCase());
+  }
+  if (options?.featured !== undefined) {
+    list = list.filter((p) => p.featured === options.featured);
+  }
+  if (options?.search) {
+    const q = options.search.toLowerCase();
+    list = list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q)
+    );
+  }
+  return list;
+}
+
+// ─── Product Operations (Supabase source of truth, resilient build fallback) ──
 export async function getProducts(options?: {
   category?: string;
   featured?: boolean;
@@ -457,8 +496,8 @@ export async function getProducts(options?: {
 }): Promise<DBProduct[]> {
   const sb = getAdminSupabase();
   if (!sb) {
-    console.error("[getProducts] Supabase client unavailable");
-    return [];
+    console.warn("[getProducts] Supabase client unavailable, using catalogue fallback");
+    return getFallbackStaticProducts(options);
   }
 
   let query = sb.from("products").select("*").order("sort_order", { ascending: true });
@@ -473,14 +512,14 @@ export async function getProducts(options?: {
   }
 
   const { data, error } = await query;
-  if (error) {
-    console.error("[getProducts] Supabase error:", error.message);
-    throw new Error(`Failed to fetch products: ${error.message}`);
+  if (error || !data || data.length === 0) {
+    if (error) console.warn("[getProducts] Supabase query notice:", error.message);
+    return getFallbackStaticProducts(options);
   }
 
   let list = (data || []).map(mapDbRowToProduct);
 
-  // Client-side search filter (Supabase doesn't have built-in full-text on multiple columns easily)
+  // Client-side search filter
   if (options?.search) {
     const q = options.search.toLowerCase();
     list = list.filter(
@@ -496,19 +535,35 @@ export async function getProducts(options?: {
 
 export async function getProductById(id: string): Promise<DBProduct | null> {
   const sb = getAdminSupabase();
-  if (!sb) {
-    console.error("[getProductById] Supabase client unavailable");
-    return null;
+  if (sb) {
+    try {
+      const { data, error } = await sb.from("products").select("*").eq("id", id).maybeSingle();
+      if (!error && data) {
+        return mapDbRowToProduct(data);
+      }
+    } catch {}
   }
 
-  const { data, error } = await sb.from("products").select("*").eq("id", id).maybeSingle();
-  if (error) {
-    console.error("[getProductById] Supabase error:", error.message);
-    return null;
+  const fallback = staticProducts.find((p) => p.id === id);
+  if (fallback) {
+    return {
+      id: fallback.id,
+      name: fallback.name,
+      category: fallback.category,
+      price: fallback.price,
+      stock: fallback.stockStatus === "in_stock" ? "Available" : "0",
+      image: fallback.image,
+      images: fallback.gallery && fallback.gallery.length > 0 ? fallback.gallery : [fallback.image],
+      description: fallback.description || "",
+      featured: Boolean(fallback.featured),
+      active: true,
+      sortOrder: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   }
-  if (!data) return null;
 
-  return mapDbRowToProduct(data);
+  return null;
 }
 
 export async function createProduct(data: Omit<DBProduct, "createdAt" | "updatedAt">): Promise<DBProduct> {
