@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { getCategories, getFaqs, getProducts, getSettings } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
-import { CinematicHeroBanner } from "@/src/components/home/CinematicHeroBanner";
+import { WorkshopHero } from "@/src/components/home/WorkshopHero";
 import { HomeProductsDirect } from "@/src/components/home/HomeProductsDirect";
 
 export const metadata = {
@@ -35,8 +35,10 @@ export default async function HomePage() {
 
   return (
     <main className="world-homepage">
-      {/* 1. Cinematic Hero Banner (Compact & Clean) */}
-      <CinematicHeroBanner />
+      {/* 1. Workshop hero: real bats from the workshop, two clear actions, a strip of plain facts */}
+      <WorkshopHero
+        products={products.map((p) => ({ id: p.id, price: p.price, active: p.active }))}
+      />
 
       {/* 2. Direct Parallel 3-Column Products Catalogue with Left Category Drawer */}
       <HomeProductsDirect
