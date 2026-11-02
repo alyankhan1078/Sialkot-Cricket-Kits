@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticatedAdmin, getAdminResponseHeaders } from "@/src/lib/admin-auth";
-import { deleteEnquiry, markEnquiryRead } from "@/src/lib/data-service";
+import { deleteEnquiry, markEnquiryRead, setEnquirySpam } from "@/src/lib/data-service";
 
 export async function PUT(
   request: NextRequest,
@@ -13,9 +13,12 @@ export async function PUT(
 
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { read } = body;
-    const updated = await markEnquiryRead(Number(id), read !== undefined ? !!read : true);
+    const body = await request.json().catch(() => ({}));
+    const { read, spam } = body || {};
+    const updated =
+      spam !== undefined
+        ? await setEnquirySpam(Number(id), !!spam)
+        : await markEnquiryRead(Number(id), read !== undefined ? !!read : true);
     if (!updated) {
       return NextResponse.json({ success: false, error: "Enquiry not found" }, { status: 404, headers });
     }

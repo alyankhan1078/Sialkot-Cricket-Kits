@@ -11,8 +11,10 @@ export async function POST(request: Request) {
 
   // Allow authenticated admin OR request with ADMIN_SESSION_SECRET header
   const authHeader = request.headers.get("x-maintenance-key");
-  const secretKey = process.env.ADMIN_SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
-  const isSecretMatch = authHeader && authHeader === secretKey;
+  // No fallback secret: if ADMIN_SESSION_SECRET is not configured, only a
+  // logged-in admin can run this.
+  const secretKey = process.env.ADMIN_SESSION_SECRET || "";
+  const isSecretMatch = secretKey.length >= 24 && authHeader === secretKey;
 
   if (!isSecretMatch && !(await isAuthenticatedAdmin(request))) {
     return NextResponse.json(

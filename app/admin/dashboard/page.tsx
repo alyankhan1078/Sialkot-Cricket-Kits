@@ -31,6 +31,12 @@ interface StatsData {
   totalFaqs: number;
   totalEnquiries: number;
   unreadEnquiries: number;
+  pendingPaymentVerifications?: number;
+  customOrdersInProduction?: number;
+  unpaidCustomLeadsThisWeek?: number;
+  unpaidCustomLeadsTotal?: number;
+  unreadContactMessages?: number;
+  outstandingBalanceGbp?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -136,6 +142,35 @@ export default function AdminDashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Action needed today ── */}
+      <section aria-label="Action needed" className="adm-action-grid">
+        <Link href="/admin/orders" className={`adm-action-card ${(stats?.pendingPaymentVerifications || 0) > 0 ? "urgent" : ""}`}>
+          <span className="adm-action-label">Payments to verify</span>
+          <strong className="adm-action-value">{stats?.pendingPaymentVerifications ?? 0}</strong>
+          <span className="adm-action-hint">Check each receipt against the UBL account, then confirm.</span>
+        </Link>
+        <Link href="/admin/orders" className="adm-action-card">
+          <span className="adm-action-label">Custom bats in production</span>
+          <strong className="adm-action-value">{stats?.customOrdersInProduction ?? 0}</strong>
+          <span className="adm-action-hint">Paid custom orders not yet dispatched.</span>
+        </Link>
+        <Link href="/admin/orders" className="adm-action-card">
+          <span className="adm-action-label">Balances still due</span>
+          <strong className="adm-action-value">£ {(stats?.outstandingBalanceGbp ?? 0).toLocaleString("en-GB")}</strong>
+          <span className="adm-action-hint">Collect before dispatch.</span>
+        </Link>
+        <Link href="/admin/enquiries" className="adm-action-card">
+          <span className="adm-action-label">Unpaid custom bat leads</span>
+          <strong className="adm-action-value">{stats?.unpaidCustomLeadsThisWeek ?? 0}<small> this week</small></strong>
+          <span className="adm-action-hint">{stats?.unpaidCustomLeadsTotal ?? 0} total · not orders, follow up on WhatsApp.</span>
+        </Link>
+        <Link href="/admin/enquiries" className="adm-action-card">
+          <span className="adm-action-label">Unread contact messages</span>
+          <strong className="adm-action-value">{stats?.unreadContactMessages ?? 0}</strong>
+          <span className="adm-action-hint">Reply within 24 hours.</span>
+        </Link>
+      </section>
 
       {/* ── 4 Main Sales Metrics: Daily, Weekly, Monthly, Yearly ── */}
       <div className="admin-sales-grid">

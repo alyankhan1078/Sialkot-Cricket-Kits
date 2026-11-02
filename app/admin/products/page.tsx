@@ -45,7 +45,7 @@ export default function AdminProductsPage() {
       });
       if (res.status === 401) {
         showToast("Session expired. Please log in again.", "error");
-        router.push("/admin/login");
+        window.location.href = "/admin";
         return;
       }
       const json = await res.json().catch(() => ({}));
@@ -73,7 +73,7 @@ export default function AdminProductsPage() {
       });
       if (res.status === 401) {
         showToast("Session expired. Please log in again.", "error");
-        router.push("/admin/login");
+        window.location.href = "/admin";
         return;
       }
       const json = await res.json().catch(() => ({}));

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ShieldCheck, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Sialkot Cricket Kits",
+  title: "Privacy Policy",
   description:
     "Privacy Policy for Sialkot Cricket Kits. Learn how we protect your personal data, payment information, and order details.",
 };

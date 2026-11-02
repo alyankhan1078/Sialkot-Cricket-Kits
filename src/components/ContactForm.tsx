@@ -36,6 +36,10 @@ export function ContactForm() {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitted, setSubmitted] = useState(false);
+  // Anti-spam: a hidden field real people never fill, plus the time spent on the form.
+  const [honeypot, setHoneypot] = useState("");
+  const [formStartedAt] = useState(() => Date.now());
+  const [lastSavedKey, setLastSavedKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showEmailOptions, setShowEmailOptions] = useState(false);
 
@@ -95,6 +99,10 @@ export function ContactForm() {
   };
 
   const submitToDatabase = async () => {
+    // Save each distinct message once, even if the customer opens WhatsApp and email.
+    const saveKey = `${form.fullName}|${form.email}|${form.message}`;
+    if (saveKey === lastSavedKey) return;
+    setLastSavedKey(saveKey);
     try {
       await fetch("/api/enquiries", {
         method: "POST",
@@ -110,6 +118,8 @@ export function ContactForm() {
           quantity: form.quantity,
           orderNumber: form.orderNumber,
           message: form.message,
+          website: honeypot,
+          elapsedMs: Date.now() - formStartedAt,
         }),
       });
     } catch {
@@ -156,6 +166,20 @@ export function ContactForm() {
 
   return (
     <form className="contact-enquiry-form" onSubmit={handleWhatsAppSubmit} noValidate>
+      {/* Honeypot: hidden from people and screen readers; bots fill it in. */}
+      <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+        <label htmlFor="contact-website">Website</label>
+        <input
+          id="contact-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
+
       {/* 2-Column Responsive Form Fields */}
       <div className="contact-form-grid">
         {/* Full Name */}

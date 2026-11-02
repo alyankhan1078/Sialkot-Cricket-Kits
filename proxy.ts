@@ -6,8 +6,11 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPage = pathname === "/admin" || pathname === "/admin/";
   const isAuthEndpoint = pathname.startsWith("/api/admin/auth/");
-  const maintenanceSecret = process.env.ADMIN_SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
+  // The maintenance key only works when ADMIN_SESSION_SECRET is set on the
+  // server. There is deliberately no fallback value: this repository is public.
+  const maintenanceSecret = process.env.ADMIN_SESSION_SECRET || "";
   const isMaintenance =
+    maintenanceSecret.length >= 24 &&
     pathname.startsWith("/api/admin/maintenance/") &&
     request.headers.get("x-maintenance-key") === maintenanceSecret;
 

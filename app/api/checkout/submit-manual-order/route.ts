@@ -10,6 +10,19 @@ import {
 import { calculateShippingFee } from "@/src/lib/shipping";
 import { validateCheckoutCustomerInfo, type CheckoutCustomerInput } from "@/src/lib/validation";
 import { requireAdminSupabase } from "@/src/lib/supabase";
+import { resolveCustomBatPrice, sanitizeCustomBatSpec } from "@/src/lib/custom-bat-config";
+import { checkRateLimit, getClientIp } from "@/src/lib/rate-limit";
+import crypto from "crypto";
+
+/** Generates a hard-to-collide order ID such as SCK-2026-483920. */
+function generateOrderId(): string {
+  const n = 100000 + (crypto.randomBytes(4).readUInt32BE(0) % 900000);
+  return `SCK-${new Date().getFullYear()}-${n}`;
+}
+
+function normalizeForMatch(value?: string): string {
+  return (value || "").toLowerCase().replace(/[^a-z0-9@.]/g, "");
+}
 
 const ALLOWED_ORIGINS = [
   "https://sialkot-cricket-kits.alyankhan1078.workers.dev",
@@ -119,6 +132,19 @@ function validateFileMagicBytes(bytes: Uint8Array, mimeType: string): boolean {
 export async function POST(request: Request) {
   const corsHeaders = getCorsHeaders(request);
 
+  // Best-effort abuse protection: max 10 order submissions per 15 minutes per IP
+  // (generous, so a real customer correcting mistakes is never blocked).
+  const limit = checkRateLimit(`order:${getClientIp(request)}`, 10, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Too many order attempts from this connection. Please wait a few minutes or contact us on WhatsApp.",
+      },
+      { status: 429, headers: { ...corsHeaders, "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
+
   try {
     let formData: FormData;
     try {
@@ -193,6 +219,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: firstErr }, { status: 400, headers: corsHeaders });
     }
 
+    // ── Payment evidence is mandatory: no order without proof of payment ──
+    if (!transferReference) {
+      return NextResponse.json(
+        { success: false, error: "Please enter your transfer reference / transaction ID before submitting." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (!Number.isFinite(amountSent) || amountSent <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Please enter the amount you paid before submitting." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (!senderName) {
+      return NextResponse.json(
+        { success: false, error: "Please enter the name of the person who sent the payment." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    transferReference = transferReference.slice(0, 120);
+
     // ── Validate Receipt File ──
     if (!receiptFile || typeof receiptFile !== "object" || typeof receiptFile.arrayBuffer !== "function") {
       return NextResponse.json(
@@ -261,26 +308,33 @@ export async function POST(request: Request) {
       const quantity = Math.max(1, parseInt(it.quantity, 10) || 1);
       const serverProduct = await getProductById(productId);
 
-      if (!serverProduct) {
-        // Handle bespoke custom bat orders
-        if (
-          productId &&
-          (productId.startsWith("custom-bat") ||
-            productId.includes("custom-bat") ||
-            productId === "custom-bat-order" ||
-            it.name?.toLowerCase().includes("custom"))
-        ) {
-          const customPrice = Number(it.price) || 300;
-          calculatedSubtotalGbp += customPrice * quantity;
+      const customSpec = sanitizeCustomBatSpec(it.customSpec);
 
+      if (!serverProduct) {
+        // Bespoke custom bats: the price always comes from the official tier table,
+        // never from the browser. Unknown or tampered IDs are rejected.
+        const official = resolveCustomBatPrice(String(productId || ""));
+        if (official) {
+          calculatedSubtotalGbp += official.price * quantity;
           verifiedItems.push({
-            productId: productId,
-            name: it.name || "Custom Cricket Bat",
+            productId,
+            name: `Custom Cricket Bat — ${official.construction} (${official.tierLabel})`,
             category: "Bespoke Custom Bat",
-            price: customPrice,
+            price: official.price,
             quantity,
+            ...(customSpec ? { customSpec } : {}),
           });
           continue;
+        }
+
+        if (String(productId || "").includes("custom-bat")) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "This custom bat configuration could not be priced. Please rebuild it in the Custom Bat configurator and try again.",
+            },
+            { status: 400, headers: corsHeaders }
+          );
         }
 
         return NextResponse.json(
@@ -297,6 +351,8 @@ export async function POST(request: Request) {
         category: serverProduct.category,
         price: serverProduct.price,
         quantity,
+        // Junior custom bats use a real catalogue product plus a custom spec.
+        ...(customSpec ? { customSpec } : {}),
       });
     }
 
@@ -326,30 +382,47 @@ export async function POST(request: Request) {
     }
 
     // ── Generate Unique Canonical Order ID ──
+    // The checkout shows the customer a reference before they pay, so we keep it
+    // when it is free. If it already belongs to SOMEONE ELSE'S order we must never
+    // drop this order: we issue a fresh ID instead.
     const clientProvidedOrderId = (formData.get("orderId") as string)?.trim();
-    const orderId =
+    let orderId =
       clientProvidedOrderId && /^SCK-\d{4}-\d{3,6}$/i.test(clientProvidedOrderId)
         ? clientProvidedOrderId.toUpperCase()
-        : `SCK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        : generateOrderId();
 
-    if (!transferReference) {
-      transferReference = `REF-${orderId}`;
-    }
-
-    // ── Idempotency Check: Prevent duplicate creation if already submitted ──
+    // ── Idempotency: the same customer re-submitting the same order (double tap,
+    // network retry) gets the original order back instead of a duplicate ──
     const existingOrder = await getOrderById(orderId);
     if (existingOrder) {
-      return NextResponse.json(
-        {
-          success: true,
-          orderId: existingOrder.id,
-          orderReference: existingOrder.orderReference || existingOrder.id,
-          message:
-            "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account.",
-        },
-        { status: 200, headers: corsHeaders }
-      );
+      const sameCustomer =
+        (customerEmail && normalizeForMatch(existingOrder.customerEmail) === normalizeForMatch(customerEmail)) ||
+        (customerPhone && normalizeForMatch(existingOrder.customerPhone) === normalizeForMatch(customerPhone));
+
+      if (sameCustomer) {
+        return NextResponse.json(
+          {
+            success: true,
+            orderId: existingOrder.id,
+            orderReference: existingOrder.orderReference || existingOrder.id,
+            trackingToken: existingOrder.trackingToken,
+            message:
+              "Thank you. Your order and payment evidence have been received successfully. Our team will verify the transfer against the UBL account.",
+          },
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      let attempts = 0;
+      do {
+        orderId = generateOrderId();
+        attempts += 1;
+      } while (attempts < 5 && (await getOrderById(orderId)));
     }
+
+    // ── Under-payment check (flag for admin; never silently accept) ──
+    const underpaid =
+      currencySent.toUpperCase() === "GBP" && amountSent + 0.01 < depositDue * 0.97;
 
     // ── Validate Magic Bytes ──
     const fileBytes = await receiptFile.arrayBuffer();
@@ -399,6 +472,13 @@ export async function POST(request: Request) {
       `Payment Evidence: Attached (${receiptOriginalName})`,
       `Receipt Storage: ${receiptStoragePath}`,
       `Policy Agreement: Version ${policyVersion} Accepted on ${policyAcceptedAt}`,
+      `Amount Reported by Customer: ${amountSent} ${currencySent} on ${transferDate}`,
+      underpaid
+        ? `⚠️ [CHECK AMOUNT]: Customer reported £${amountSent}, which is below the £${depositDue} deposit due.`
+        : "",
+      clientProvidedOrderId && clientProvidedOrderId.toUpperCase() !== orderId
+        ? `Checkout Reference Shown to Customer: ${clientProvidedOrderId.toUpperCase()} (re-issued as ${orderId})`
+        : "",
       duplicateCheck.isDuplicate
         ? `⚠️ [WARNING]: This transfer reference was also submitted on order(s): ${duplicateCheck.matchedOrders.join(", ")}`
         : "",

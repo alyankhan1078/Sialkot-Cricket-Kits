@@ -45,7 +45,7 @@ import {
   ALLOWED_RECEIPT_EXTENSIONS,
   ALLOWED_RECEIPT_MIME_TYPES,
 } from "@/src/lib/payment-config";
-import { CUSTOM_BAT_STORAGE_KEY, type CustomBatOrder } from "@/src/lib/custom-bat-config";
+import { CUSTOM_BAT_STORAGE_KEY, decodeResumePayload, type CustomBatOrder } from "@/src/lib/custom-bat-config";
 import PolicyAgreementModal from "@/src/components/PolicyAgreementModal";
 import { POLICY_METADATA } from "@/src/lib/policy-agreement";
 import { CountrySelector } from "@/src/components/CountrySelector";
@@ -136,9 +136,17 @@ export default function CheckoutPage() {
   const [depositPercent, setDepositPercent] = useState<number>(100);
 
   // Generate provisional reference for transfer description
-  const [provisionalRef] = useState(
-    () => `SCK-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
-  );
+  // 6 random digits (900,000 possibilities) so two customers almost never share a
+  // reference. The server re-issues a new ID if a clash ever happens.
+  const [provisionalRef] = useState(() => {
+    let n = 100000 + Math.floor(Math.random() * 900000);
+    try {
+      const buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      n = 100000 + (buf[0] % 900000);
+    } catch {}
+    return `SCK-${new Date().getFullYear()}-${n}`;
+  });
 
   // Step 4: Payment Method Selection & Evidence Form
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("Wise");
@@ -176,6 +184,16 @@ export default function CheckoutPage() {
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
+        // "Complete your order" links from the admin panel carry the saved
+        // configuration. It is re-priced from the official tiers before use.
+        const resumeParam = new URLSearchParams(window.location.search).get("resume");
+        if (resumeParam) {
+          const resumed = decodeResumePayload(resumeParam);
+          if (resumed) {
+            window.localStorage.setItem(CUSTOM_BAT_STORAGE_KEY, JSON.stringify(resumed));
+          }
+        }
+
         const savedOrder = window.localStorage.getItem(CUSTOM_BAT_STORAGE_KEY);
         if (savedOrder) {
           const parsedOrder: CustomBatOrder = JSON.parse(savedOrder);
@@ -426,6 +444,21 @@ export default function CheckoutPage() {
             category: l.product.category,
             price: l.product.price,
             quantity: l.quantity,
+            ...(isCustomOrder && customBatOrder
+              ? {
+                  customSpec: {
+                    size: customBatOrder.bat.size,
+                    construction: customBatOrder.bat.constructionType,
+                    tier: customBatOrder.bat.qualityLevel,
+                    handle: customBatOrder.bat.handlePreference,
+                    weight: customBatOrder.bat.preferredWeight,
+                    profile: customBatOrder.bat.profile,
+                    services: customBatOrder.services.selectedServiceNames,
+                    engravingText: customBatOrder.services.engraving ? customBatOrder.services.engravingText : "",
+                    requirements: customBatOrder.bat.requirements,
+                  },
+                }
+              : {}),
           }))
         )
       );
@@ -763,7 +796,7 @@ export default function CheckoutPage() {
       {/* Sleek Security Assurance Bar */}
       <div className="checkout-security-banner">
         <Lock size={14} color="#16a34a" />
-        <span>256-Bit SSL Encrypted · Direct Factory Dispatch Checkout</span>
+        <span>Secure HTTPS Checkout · Every Payment Verified by Our Team</span>
       </div>
 
       <div className="checkout-main-container" ref={checkoutTopRef}>
@@ -2104,6 +2137,40 @@ export default function CheckoutPage() {
                   </label>
 
                   <div style={{ height: 1, background: "#e2e8f0", margin: "8px 0 12px" }} />
+
+                  {isCustomOrder && customBatOrder && (
+                    <div
+                      role="note"
+                      aria-label="Custom bat order terms"
+                      style={{
+                        background: "#fffbeb",
+                        border: "1px solid #fcd34d",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        margin: "0 0 12px",
+                        fontSize: ".8rem",
+                        color: "#78350f",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong style={{ display: "block", marginBottom: 4 }}>Custom bat order — key terms</strong>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        <li>
+                          Production starts only after our team verifies your {customBatOrder.payment.advancePercentage}% advance
+                          in our official account.
+                        </li>
+                        <li>Made-to-order bats normally take about 7–8 working days after specification approval.</li>
+                        <li>You receive pictures and a live ping video of your bat before dispatch.</li>
+                        {customBatOrder.payment.remainingBalance > 0 && (
+                          <li>The remaining balance is payable before dispatch.</li>
+                        )}
+                        <li>
+                          Once production, engraving or customisation has started, the order cannot be cancelled for a
+                          change of mind (see section 7 of the agreement).
+                        </li>
+                      </ul>
+                    </div>
+                  )}
 
                   {/* Checkbox 2: Policy Agreement */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>

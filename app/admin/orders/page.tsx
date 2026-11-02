@@ -37,11 +37,49 @@ import {
   Copy,
 } from "lucide-react";
 import { formatPrice } from "@/src/data/products";
-import type { DBOrder, DBPaymentSubmission, DBPaymentStatusHistory } from "@/src/lib/data-service";
+import type { DBOrder, DBPaymentSubmission, DBPaymentStatusHistory, OrderItem } from "@/src/lib/data-service";
 import type { NotificationLog } from "@/src/lib/notifications";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { UBL_PAYMENT_CONFIG } from "@/src/lib/payment-config";
+
+// Client-side copy of isCustomBatOrder (the data-service module is server-only).
+function isCustomBatOrder(order: Pick<DBOrder, "items" | "notes">): boolean {
+  return (
+    (order.items || []).some(
+      (i) =>
+        Boolean(i.customSpec) ||
+        (i.productId || "").includes("custom-bat") ||
+        (i.category || "").toLowerCase().includes("custom")
+    ) || (order.notes || "").includes("--- CUSTOM BAT SPECIFICATIONS ---")
+  );
+}
+
+function CustomSpecList({ item }: { item: OrderItem }) {
+  const spec = item.customSpec;
+  if (!spec) return null;
+  const rows: Array<[string, string]> = [
+    ["Size", spec.size],
+    ["Construction", spec.construction],
+    ["Tier", spec.tier],
+    ["Handle", spec.handle],
+    ["Weight", spec.weight],
+    ["Profile", spec.profile],
+    ["Services", (spec.services || []).join(", ")],
+    ["Engraving", spec.engravingText ? `“${spec.engravingText}”` : ""],
+    ["Requirements", spec.requirements],
+  ].filter(([, v]) => Boolean(v)) as Array<[string, string]>;
+  return (
+    <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", margin: "8px 0 0", fontSize: "0.78rem" }}>
+      {rows.map(([label, value]) => (
+        <div key={label} style={{ display: "contents" }}>
+          <dt style={{ color: "#94a3b8" }}>{label}</dt>
+          <dd style={{ margin: 0, color: "#f1f5f9", fontWeight: 600, overflowWrap: "anywhere" }}>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 type EnrichedPaymentSubmission = DBPaymentSubmission & {
   isDuplicateReference?: boolean;
@@ -66,6 +104,7 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [verificationFilter, setVerificationFilter] = useState<string>("all");
   const [pipelineFilter, setPipelineFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "custom" | "catalogue">("all");
 
   // Selection & Modals
   const [selectedSubmission, setSelectedSubmission] = useState<EnrichedPaymentSubmission | null>(null);
@@ -278,8 +317,15 @@ export default function AdminOrdersPage() {
   const pendingVerificationCount = submissions.filter((s) => s.status === "payment_submitted").length;
 
   // Filter Submissions
+  const matchesType = (order?: DBOrder | null) => {
+    if (typeFilter === "all") return true;
+    if (!order) return typeFilter === "catalogue";
+    return typeFilter === "custom" ? isCustomBatOrder(order) : !isCustomBatOrder(order);
+  };
+
   const filteredSubmissions = submissions.filter((sub) => {
     if (verificationFilter !== "all" && sub.status !== verificationFilter) return false;
+    if (!matchesType(sub.order)) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchId = sub.orderId.toLowerCase().includes(q) || sub.id.toLowerCase().includes(q);
@@ -295,6 +341,7 @@ export default function AdminOrdersPage() {
   // Filter Orders
   const filteredOrders = orders.filter((o) => {
     if (pipelineFilter !== "all" && o.status !== pipelineFilter) return false;
+    if (!matchesType(o)) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -318,6 +365,12 @@ export default function AdminOrdersPage() {
         return <span className="sck-badge sck-badge-success"><ShieldCheck size={12} /> Order Confirmed</span>;
       case "in_production":
         return <span className="sck-badge sck-badge-info"><Layers size={12} /> In Production</span>;
+      case "pictures_sent":
+        return <span className="sck-badge sck-badge-info"><Eye size={12} /> Pictures &amp; Ping Video Sent</span>;
+      case "balance_requested":
+        return <span className="sck-badge sck-badge-warning"><Clock size={12} /> Balance Requested</span>;
+      case "balance_paid":
+        return <span className="sck-badge sck-badge-success"><CheckCircle2 size={12} /> Balance Paid</span>;
       case "ready_for_dispatch":
         return <span className="sck-badge sck-badge-info"><Package size={12} /> Ready for Dispatch</span>;
       case "dispatched":
@@ -424,6 +477,35 @@ export default function AdminOrdersPage() {
         </button>
       </div>
 
+      {/* Order type filter */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }} role="group" aria-label="Filter by order type">
+        {[
+          { id: "all", label: "All order types" },
+          { id: "custom", label: "Custom Bat orders" },
+          { id: "catalogue", label: "Catalogue orders" },
+        ].map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            aria-pressed={typeFilter === f.id}
+            onClick={() => setTypeFilter(f.id as "all" | "custom" | "catalogue")}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 20,
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              border: "1px solid",
+              background: typeFilter === f.id ? "#10b981" : "#1e293b",
+              color: typeFilter === f.id ? "#000" : "#cbd5e1",
+              borderColor: typeFilter === f.id ? "#10b981" : "#334155",
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Search & Filter Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
         <div style={{ position: "relative", minWidth: 320, flex: 1 }}>
@@ -483,6 +565,9 @@ export default function AdminOrdersPage() {
               { id: "payment_submitted", label: "Pending Verification" },
               { id: "order_confirmed", label: "Confirmed" },
               { id: "in_production", label: "In Production" },
+              { id: "pictures_sent", label: "Pictures Sent" },
+              { id: "balance_requested", label: "Balance Requested" },
+              { id: "balance_paid", label: "Balance Paid" },
               { id: "ready_for_dispatch", label: "Ready to Dispatch" },
               { id: "dispatched", label: "Dispatched" },
               { id: "delivered", label: "Delivered" },
@@ -638,9 +723,12 @@ export default function AdminOrdersPage() {
                       {order?.items && order.items.length > 0 ? (
                         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px", display: "flex", flexDirection: "column", gap: 6 }}>
                           {order.items.map((it, idx) => (
-                            <li key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#f8fafc" }}>
-                              <span>• {it.quantity}x {it.name}</span>
-                              <span style={{ color: "#f59e0b", fontWeight: 700 }}>{formatPrice(it.price * it.quantity)}</span>
+                            <li key={idx} style={{ fontSize: "0.85rem", color: "#f8fafc" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                <span>• {it.quantity}x {it.name}</span>
+                                <span style={{ color: "#f59e0b", fontWeight: 700 }}>{formatPrice(it.price * it.quantity)}</span>
+                              </div>
+                              <CustomSpecList item={it} />
                             </li>
                           ))}
                         </ul>
@@ -649,7 +737,7 @@ export default function AdminOrdersPage() {
                       )}
 
                       {/* Custom Bat Specs if in notes */}
-                      {order?.notes && order.notes.includes("CUSTOM BAT") && (
+                      {order?.notes && order.notes.includes("CUSTOM BAT") && !order.items.some((i) => i.customSpec) && (
                         <div style={{ background: "#1a1608", border: "1px solid #78350f", padding: 8, borderRadius: 6, fontSize: "0.75rem", color: "#fde68a", whiteSpace: "pre-line" }}>
                           <strong style={{ color: "#f59e0b" }}>🪵 Bespoke Bat Specs:</strong><br />
                           {order.notes.split("--- CUSTOM BAT SPECIFICATIONS ---")[1]?.split("\n\n")[0] || "Custom Bat Specs Attached"}
@@ -842,6 +930,9 @@ export default function AdminOrdersPage() {
                       </td>
                       <td style={{ padding: "14px 16px" }}>
                         <div style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
+                          {isCustomBatOrder(o) && (
+                            <span className="sck-badge sck-badge-warning" style={{ marginRight: 6 }}>Custom Bat</span>
+                          )}
                           {o.items.map((it) => `${it.quantity}x ${it.name}`).join(", ") || "Custom Specs"}
                         </div>
                       </td>
@@ -1075,6 +1166,9 @@ export default function AdminOrdersPage() {
               >
                 <option value="order_confirmed">Order Confirmed</option>
                 <option value="in_production">In Production</option>
+                <option value="pictures_sent">Pictures &amp; Ping Video Sent (custom bats)</option>
+                <option value="balance_requested">Balance Requested (custom bats)</option>
+                <option value="balance_paid">Balance Paid</option>
                 <option value="ready_for_dispatch">Ready for Dispatch</option>
                 <option value="dispatched">Dispatched (Courier In Transit)</option>
                 <option value="delivered">Delivered</option>

@@ -12,9 +12,12 @@ type PageProps = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const product = await getProductById(id);
-  if (!product) return { title: "Product not found | Sialkot Cricket Kits" };
+  if (!product) return { title: "Product not found" };
 
-  const title = product.seoTitle || `${product.name} | Sialkot Cricket Kits`;
+  // Some stored SEO titles already end with a (sometimes truncated) brand
+  // suffix such as "| Sialkot Cricke". Strip it and add the brand exactly once.
+  const baseTitle = (product.seoTitle || product.name).replace(/\s*[|–-]\s*Sialkot\s*Cri[a-z]*(\s*Ki[a-z]*)?\s*$/i, "").trim() || product.name;
+  const title = `${baseTitle} | Sialkot Cricket Kits`;
   const description =
     product.seoDescription ||
     product.shortDescription ||
@@ -23,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const images = product.image ? [product.image] : ["/assets/brand/sialkot-cricket-kits-logo.png"];
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: canonicalUrl,

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FileText, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions | Sialkot Cricket Kits",
+  title: "Terms and Conditions",
   description:
     "Terms and Conditions for Sialkot Cricket Kits. Learn about order confirmation, deposits, custom bat orders, and worldwide delivery.",
 };

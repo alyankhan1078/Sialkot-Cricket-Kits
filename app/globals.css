@@ -3760,6 +3760,26 @@ textarea.checkout-input {
   box-shadow: 0 8px 24px rgba(242, 169, 40, 0.45);
 }
 
+.configurator-payment-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 4px;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  color: #78350f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.configurator-payment-rule svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .configurator-whatsapp-cta {
   display: flex;
   align-items: center;
