@@ -1,66 +1,255 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Search,
-  Download,
-  Trash2,
-  Eye,
-  CheckCircle2,
-  Clock,
-  Printer,
-  ShoppingBag,
-  Mail,
-  MessageCircle,
-  ShieldCheck,
-  AlertTriangle,
-  XCircle,
-  FileText,
-  ExternalLink,
-  Check,
-  X,
-  Building2,
-  RefreshCw,
-  HelpCircle,
-  Phone,
-  MapPin,
-  Calendar,
-  CreditCard,
-  Send,
-  Sparkles,
-  Package,
-  Truck,
-  Layers,
   ChevronRight,
-  Info,
-  Copy,
+  Download,
+  ExternalLink,
+  FileText,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  X,
+  AlertTriangle,
 } from "lucide-react";
-import { formatPrice } from "@/src/data/products";
-import type { DBOrder, DBPaymentSubmission, DBPaymentStatusHistory, OrderItem } from "@/src/lib/data-service";
+import type { DBOrder, DBPaymentSubmission, OrderItem } from "@/src/lib/data-service";
 import type { NotificationLog } from "@/src/lib/notifications";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 import { whatsappUrl } from "@/src/lib/whatsapp";
-import { UBL_PAYMENT_CONFIG } from "@/src/lib/payment-config";
+import "./orders.css";
 
-// Client-side copy of isCustomBatOrder (the data-service module is server-only).
-function isCustomBatOrder(order: Pick<DBOrder, "items" | "notes">): boolean {
+type Order = DBOrder & {
+  paymentSubmission?: DBPaymentSubmission | null;
+  notificationLogs?: NotificationLog[];
+};
+
+type Stage =
+  | "check"
+  | "reupload"
+  | "awaiting"
+  | "confirmed"
+  | "production"
+  | "pictures"
+  | "balance_requested"
+  | "balance_paid"
+  | "ready"
+  | "dispatched"
+  | "delivered"
+  | "rejected"
+  | "cancelled"
+  | "refunded";
+
+type ViewId = "all" | "check" | "production" | "balance" | "ready" | "dispatched" | "delivered" | "closed";
+
+const STAGE_LABEL: Record<Stage, string> = {
+  check: "Check payment",
+  reupload: "Waiting for new receipt",
+  awaiting: "Awaiting payment",
+  confirmed: "Payment verified",
+  production: "In production",
+  pictures: "Pictures sent",
+  balance_requested: "Balance requested",
+  balance_paid: "Balance paid",
+  ready: "Ready to dispatch",
+  dispatched: "Dispatched",
+  delivered: "Delivered",
+  rejected: "Payment rejected",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
+
+// Every status pill gets the same colour on every screen.
+const STAGE_TONE: Record<Stage, string> = {
+  check: "amber",
+  reupload: "amber",
+  awaiting: "grey",
+  confirmed: "blue",
+  production: "violet",
+  pictures: "indigo",
+  balance_requested: "orange",
+  balance_paid: "green",
+  ready: "teal",
+  dispatched: "blue",
+  delivered: "green",
+  rejected: "red",
+  cancelled: "grey",
+  refunded: "grey",
+};
+
+const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "order_confirmed", label: "Payment verified / Order confirmed" },
+  { value: "in_production", label: "In production" },
+  { value: "pictures_sent", label: "Pictures & ping video sent" },
+  { value: "balance_requested", label: "Balance requested" },
+  { value: "balance_paid", label: "Balance paid" },
+  { value: "ready_for_dispatch", label: "Ready for dispatch" },
+  { value: "dispatched", label: "Dispatched" },
+  { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Refunded" },
+];
+
+const PKT_DATE = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Karachi",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatPkt(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : PKT_DATE.format(d);
+}
+
+function money(n: number): string {
+  return `£${(Math.round(n * 100) / 100).toLocaleString("en-GB", { maximumFractionDigits: 2 })}`;
+}
+
+function isCustom(order: Order): boolean {
   return (
     (order.items || []).some(
-      (i) =>
-        Boolean(i.customSpec) ||
-        (i.productId || "").includes("custom-bat") ||
-        (i.category || "").toLowerCase().includes("custom")
+      (i) => Boolean(i.customSpec) || (i.productId || "").includes("custom-bat") || (i.category || "").toLowerCase().includes("custom")
     ) || (order.notes || "").includes("--- CUSTOM BAT SPECIFICATIONS ---")
   );
 }
 
-function CustomSpecList({ item }: { item: OrderItem }) {
+function stageOf(order: Order): Stage {
+  const s = String(order.status || "").toLowerCase();
+  const sub = order.paymentSubmission?.status;
+  if (sub === "payment_submitted" || s === "payment_submitted") return "check";
+  if (sub === "payment_reupload_requested" || s === "payment_reupload_requested") return "reupload";
+  if (s === "payment_rejected" || s === "rejected" || sub === "payment_rejected") return "rejected";
+  if (s === "order_confirmed" || s === "payment_verified" || s === "confirmed") return "confirmed";
+  if (s === "in_production") return "production";
+  if (s === "pictures_sent") return "pictures";
+  if (s === "balance_requested") return "balance_requested";
+  if (s === "balance_paid") return "balance_paid";
+  if (s === "ready_for_dispatch") return "ready";
+  if (s === "dispatched") return "dispatched";
+  if (s === "delivered" || s === "completed") return "delivered";
+  if (s === "cancelled") return "cancelled";
+  if (s === "refunded") return "refunded";
+  return "awaiting";
+}
+
+/** Reads the payment plan written at checkout: "50% Deposit (£466 due today / Balance: £466)". */
+function planOf(order: Order): { percent: number; due: number; balance: number } | null {
+  const m = /Manual Payment Plan:\s*(\d+)% Deposit \(£([\d.]+) due today \/ Balance: £([\d.]+)\)/.exec(order.notes || "");
+  return m ? { percent: Number(m[1]), due: Number(m[2]), balance: Number(m[3]) } : null;
+}
+
+function paidOf(order: Order): number {
+  const stage = stageOf(order);
+  const total = Number(order.totalAmount) || 0;
+  if (stage === "balance_paid" || stage === "delivered") return total;
+  const sub = order.paymentSubmission;
+  if (!sub || sub.status !== "payment_verified") return 0;
+  if ((sub.currencySent || "GBP").toUpperCase() === "GBP") return Math.min(Number(sub.amountSent) || 0, total);
+  return planOf(order)?.due ?? 0;
+}
+
+const CLOSED: Stage[] = ["rejected", "cancelled", "refunded"];
+const IN_PRODUCTION: Stage[] = ["confirmed", "production", "pictures", "balance_requested", "balance_paid"];
+
+const UNPAID: Stage[] = ["check", "reupload", "awaiting"];
+
+function balanceOf(order: Order): number {
+  const stage = stageOf(order);
+  if (CLOSED.includes(stage) || UNPAID.includes(stage)) return 0;
+  return Math.max(0, Math.round(((Number(order.totalAmount) || 0) - paidOf(order)) * 100) / 100);
+}
+
+function inView(order: Order, view: ViewId): boolean {
+  const stage = stageOf(order);
+  switch (view) {
+    case "all":
+      return true;
+    case "check":
+      return stage === "check" || stage === "reupload";
+    case "production":
+      return IN_PRODUCTION.includes(stage);
+    case "balance":
+      return balanceOf(order) > 0 && [...IN_PRODUCTION, "ready", "dispatched"].includes(stage) && stage !== "balance_paid";
+    case "ready":
+      return stage === "ready";
+    case "dispatched":
+      return stage === "dispatched";
+    case "delivered":
+      return stage === "delivered";
+    case "closed":
+      return CLOSED.includes(stage);
+  }
+}
+
+/** The one obvious next action for each stage. */
+function nextStepOf(order: Order): { label: string; status?: string; check?: boolean } | null {
+  const stage = stageOf(order);
+  const custom = isCustom(order);
+  const bal = balanceOf(order);
+  switch (stage) {
+    case "check":
+      return { label: "Verify payment", check: true };
+    case "confirmed":
+      return { label: "Start production", status: "in_production" };
+    case "production":
+      return custom ? { label: "Mark pictures sent", status: "pictures_sent" } : { label: "Mark ready to dispatch", status: "ready_for_dispatch" };
+    case "pictures":
+      return bal > 0 ? { label: "Request balance", status: "balance_requested" } : { label: "Mark ready to dispatch", status: "ready_for_dispatch" };
+    case "balance_requested":
+      return { label: "Mark balance paid", status: "balance_paid" };
+    case "balance_paid":
+      return { label: "Mark ready to dispatch", status: "ready_for_dispatch" };
+    case "ready":
+      return { label: "Mark dispatched", status: "dispatched" };
+    case "dispatched":
+      return { label: "Mark delivered", status: "delivered" };
+    default:
+      return null;
+  }
+}
+
+function itemsSummary(items: OrderItem[]): string {
+  if (!items || items.length === 0) return "—";
+  return items.map((i) => (i.customSpec ? i.name : `${i.name} × ${i.quantity}`)).join(", ");
+}
+
+function noteLine(order: Order, label: string): string {
+  const m = new RegExp(`^${label}:\\s*(.+)$`, "m").exec(order.notes || "");
+  return m ? m[1].trim() : "";
+}
+
+function historyOf(order: Order): string[] {
+  return (order.notes || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^\[(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}|Admin)/.test(l));
+}
+
+function warningsOf(order: Order): string[] {
+  return (order.notes || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("⚠️"))
+    .map((l) => l.replace(/^⚠️\s*/, ""));
+}
+
+function whatsappMessage(order: Order): string {
+  const first = (order.customerName || "").split(" ")[0] || "";
+  return `Assalam o Alaikum ${first}, this is Sialkot Cricket Kits about your order ${order.id}.`;
+}
+
+function StagePill({ stage }: { stage: Stage }) {
+  return <span className={`ord-pill tone-${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
+}
+
+function SpecList({ item }: { item: OrderItem }) {
   const spec = item.customSpec;
   if (!spec) return null;
   const rows: Array<[string, string]> = [
     ["Size", spec.size],
-    ["Construction", spec.construction],
+    ["Willow", spec.construction],
     ["Tier", spec.tier],
     ["Handle", spec.handle],
     ["Weight", spec.weight],
@@ -70,1201 +259,703 @@ function CustomSpecList({ item }: { item: OrderItem }) {
     ["Requirements", spec.requirements],
   ].filter(([, v]) => Boolean(v)) as Array<[string, string]>;
   return (
-    <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", margin: "8px 0 0", fontSize: "0.78rem" }}>
-      {rows.map(([label, value]) => (
-        <div key={label} style={{ display: "contents" }}>
-          <dt style={{ color: "#94a3b8" }}>{label}</dt>
-          <dd style={{ margin: 0, color: "#f1f5f9", fontWeight: 600, overflowWrap: "anywhere" }}>{value}</dd>
+    <dl className="ord-spec">
+      {rows.map(([k, v]) => (
+        <div key={k} className={k === "Requirements" || k === "Services" ? "wide" : ""}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-type EnrichedPaymentSubmission = DBPaymentSubmission & {
-  isDuplicateReference?: boolean;
-  duplicateMatchedOrders?: string[];
-  history?: DBPaymentStatusHistory[];
-  order?: DBOrder | null;
-  notificationLogs?: NotificationLog[];
-};
-
-type EnrichedOrder = DBOrder & {
-  paymentSubmission?: DBPaymentSubmission | null;
-  notificationLogs?: NotificationLog[];
-};
-
 export default function AdminOrdersPage() {
   const { showToast, confirmAction } = useAdminFeedback();
-
-  const [activeTab, setActiveTab] = useState<"verification" | "pipeline">("verification");
-  const [submissions, setSubmissions] = useState<EnrichedPaymentSubmission[]>([]);
-  const [orders, setOrders] = useState<EnrichedOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [verificationFilter, setVerificationFilter] = useState<string>("all");
-  const [pipelineFilter, setPipelineFilter] = useState<string>("all");
+  const [view, setView] = useState<ViewId>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "custom" | "catalogue">("all");
+  const [query, setQuery] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  // Selection & Modals
-  const [selectedSubmission, setSelectedSubmission] = useState<EnrichedPaymentSubmission | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<EnrichedOrder | null>(null);
-  const [receiptModalUrl, setReceiptModalUrl] = useState<string | null>(null);
-  const [receiptModalTitle, setReceiptModalTitle] = useState<string>("");
+  // Drawer action state
+  const [busy, setBusy] = useState(false);
+  const [checkedInBank, setCheckedInBank] = useState(false);
+  const [verifyNote, setVerifyNote] = useState("");
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [askReupload, setAskReupload] = useState(true);
+  const [stepNote, setStepNote] = useState("");
+  const [manualStatus, setManualStatus] = useState("");
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  // Verification & Rejection Modal
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [confirmUblChecked, setConfirmUblChecked] = useState(false);
-  const [adminVerifyNote, setAdminVerifyNote] = useState("");
-  const [adminRejectReason, setAdminRejectReason] = useState("");
-  const [requestReupload, setRequestReupload] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  // Status update modal
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [newStatusValue, setNewStatusValue] = useState<string>("in_production");
-  const [statusNote, setStatusNote] = useState("");
-
-  // CSV Export
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Load Data
-  const fetchData = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [psubsRes, ordersRes] = await Promise.all([
-        fetch("/api/admin/payments"),
-        fetch("/api/admin/orders"),
-      ]);
-
-      const [psubsJson, ordersJson] = await Promise.all([
-        psubsRes.json().catch(() => ({ success: false })),
-        ordersRes.json().catch(() => ({ success: false })),
-      ]);
-
-      if (psubsJson.success && Array.isArray(psubsJson.data)) {
-        setSubmissions(psubsJson.data);
+      const res = await fetch("/api/admin/orders", { cache: "no-store" });
+      if (res.status === 401) {
+        window.location.href = "/admin";
+        return;
       }
-      if (ordersJson.success && Array.isArray(ordersJson.data)) {
-        setOrders(ordersJson.data);
+      const json = await res.json().catch(() => ({ success: false }));
+      if (json.success && Array.isArray(json.data)) {
+        setOrders(json.data);
+      } else {
+        showToast(json.error || "Could not load orders", "error");
       }
     } catch {
-      showToast("Unable to load latest orders from server.", "error");
+      showToast("Could not load orders. Check your connection.", "error");
     } finally {
       setLoading(false);
     }
+  }, [showToast]);
+
+  useEffect(() => {
+    // Initial load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const open = orders.find((o) => o.id === openId) || null;
+
+  const resetDrawerState = () => {
+    setCheckedInBank(false);
+    setVerifyNote("");
+    setRejectOpen(false);
+    setRejectReason("");
+    setAskReupload(true);
+    setStepNote("");
+    setManualStatus("");
+  };
+
+  const openOrder = (id: string) => {
+    resetDrawerState();
+    setOpenId(id);
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!openId) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openId]);
 
-  // Quick Copy Helper
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    showToast(`${label} copied to clipboard!`, "success");
+  const typed = useMemo(
+    () =>
+      orders.filter((o) => {
+        if (typeFilter === "custom" && !isCustom(o)) return false;
+        if (typeFilter === "catalogue" && isCustom(o)) return false;
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        return [
+          o.id,
+          o.customerName,
+          o.customerPhone,
+          o.customerEmail,
+          o.country,
+          o.paymentSubmission?.transferReference,
+          itemsSummary(o.items),
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q));
+      }),
+    [orders, typeFilter, query]
+  );
+
+  type ViewTile = { id: ViewId; label: string; sub: string; urgent: boolean; count: number };
+  const views: ViewTile[] = useMemo(() => {
+    const count = (v: ViewId) => typed.filter((o) => inView(o, v)).length;
+    const checkOrders = typed.filter((o) => inView(o, "check"));
+    const reported = checkOrders.reduce((t, o) => t + (Number(o.paymentSubmission?.amountSent) || 0), 0);
+    const toCollect = typed.filter((o) => inView(o, "balance")).reduce((t, o) => t + balanceOf(o), 0);
+    const inProd = count("production");
+    const tiles: Array<Omit<ViewTile, "count">> = [
+      { id: "check", label: "Check payment", sub: checkOrders.length ? `${money(reported)} reported` : "nothing waiting", urgent: checkOrders.length > 0 },
+      { id: "production", label: "In production", sub: `${inProd} order${inProd === 1 ? "" : "s"}`, urgent: false },
+      { id: "balance", label: "Balance due", sub: toCollect ? `${money(toCollect)} to collect` : "all collected", urgent: false },
+      { id: "ready", label: "Ready to dispatch", sub: "pack and send", urgent: false },
+      { id: "dispatched", label: "Dispatched", sub: "in transit", urgent: false },
+      { id: "delivered", label: "Delivered", sub: "completed", urgent: false },
+      { id: "closed", label: "Rejected / cancelled", sub: "closed", urgent: false },
+      { id: "all", label: "All orders", sub: "everything", urgent: false },
+    ];
+    return tiles.map((t) => ({ ...t, count: count(t.id) }));
+  }, [typed]);
+
+  const rows = useMemo(
+    () =>
+      typed
+        .filter((o) => inView(o, view))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [typed, view]
+  );
+
+  const totals = useMemo(
+    () => ({
+      total: rows.reduce((t, o) => t + (Number(o.totalAmount) || 0), 0),
+      paid: rows.reduce((t, o) => t + paidOf(o), 0),
+      balance: rows.reduce((t, o) => t + balanceOf(o), 0),
+    }),
+    [rows]
+  );
+
+  const changeStatus = async (order: Order, status: string, note: string) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, note }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json.success) {
+        const label = STATUS_OPTIONS.find((s) => s.value === status)?.label || status;
+        showToast(`${order.id}: ${label}`, "success");
+        setStepNote("");
+        setManualStatus("");
+        await load();
+      } else {
+        showToast(json.error || "Could not update the status", "error");
+      }
+    } catch {
+      showToast("Network error while updating the status", "error");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // ── Verification Action (Verify Payment & Confirm Order) ──
-  const handleVerifyPayment = async () => {
-    if (!selectedSubmission) return;
-    if (!confirmUblChecked) {
-      showToast("Please check the box confirming verification in the official UBL bank account.", "error");
+  const runNextStep = (order: Order) => {
+    const step = nextStepOf(order);
+    if (!step) return;
+    if (step.check) {
+      openOrder(order.id);
       return;
     }
-
-    setActionLoading(true);
-    try {
-      const res = await fetch(`/api/admin/payments/${selectedSubmission.id}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          confirmedInUblAccount: true,
-          note: adminVerifyNote,
-          adminEmail: "sialkotcricketkits@gmail.com",
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast(
-          `Payment for Order #${selectedSubmission.orderId} verified & confirmed! Customer notified by Email & WhatsApp.`,
-          "success"
-        );
-        setShowVerifyModal(false);
-        setConfirmUblChecked(false);
-        setAdminVerifyNote("");
-        fetchData();
-      } else {
-        showToast(data.error || "Failed to verify payment", "error");
-      }
-    } catch {
-      showToast("Network error while verifying payment", "error");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // ── Rejection Action ──
-  const handleRejectPayment = async () => {
-    if (!selectedSubmission) return;
-    if (!adminRejectReason.trim()) {
-      showToast("Please provide a reason for rejection.", "error");
+    if (step.status === "dispatched") {
+      // Courier details are needed: do it in the drawer.
+      openOrder(order.id);
       return;
     }
+    // One tap, one confirmation: avoids moving an order by accident on a phone.
+    const label = STATUS_OPTIONS.find((x) => x.value === step.status)?.label || step.label;
+    confirmAction({
+      title: `${step.label}?`,
+      message: `${order.id} (${order.customerName}) will move to "${label}". You can change it back from the order details.`,
+      confirmText: step.label,
+      cancelText: "Cancel",
+      onConfirm: () => changeStatus(order, step.status as string, ""),
+    });
+  };
 
-    setActionLoading(true);
+  const verify = async (order: Order) => {
+    const sub = order.paymentSubmission;
+    if (!sub) return;
+    setBusy(true);
     try {
-      const res = await fetch(`/api/admin/payments/${selectedSubmission.id}/reject`, {
+      const res = await fetch(`/api/admin/payments/${encodeURIComponent(sub.id)}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rejectionReason: adminRejectReason,
-          requestReupload,
-          adminEmail: "sialkotcricketkits@gmail.com",
-        }),
+        body: JSON.stringify({ confirmedInUblAccount: true, note: verifyNote }),
       });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Payment marked as ${requestReupload ? "re-upload requested" : "rejected"}`, "info");
-        setShowRejectModal(false);
-        setAdminRejectReason("");
-        setRequestReupload(false);
-        fetchData();
+      const json = await res.json().catch(() => ({}));
+      if (json.success) {
+        showToast(`${order.id}: payment verified. The customer has been notified.`, "success");
+        resetDrawerState();
+        await load();
       } else {
-        showToast(data.error || "Failed to reject payment", "error");
+        showToast(json.error || "Could not verify the payment", "error");
       }
     } catch {
-      showToast("Network error while rejecting payment", "error");
+      showToast("Network error while verifying", "error");
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   };
 
-  // ── Lifecycle Status Update ──
-  const handleUpdateOrderStatus = async () => {
-    if (!selectedOrder) return;
-    setActionLoading(true);
+  const reject = async (order: Order) => {
+    const sub = order.paymentSubmission;
+    if (!sub || !rejectReason.trim()) return;
+    setBusy(true);
     try {
-      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/status`, {
+      const res = await fetch(`/api/admin/payments/${encodeURIComponent(sub.id)}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: newStatusValue,
-          note: statusNote,
-          adminEmail: "sialkotcricketkits@gmail.com",
-        }),
+        body: JSON.stringify({ rejectionReason: rejectReason.trim(), requestReupload: askReupload }),
       });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Order #${selectedOrder.id} status updated to "${newStatusValue.replace(/_/g, " ").toUpperCase()}"`, "success");
-        setShowStatusModal(false);
-        setStatusNote("");
-        fetchData();
+      const json = await res.json().catch(() => ({}));
+      if (json.success) {
+        showToast(askReupload ? `${order.id}: asked for a new receipt` : `${order.id}: payment rejected`, "info");
+        resetDrawerState();
+        await load();
       } else {
-        showToast(data.error || "Failed to update order status", "error");
+        showToast(json.error || "Could not reject the payment", "error");
       }
     } catch {
-      showToast("Network error while updating order status", "error");
+      showToast("Network error while rejecting", "error");
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   };
 
-  // ── Retry Notification ──
-  const handleRetryNotification = async (orderId: string, type: "order_received" | "order_confirmed") => {
+  const resendNotification = async (order: Order) => {
+    const type = stageOf(order) === "check" ? "order_received" : "order_confirmed";
     try {
-      showToast("Dispatching notification retry...", "info");
-      const res = await fetch(`/api/admin/orders/${orderId}/notifications/retry`, {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/notifications/retry`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type }),
       });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Notification retried for Order #${orderId}`, "success");
-        fetchData();
-      } else {
-        showToast(data.error || "Failed to retry notification", "error");
-      }
+      const json = await res.json().catch(() => ({}));
+      showToast(json.success ? "Notification sent again" : json.error || "Could not resend", json.success ? "success" : "error");
     } catch {
-      showToast("Network error while retrying notification", "error");
+      showToast("Network error while resending", "error");
     }
   };
 
-  // ── CSV Export ──
-  const handleDownloadReport = async () => {
-    setIsExporting(true);
-    try {
-      const link = document.createElement("a");
-      link.href = "/api/admin/sales/export?range=all";
-      link.setAttribute("download", `Sialkot_Cricket_Kits_Orders_${new Date().toISOString().split("T")[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast("Sales Report CSV downloaded successfully!", "success");
-    } catch {
-      showToast("Failed to export sales report", "error");
-    } finally {
-      setIsExporting(false);
-    }
+  const exportCsv = () => {
+    const link = document.createElement("a");
+    link.href = "/api/admin/sales/export?range=all";
+    link.setAttribute("download", `Sialkot_Cricket_Kits_Orders_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Pending Count
-  const pendingVerificationCount = submissions.filter((s) => s.status === "payment_submitted").length;
-
-  // Filter Submissions
-  const matchesType = (order?: DBOrder | null) => {
-    if (typeFilter === "all") return true;
-    if (!order) return typeFilter === "catalogue";
-    return typeFilter === "custom" ? isCustomBatOrder(order) : !isCustomBatOrder(order);
-  };
-
-  const filteredSubmissions = submissions.filter((sub) => {
-    if (verificationFilter !== "all" && sub.status !== verificationFilter) return false;
-    if (!matchesType(sub.order)) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchId = sub.orderId.toLowerCase().includes(q) || sub.id.toLowerCase().includes(q);
-      const matchSender = sub.senderName.toLowerCase().includes(q);
-      const matchRef = sub.transferReference.toLowerCase().includes(q);
-      const matchCustomer = sub.order?.customerName?.toLowerCase().includes(q) || false;
-      const matchEmail = sub.order?.customerEmail?.toLowerCase().includes(q) || false;
-      return matchId || matchSender || matchRef || matchCustomer || matchEmail;
-    }
-    return true;
-  });
-
-  // Filter Orders
-  const filteredOrders = orders.filter((o) => {
-    if (pipelineFilter !== "all" && o.status !== pipelineFilter) return false;
-    if (!matchesType(o)) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        o.id.toLowerCase().includes(q) ||
-        o.customerName.toLowerCase().includes(q) ||
-        (o.customerPhone && o.customerPhone.includes(q)) ||
-        o.country.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
-  // Helpers for Status Labels & Styling
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "payment_submitted":
-        return <span className="sck-badge sck-badge-warning"><Clock size={12} /> Payment Verification Pending</span>;
-      case "payment_verified":
-        return <span className="sck-badge sck-badge-success"><CheckCircle2 size={12} /> Payment Verified</span>;
-      case "order_confirmed":
-        return <span className="sck-badge sck-badge-success"><ShieldCheck size={12} /> Order Confirmed</span>;
-      case "in_production":
-        return <span className="sck-badge sck-badge-info"><Layers size={12} /> In Production</span>;
-      case "pictures_sent":
-        return <span className="sck-badge sck-badge-info"><Eye size={12} /> Pictures &amp; Ping Video Sent</span>;
-      case "balance_requested":
-        return <span className="sck-badge sck-badge-warning"><Clock size={12} /> Balance Requested</span>;
-      case "balance_paid":
-        return <span className="sck-badge sck-badge-success"><CheckCircle2 size={12} /> Balance Paid</span>;
-      case "ready_for_dispatch":
-        return <span className="sck-badge sck-badge-info"><Package size={12} /> Ready for Dispatch</span>;
-      case "dispatched":
-        return <span className="sck-badge sck-badge-purple"><Truck size={12} /> Dispatched</span>;
-      case "delivered":
-        return <span className="sck-badge sck-badge-success"><Check size={12} /> Delivered</span>;
-      case "payment_rejected":
-      case "rejected":
-      case "cancelled":
-        return <span className="sck-badge sck-badge-danger"><XCircle size={12} /> Rejected / Cancelled</span>;
-      case "payment_reupload_requested":
-        return <span className="sck-badge sck-badge-warning"><RefreshCw size={12} /> Re-upload Requested</span>;
-      default:
-        return <span className="sck-badge sck-badge-secondary">{status.replace(/_/g, " ").toUpperCase()}</span>;
-    }
-  };
+  const phoneDigits = (o: Order) => (o.customerPhone || "").replace(/[^0-9]/g, "");
 
   return (
-    <div className="admin-page-container">
-      {/* Top Header */}
-      <div className="admin-page-header">
+    <div className="ord">
+      <header className="ord-head">
         <div>
-          <h1 className="admin-page-title">Order Management &amp; Payment Verification</h1>
-          <p className="admin-page-subtitle">
-            Inspect manual bank transfers, verify customer payment receipts against UBL records, confirm orders, and manage worldwide production dispatch.
-          </p>
+          <h1>Orders</h1>
+          <p>Times are Pakistan time. Prices in GBP.</p>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={fetchData}
-            disabled={loading}
-            className="admin-btn admin-btn-secondary"
-            title="Refresh latest orders and payment submissions"
-          >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-            <span>Refresh</span>
+        <div className="ord-head-actions">
+          <button type="button" className="ord-btn" onClick={load} disabled={loading} aria-label="Refresh orders">
+            <RefreshCw size={16} className={loading ? "ord-spin" : ""} aria-hidden="true" />
+            <span className="ord-hide-sm">Refresh</span>
           </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadReport}
-            disabled={isExporting}
-            className="admin-btn admin-btn-secondary"
-          >
-            <Download size={15} />
-            <span>Export CSV</span>
+          <button type="button" className="ord-btn" onClick={exportCsv}>
+            <Download size={16} aria-hidden="true" />
+            <span className="ord-hide-sm">Export CSV</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Tabs */}
-      <div className="admin-tabs-nav" style={{ display: "flex", gap: 12, borderBottom: "2px solid #334155", marginBottom: 24 }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab("verification")}
-          className={`admin-tab-btn ${activeTab === "verification" ? "active" : ""}`}
-          style={{
-            padding: "12px 20px",
-            fontWeight: 700,
-            fontSize: "0.95rem",
-            background: "none",
-            border: "none",
-            borderBottom: activeTab === "verification" ? "3px solid #f59e0b" : "3px solid transparent",
-            color: activeTab === "verification" ? "#f59e0b" : "#94a3b8",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <CreditCard size={18} />
-          <span>Payment Verification</span>
-          {pendingVerificationCount > 0 && (
-            <span style={{ background: "#ef4444", color: "#fff", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem", fontWeight: 800 }}>
-              {pendingVerificationCount} Pending
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("pipeline")}
-          className={`admin-tab-btn ${activeTab === "pipeline" ? "active" : ""}`}
-          style={{
-            padding: "12px 20px",
-            fontWeight: 700,
-            fontSize: "0.95rem",
-            background: "none",
-            border: "none",
-            borderBottom: activeTab === "pipeline" ? "3px solid #38bdf8" : "3px solid transparent",
-            color: activeTab === "pipeline" ? "#38bdf8" : "#94a3b8",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <ShoppingBag size={18} />
-          <span>All Orders &amp; Production Pipeline</span>
-          <span style={{ background: "#334155", color: "#cbd5e1", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem" }}>
-            {orders.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Order type filter */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }} role="group" aria-label="Filter by order type">
-        {[
-          { id: "all", label: "All order types" },
-          { id: "custom", label: "Custom Bat orders" },
-          { id: "catalogue", label: "Catalogue orders" },
-        ].map((f) => (
+      <div className="ord-tiles" role="tablist" aria-label="Order stages">
+        {views.map((v) => (
           <button
-            key={f.id}
+            key={v.id}
             type="button"
-            aria-pressed={typeFilter === f.id}
-            onClick={() => setTypeFilter(f.id as "all" | "custom" | "catalogue")}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 20,
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              border: "1px solid",
-              background: typeFilter === f.id ? "#10b981" : "#1e293b",
-              color: typeFilter === f.id ? "#000" : "#cbd5e1",
-              borderColor: typeFilter === f.id ? "#10b981" : "#334155",
-            }}
+            role="tab"
+            aria-selected={view === v.id}
+            className={`ord-tile ${view === v.id ? "active" : ""} ${v.urgent ? "urgent" : ""}`}
+            onClick={() => setView(v.id)}
           >
-            {f.label}
+            <span className="ord-tile-label">{v.label}</span>
+            <strong className="ord-tile-count">{loading ? "–" : v.count}</strong>
+            <span className="ord-tile-sub">{loading ? "" : v.sub}</span>
           </button>
         ))}
       </div>
 
-      {/* Search & Filter Bar */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", minWidth: 320, flex: 1 }}>
-          <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+      <div className="ord-toolbar">
+        <label className="ord-search">
+          <Search size={16} aria-hidden="true" />
+          <span className="ord-sr">Search orders</span>
           <input
-            type="text"
-            placeholder="Search by Order ID, Customer Name, WhatsApp, Reference..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="admin-input"
-            style={{ paddingLeft: 40, width: "100%" }}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search ID, name, phone or reference"
           />
-          {searchQuery && (
+        </label>
+        <div className="ord-chips" role="group" aria-label="Order type">
+          {(
+            [
+              ["all", "All types"],
+              ["custom", "Custom bats"],
+              ["catalogue", "Catalogue"],
+            ] as const
+          ).map(([id, label]) => (
             <button
+              key={id}
               type="button"
-              onClick={() => setSearchQuery("")}
-              style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+              aria-pressed={typeFilter === id}
+              className={`ord-chip ${typeFilter === id ? "active" : ""}`}
+              onClick={() => setTypeFilter(id)}
             >
-              <X size={14} />
+              {label}
             </button>
-          )}
+          ))}
         </div>
-
-        {activeTab === "verification" ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              { id: "all", label: "All Submissions" },
-              { id: "payment_submitted", label: "Verification Pending" },
-              { id: "payment_verified", label: "Verified" },
-              { id: "payment_rejected", label: "Rejected" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setVerificationFilter(f.id)}
-                className={`admin-filter-pill ${verificationFilter === f.id ? "active" : ""}`}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 20,
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  border: "1px solid",
-                  background: verificationFilter === f.id ? "#f59e0b" : "#1e293b",
-                  color: verificationFilter === f.id ? "#000" : "#cbd5e1",
-                  borderColor: verificationFilter === f.id ? "#f59e0b" : "#334155",
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              { id: "all", label: "All Orders" },
-              { id: "payment_submitted", label: "Pending Verification" },
-              { id: "order_confirmed", label: "Confirmed" },
-              { id: "in_production", label: "In Production" },
-              { id: "pictures_sent", label: "Pictures Sent" },
-              { id: "balance_requested", label: "Balance Requested" },
-              { id: "balance_paid", label: "Balance Paid" },
-              { id: "ready_for_dispatch", label: "Ready to Dispatch" },
-              { id: "dispatched", label: "Dispatched" },
-              { id: "delivered", label: "Delivered" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setPipelineFilter(f.id)}
-                className={`admin-filter-pill ${pipelineFilter === f.id ? "active" : ""}`}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 20,
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  border: "1px solid",
-                  background: pipelineFilter === f.id ? "#38bdf8" : "#1e293b",
-                  color: pipelineFilter === f.id ? "#000" : "#cbd5e1",
-                  borderColor: pipelineFilter === f.id ? "#38bdf8" : "#334155",
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          TAB 1: PAYMENT VERIFICATION LIST / DETAILED SUBMISSION CARDS
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "verification" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {filteredSubmissions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px", background: "#131b26", borderRadius: 12, border: "1px solid #1e293b" }}>
-              <CreditCard size={48} style={{ color: "#64748b", margin: "0 auto 16px" }} />
-              <h3 style={{ color: "#f8fafc", margin: "0 0 8px" }}>No Payment Submissions Found</h3>
-              <p style={{ color: "#94a3b8", fontSize: "0.9rem", margin: 0 }}>
-                {searchQuery || verificationFilter !== "all"
-                  ? "No submissions matched your search criteria."
-                  : "When customers complete manual checkout and attach their transfer receipt, submissions will appear here for verification."}
-              </p>
-            </div>
-          ) : (
-            filteredSubmissions.map((sub) => {
-              const order = sub.order;
-              const isPending = sub.status === "payment_submitted";
-              const isVerified = sub.status === "payment_verified" || order?.status === "order_confirmed";
-              const cleanPhone = (order?.customerPhone || "").replace(/[^0-9+]/g, "");
-
-              return (
-                <div
-                  key={sub.id}
-                  style={{
-                    background: "#131b26",
-                    border: isPending ? "2px solid #f59e0b" : "1px solid #233044",
-                    borderRadius: 12,
-                    padding: 24,
-                    boxShadow: isPending ? "0 0 20px rgba(245, 158, 11, 0.15)" : "none",
-                  }}
-                >
-                  {/* Card Header */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, borderBottom: "1px solid #1e293b", paddingBottom: 16, marginBottom: 18, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>
-                        Order #{sub.orderId}
+      {/* Desktop: spreadsheet */}
+      <div className="ord-table-wrap">
+        <table className="ord-table">
+          <thead>
+            <tr>
+              <th scope="col" className="sticky">Order</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Items</th>
+              <th scope="col" className="num">Total</th>
+              <th scope="col" className="num xl">Paid</th>
+              <th scope="col" className="num">Balance</th>
+              <th scope="col">Stage</th>
+              <th scope="col">Next step</th>
+              <th scope="col"><span className="ord-sr">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading &&
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`sk${i}`} className="ord-skel-row">
+                  <td colSpan={9}><span className="ord-skel" /></td>
+                </tr>
+              ))}
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td colSpan={9} className="ord-empty">No orders here.</td>
+              </tr>
+            )}
+            {!loading &&
+              rows.map((o) => {
+                const stage = stageOf(o);
+                const step = nextStepOf(o);
+                const bal = balanceOf(o);
+                return (
+                  <tr key={o.id} className={stage === "check" ? "attention" : ""}>
+                    <td className="sticky">
+                      <button type="button" className="ord-id" onClick={() => openOrder(o.id)}>{o.id}</button>
+                      <span className="ord-sub">
+                        <span className={`ord-type ${isCustom(o) ? "custom" : ""}`}>{isCustom(o) ? "Custom bat" : "Catalogue"}</span>
+                        <span className="muted">{formatPkt(o.createdAt)}</span>
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(sub.orderId, "Order ID")}
-                        style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}
-                      >
-                        <Copy size={13} /> Copy ID
-                      </button>
-
-                      <Link
-                        href={`/checkout/invoice/${encodeURIComponent(sub.orderId)}`}
-                        target="_blank"
-                        style={{ color: "#38bdf8", fontSize: "0.8rem", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
-                      >
-                        <ExternalLink size={13} /> View Invoice
-                      </Link>
-
-                      {sub.isDuplicateReference && (
-                        <span style={{ background: "#7f1d1d", color: "#fecaca", padding: "3px 10px", borderRadius: 6, fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
-                          <AlertTriangle size={13} /> DUPLICATE REFERENCE DETECTED
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ color: "#94a3b8", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: 4 }}>
-                        <Calendar size={13} /> {new Date(sub.createdAt).toLocaleString()}
-                      </span>
-                      {getStatusBadge(sub.status)}
-                    </div>
-                  </div>
-
-                  {/* Card Body Columns */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 20 }}>
-                    {/* Col 1: Customer Info */}
-                    <div style={{ background: "#0c131d", padding: 16, borderRadius: 8, border: "1px solid #1e293b" }}>
-                      <h4 style={{ color: "#94a3b8", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Phone size={14} color="#38bdf8" /> Customer &amp; Delivery
-                      </h4>
-                      <p style={{ margin: "0 0 6px", fontWeight: 700, color: "#f8fafc", fontSize: "1rem" }}>
-                        {order?.customerName || sub.senderName}
-                      </p>
-                      {order?.customerEmail && (
-                        <p style={{ margin: "0 0 6px", color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 6 }}>
-                          <Mail size={13} /> {order.customerEmail}
-                        </p>
-                      )}
-                      {order?.customerPhone && (
-                        <div style={{ margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ color: "#22c55e", fontWeight: 700, fontSize: "0.9rem" }}>
-                            {order.customerPhone}
-                          </span>
-                          <a
-                            href={whatsappUrl(`Hello ${order.customerName}, regarding your Sialkot Cricket Kits order #${sub.orderId}`, cleanPhone)}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              background: "#15803d",
-                              color: "#fff",
-                              padding: "2px 8px",
-                              borderRadius: 4,
-                              fontSize: "0.75rem",
-                              fontWeight: 700,
-                              textDecoration: "none",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                          >
-                            <MessageCircle size={12} /> WhatsApp
-                          </a>
-                        </div>
-                      )}
-                      <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.82rem", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 6 }}>
-                        <MapPin size={13} style={{ flexShrink: 0, marginTop: 2 }} />
-                        <span>
-                          {order?.address ? `${order.address}, ${order.city || ""}, ${order.state || ""} ${order.postalCode || ""}, ${order.country}` : `Destination: ${sub.senderCountry}`}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Col 2: Ordered Products & Custom Bat Specs */}
-                    <div style={{ background: "#0c131d", padding: 16, borderRadius: 8, border: "1px solid #1e293b" }}>
-                      <h4 style={{ color: "#94a3b8", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px", display: "flex", alignItems: "center", gap: 6 }}>
-                        <ShoppingBag size={14} color="#f59e0b" /> Equipment Ordered
-                      </h4>
-                      {order?.items && order.items.length > 0 ? (
-                        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                          {order.items.map((it, idx) => (
-                            <li key={idx} style={{ fontSize: "0.85rem", color: "#f8fafc" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                <span>• {it.quantity}x {it.name}</span>
-                                <span style={{ color: "#f59e0b", fontWeight: 700 }}>{formatPrice(it.price * it.quantity)}</span>
-                              </div>
-                              <CustomSpecList item={it} />
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: 0 }}>Equipment details attached in order notes.</p>
-                      )}
-
-                      {/* Custom Bat Specs if in notes */}
-                      {order?.notes && order.notes.includes("CUSTOM BAT") && !order.items.some((i) => i.customSpec) && (
-                        <div style={{ background: "#1a1608", border: "1px solid #78350f", padding: 8, borderRadius: 6, fontSize: "0.75rem", color: "#fde68a", whiteSpace: "pre-line" }}>
-                          <strong style={{ color: "#f59e0b" }}>🪵 Bespoke Bat Specs:</strong><br />
-                          {order.notes.split("--- CUSTOM BAT SPECIFICATIONS ---")[1]?.split("\n\n")[0] || "Custom Bat Specs Attached"}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Col 3: Payment Evidence & Receipt */}
-                    <div style={{ background: "#0c131d", padding: 16, borderRadius: 8, border: "1px solid #1e293b" }}>
-                      <h4 style={{ color: "#94a3b8", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px", display: "flex", alignItems: "center", gap: 6 }}>
-                        <CreditCard size={14} color="#10b981" /> Payment Evidence
-                      </h4>
-                      <div style={{ fontSize: "0.85rem", color: "#cbd5e1", display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
-                        <div><strong>Provider:</strong> {sub.provider}</div>
-                        <div><strong>Amount Sent:</strong> <span style={{ color: "#10b981", fontWeight: 800 }}>£{sub.amountSent} {sub.currencySent}</span> (of £{order?.totalAmount || sub.amountSent})</div>
-                        <div>
-                          <strong>Transfer Reference:</strong>{" "}
-                          <span style={{ fontFamily: "monospace", color: "#f59e0b", fontWeight: 700 }}>
-                            {sub.transferReference}
-                          </span>
-                        </div>
-                        {sub.customerNote && (
-                          <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                            <strong>Customer Note:</strong> "{sub.customerNote}"
-                          </div>
-                        )}
+                    </td>
+                    <td>
+                      <div className="ord-two">
+                        <strong>{o.customerName}</strong>
+                        <span>{[o.country, o.customerPhone].filter(Boolean).join(" · ")}</span>
                       </div>
-
-                      {/* Receipt Viewer CTA */}
-                      {sub.receiptStoragePath ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReceiptModalUrl(`/api/admin/receipts/${sub.id}`);
-                            setReceiptModalTitle(`Payment Receipt — Order #${sub.orderId} (Ref: ${sub.transferReference})`);
-                          }}
-                          className="admin-btn admin-btn-secondary"
-                          style={{ width: "100%", justifyContent: "center", fontSize: "0.8rem", padding: "8px 12px", background: "#1e293b", color: "#38bdf8" }}
-                        >
-                          <Eye size={14} /> View Attached Receipt Proof
+                    </td>
+                    <td className="ord-items" title={itemsSummary(o.items)}>{itemsSummary(o.items)}</td>
+                    <td className="num strong">{money(Number(o.totalAmount) || 0)}</td>
+                    <td className="num xl">{paidOf(o) ? money(paidOf(o)) : "—"}</td>
+                    <td className={`num strong ${bal > 0 ? "due" : "muted"}`}>{bal > 0 ? money(bal) : "—"}</td>
+                    <td><StagePill stage={stage} /></td>
+                    <td>
+                      {step ? (
+                        <button type="button" className={`ord-step ${step.check ? "primary" : ""}`} onClick={() => runNextStep(o)} disabled={busy}>
+                          {step.label}
                         </button>
                       ) : (
-                        <span style={{ color: "#64748b", fontSize: "0.8rem" }}>No receipt document uploaded</span>
+                        <span className="muted">—</span>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Multi-Channel Notification Status Bar */}
-                  <div style={{ background: "#0a0f18", padding: "10px 14px", borderRadius: 6, border: "1px solid #1b2533", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: "0.78rem", color: "#94a3b8", flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, color: "#cbd5e1" }}>Automated Notifications:</span>
-                      
-                      {/* Email Status */}
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Mail size={12} color={order?.customerEmail ? "#38bdf8" : "#64748b"} />
-                        Customer Email: {order?.customerEmail ? <span style={{ color: "#4ade80", fontWeight: 700 }}>Sent</span> : <span style={{ color: "#94a3b8" }}>N/A</span>}
-                      </span>
-
-                      {/* WhatsApp Status */}
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <MessageCircle size={12} color={order?.customerPhone ? "#22c55e" : "#64748b"} />
-                        Customer WhatsApp: {order?.customerPhone ? <span style={{ color: "#4ade80", fontWeight: 700 }}>Sent / Scheduled</span> : <span style={{ color: "#94a3b8" }}>N/A</span>}
-                      </span>
-
-                      {/* Admin Alert */}
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <ShieldCheck size={12} color="#f59e0b" />
-                        Admin Alert: <span style={{ color: "#4ade80", fontWeight: 700 }}>Sent</span>
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRetryNotification(sub.orderId, isVerified ? "order_confirmed" : "order_received")}
-                      style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <Send size={11} /> Resend Notification
-                    </button>
-                  </div>
-
-                  {/* Actions Bar */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                    <div>
-                      {sub.verifiedBy && (
-                        <span style={{ fontSize: "0.78rem", color: "#10b981", display: "flex", alignItems: "center", gap: 4 }}>
-                          <CheckCircle2 size={13} /> Verified by {sub.verifiedBy} on {new Date(sub.verifiedAt || "").toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", gap: 10 }}>
-                      {isPending ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedSubmission(sub);
-                              setShowRejectModal(true);
-                            }}
-                            className="admin-btn"
-                            style={{ background: "#7f1d1d", color: "#fecaca", border: "1px solid #991b1b" }}
-                          >
-                            <XCircle size={15} /> Reject / Re-upload
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedSubmission(sub);
-                              setShowVerifyModal(true);
-                            }}
-                            className="admin-btn"
-                            style={{
-                              background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-                              color: "#ffffff",
-                              fontWeight: 800,
-                              boxShadow: "0 4px 14px rgba(22, 163, 74, 0.4)",
-                              padding: "10px 20px",
-                            }}
-                          >
-                            <ShieldCheck size={17} /> VERIFY PAYMENT AND CONFIRM ORDER
-                          </button>
-                        </>
-                      ) : (
-                        <div style={{ display: "flex", gap: 10 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedOrder(order || null);
-                              setNewStatusValue(order?.status || "in_production");
-                              setShowStatusModal(true);
-                            }}
-                            className="admin-btn admin-btn-secondary"
-                          >
-                            <Layers size={14} /> Update Lifecycle Status
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          TAB 2: ALL ORDERS & PRODUCTION PIPELINE
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "pipeline" && (
-        <div style={{ background: "#131b26", borderRadius: 12, border: "1px solid #233044", overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#0c131d", borderBottom: "1px solid #1e293b", textAlign: "left", color: "#94a3b8", fontSize: "0.78rem", textTransform: "uppercase" }}>
-                  <th style={{ padding: "14px 16px" }}>Order ID &amp; Date</th>
-                  <th style={{ padding: "14px 16px" }}>Customer Details</th>
-                  <th style={{ padding: "14px 16px" }}>Equipment Ordered</th>
-                  <th style={{ padding: "14px 16px" }}>Total Amount</th>
-                  <th style={{ padding: "14px 16px" }}>Payment &amp; Lifecycle Status</th>
-                  <th style={{ padding: "14px 16px", textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
-                      No orders found matching the filter.
+                    </td>
+                    <td>
+                      <button type="button" className="ord-icon" aria-label={`Open order ${o.id}`} onClick={() => openOrder(o.id)}>
+                        <ChevronRight size={16} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  filteredOrders.map((o) => (
-                    <tr key={o.id} style={{ borderBottom: "1px solid #1b2533" }}>
-                      <td style={{ padding: "14px 16px" }}>
-                        <div style={{ fontWeight: 800, color: "#f8fafc", fontSize: "0.92rem" }}>
-                          #{o.id}
-                        </div>
-                        <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
-                          {new Date(o.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
-                        <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.9rem" }}>
-                          {o.customerName}
-                        </div>
-                        <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
-                          {o.country} {o.customerPhone ? `• ${o.customerPhone}` : ""}
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
-                        <div style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
-                          {isCustomBatOrder(o) && (
-                            <span className="sck-badge sck-badge-warning" style={{ marginRight: 6 }}>Custom Bat</span>
-                          )}
-                          {o.items.map((it) => `${it.quantity}x ${it.name}`).join(", ") || "Custom Specs"}
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
-                        <div style={{ fontWeight: 800, color: "#f59e0b", fontSize: "0.95rem" }}>
-                          {formatPrice(o.totalAmount)}
-                        </div>
-                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
-                          {o.paymentMethod || "Bank Transfer"}
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
-                        {getStatusBadge(o.status)}
-                      </td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedOrder(o);
-                              setNewStatusValue(o.status);
-                              setShowStatusModal(true);
-                            }}
-                            className="admin-btn admin-btn-secondary"
-                            style={{ padding: "6px 10px", fontSize: "0.75rem" }}
-                            title="Update status"
-                          >
-                            <Layers size={13} /> Update Status
-                          </button>
-                          <Link
-                            href={`/checkout/invoice/${encodeURIComponent(o.id)}`}
-                            target="_blank"
-                            className="admin-btn admin-btn-secondary"
-                            style={{ padding: "6px 10px", fontSize: "0.75rem", textDecoration: "none" }}
-                            title="Print Invoice"
-                          >
-                            <Printer size={13} /> Invoice
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                );
+              })}
+          </tbody>
+          {!loading && rows.length > 0 && (
+            <tfoot>
+              <tr>
+                <td colSpan={3}>{rows.length} order{rows.length === 1 ? "" : "s"}</td>
+                <td className="num strong">{money(totals.total)}</td>
+                <td className="num strong xl">{money(totals.paid)}</td>
+                <td className="num strong due">{money(totals.balance)}</td>
+                <td colSpan={3}></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          MODAL: VERIFY PAYMENT AND CONFIRM ORDER
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {showVerifyModal && selectedSubmission && (
-        <div className="admin-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
-          <div style={{ background: "#131b26", border: "1px solid #233044", borderRadius: 14, maxWidth: 540, width: "100%", padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: "#22c55e", display: "flex", alignItems: "center", gap: 8, fontSize: "1.2rem" }}>
-                <ShieldCheck size={22} /> Verify Payment &amp; Confirm Order
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowVerifyModal(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ background: "#0c131d", padding: 16, borderRadius: 8, border: "1px solid #1e293b", marginBottom: 16, fontSize: "0.85rem", color: "#cbd5e1" }}>
-              <div><strong>Order ID:</strong> #{selectedSubmission.orderId}</div>
-              <div><strong>Customer:</strong> {selectedSubmission.order?.customerName || selectedSubmission.senderName}</div>
-              <div><strong>Transfer Reference:</strong> <span style={{ color: "#f59e0b", fontFamily: "monospace" }}>{selectedSubmission.transferReference}</span></div>
-              <div><strong>Amount Sent:</strong> <span style={{ color: "#22c55e", fontWeight: 700 }}>£{selectedSubmission.amountSent}</span></div>
-              <div><strong>Beneficiary Account:</strong> ALYAN WAZIR (UBL Bank)</div>
-            </div>
-
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 18, fontSize: "0.88rem", color: "#f8fafc" }}>
-              <input
-                type="checkbox"
-                checked={confirmUblChecked}
-                onChange={(e) => setConfirmUblChecked(e.target.checked)}
-                style={{ width: 18, height: 18, marginTop: 2, accentColor: "#16a34a" }}
-              />
-              <span>
-                I confirm that I have verified the credit of <strong>£{selectedSubmission.amountSent}</strong> in the official <strong>UBL Bank Account (ALYAN WAZIR)</strong>.
-              </span>
-            </label>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: "0.8rem", color: "#94a3b8", marginBottom: 6 }}>
-                Internal Verification Note (Optional):
-              </label>
-              <textarea
-                value={adminVerifyNote}
-                onChange={(e) => setAdminVerifyNote(e.target.value)}
-                placeholder="e.g. Verified in UBL app transaction feed ending in ...124"
-                className="admin-input"
-                rows={2}
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", padding: 12, borderRadius: 8, marginBottom: 20, fontSize: "0.8rem", color: "#86efac" }}>
-              ✅ <strong>Automatic Customer Notifications:</strong> Confirming this order will immediately send the official Order Confirmation Email and WhatsApp message to the customer.
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setShowVerifyModal(false)}
-                disabled={actionLoading}
-                className="admin-btn admin-btn-secondary"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleVerifyPayment}
-                disabled={!confirmUblChecked || actionLoading}
-                className="admin-btn"
-                style={{
-                  background: confirmUblChecked ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" : "#475569",
-                  color: "#ffffff",
-                  fontWeight: 800,
-                  opacity: confirmUblChecked ? 1 : 0.6,
-                  cursor: confirmUblChecked ? "pointer" : "not-allowed",
-                }}
-              >
-                {actionLoading ? "Confirming..." : "Confirm & Send Notifications"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          MODAL: REJECT / REQUEST RE-UPLOAD
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {showRejectModal && selectedSubmission && (
-        <div className="admin-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
-          <div style={{ background: "#131b26", border: "1px solid #7f1d1d", borderRadius: 14, maxWidth: 500, width: "100%", padding: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: "#f87171", display: "flex", alignItems: "center", gap: 8, fontSize: "1.15rem" }}>
-                <XCircle size={20} /> Reject Payment Submission
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowRejectModal(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: "0.82rem", color: "#f8fafc", marginBottom: 6 }}>
-                Reason for Rejection (Visible to Admin Audit):
-              </label>
-              <textarea
-                value={adminRejectReason}
-                onChange={(e) => setAdminRejectReason(e.target.value)}
-                placeholder="e.g. Reference number not found in UBL records, or amount mismatch."
-                className="admin-input"
-                rows={3}
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 20, fontSize: "0.85rem", color: "#cbd5e1" }}>
-              <input
-                type="checkbox"
-                checked={requestReupload}
-                onChange={(e) => setRequestReupload(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: "#f59e0b" }}
-              />
-              <span>Request customer to re-upload clear proof</span>
-            </label>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setShowRejectModal(false)}
-                disabled={actionLoading}
-                className="admin-btn admin-btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleRejectPayment}
-                disabled={!adminRejectReason.trim() || actionLoading}
-                className="admin-btn"
-                style={{ background: "#dc2626", color: "#ffffff", fontWeight: 700 }}
-              >
-                {actionLoading ? "Processing..." : "Reject Submission"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          MODAL: LIFECYCLE STATUS UPDATE
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {showStatusModal && selectedOrder && (
-        <div className="admin-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
-          <div style={{ background: "#131b26", border: "1px solid #38bdf8", borderRadius: 14, maxWidth: 500, width: "100%", padding: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: "#38bdf8", display: "flex", alignItems: "center", gap: 8, fontSize: "1.15rem" }}>
-                <Layers size={20} /> Update Order #{selectedOrder.id} Status
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowStatusModal(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: "0.82rem", color: "#94a3b8", marginBottom: 6 }}>
-                Production / Dispatch Stage:
-              </label>
-              <select
-                value={newStatusValue}
-                onChange={(e) => setNewStatusValue(e.target.value)}
-                className="admin-input"
-                style={{ width: "100%" }}
-              >
-                <option value="order_confirmed">Order Confirmed</option>
-                <option value="in_production">In Production</option>
-                <option value="pictures_sent">Pictures &amp; Ping Video Sent (custom bats)</option>
-                <option value="balance_requested">Balance Requested (custom bats)</option>
-                <option value="balance_paid">Balance Paid</option>
-                <option value="ready_for_dispatch">Ready for Dispatch</option>
-                <option value="dispatched">Dispatched (Courier In Transit)</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: "0.82rem", color: "#94a3b8", marginBottom: 6 }}>
-                Tracking / Milestone Note (Optional):
-              </label>
-              <textarea
-                value={statusNote}
-                onChange={(e) => setStatusNote(e.target.value)}
-                placeholder="e.g. DHL Express Tracking Number: 1234567890"
-                className="admin-input"
-                rows={2}
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setShowStatusModal(false)}
-                disabled={actionLoading}
-                className="admin-btn admin-btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateOrderStatus}
-                disabled={actionLoading}
-                className="admin-btn"
-                style={{ background: "#0284c7", color: "#ffffff", fontWeight: 700 }}
-              >
-                {actionLoading ? "Updating..." : "Update Status"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          MODAL: SECURE PAYMENT RECEIPT VIEWER
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {receiptModalUrl && (
-        <div className="admin-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000, padding: 20 }}>
-          <div style={{ background: "#131b26", border: "1px solid #334155", borderRadius: 14, maxWidth: 800, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #1e293b", background: "#0c131d" }}>
-              <h3 style={{ margin: 0, color: "#f8fafc", fontSize: "1rem", display: "flex", alignItems: "center", gap: 8 }}>
-                <Eye size={16} color="#38bdf8" /> {receiptModalTitle}
-              </h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <a
-                  href={receiptModalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="admin-btn admin-btn-secondary"
-                  style={{ padding: "4px 10px", fontSize: "0.75rem", textDecoration: "none" }}
-                >
-                  <ExternalLink size={12} /> Open Full Size
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setReceiptModalUrl(null)}
-                  style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
-                >
-                  <X size={20} />
+      {/* Phone: cards with one big action */}
+      <div className="ord-cards">
+        {loading && Array.from({ length: 3 }).map((_, i) => <div key={`skc${i}`} className="ord-card ord-skel-card" />)}
+        {!loading && rows.length === 0 && <p className="ord-empty">No orders here.</p>}
+        {!loading &&
+          rows.map((o) => {
+            const stage = stageOf(o);
+            const step = nextStepOf(o);
+            const bal = balanceOf(o);
+            return (
+              <article key={o.id} className={`ord-card ${stage === "check" ? "attention" : ""}`}>
+                <button type="button" className="ord-card-main" onClick={() => openOrder(o.id)} aria-label={`Open order ${o.id} from ${o.customerName}`}>
+                  <span className="ord-card-top">
+                    <span className="ord-mono">{o.id} · {formatPkt(o.createdAt)}</span>
+                    <strong className="ord-card-total">{money(Number(o.totalAmount) || 0)}</strong>
+                  </span>
+                  <span className="ord-card-name">{o.customerName}</span>
+                  <span className="ord-card-meta">{isCustom(o) ? "Custom bat" : itemsSummary(o.items)} · {o.country}</span>
+                  <span className="ord-card-bottom">
+                    <StagePill stage={stage} />
+                    {bal > 0 && <span className="due">Balance {money(bal)}</span>}
+                  </span>
                 </button>
-              </div>
-            </div>
+                <div className="ord-card-actions">
+                  {step && (
+                    <button type="button" className={`ord-step big ${step.check ? "primary" : ""}`} onClick={() => runNextStep(o)} disabled={busy}>
+                      {step.label}
+                    </button>
+                  )}
+                  {phoneDigits(o) && (
+                    <a className="ord-wa" href={whatsappUrl(whatsappMessage(o), phoneDigits(o))} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${o.customerName}`}>
+                      <MessageCircle size={18} aria-hidden="true" />
+                    </a>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+      </div>
 
-            <div style={{ padding: 20, overflowY: "auto", display: "flex", alignItems: "center", justifyContent: "center", background: "#080c12", minHeight: 400 }}>
-              <img
-                src={receiptModalUrl}
-                alt="Payment Receipt"
-                style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 8, boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}
-                onError={(e) => {
-                  // Fallback for PDF
-                  const target = e.currentTarget;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent && !parent.querySelector("iframe")) {
-                    const iframe = document.createElement("iframe");
-                    iframe.src = receiptModalUrl;
-                    iframe.style.width = "100%";
-                    iframe.style.height = "70vh";
-                    iframe.style.border = "none";
-                    parent.appendChild(iframe);
-                  }
-                }}
-              />
-            </div>
-          </div>
+      {/* Detail drawer */}
+      {open && (
+        <div className="ord-backdrop" onClick={() => setOpenId(null)}>
+          <aside
+            className="ord-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Order ${open.id}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const stage = stageOf(open);
+              const sub = open.paymentSubmission;
+              const plan = planOf(open);
+              const step = nextStepOf(open);
+              const bal = balanceOf(open);
+              const address = noteLine(open, "Address");
+              const legacySpec = !open.items.some((i) => i.customSpec) && (open.notes || "").includes("--- CUSTOM BAT SPECIFICATIONS ---")
+                ? (open.notes || "").split("--- CUSTOM BAT SPECIFICATIONS ---")[1].split("\n").map((l) => l.trim()).filter((l) => /^[A-Z][A-Za-z ]+:/.test(l)).slice(0, 10)
+                : [];
+              const warnings = warningsOf(open);
+              const isImage = (sub?.receiptMimeType || "").startsWith("image/");
+              const invoiceHref = `/checkout/invoice/${encodeURIComponent(open.id)}${open.trackingToken ? `?token=${encodeURIComponent(open.trackingToken)}` : ""}`;
+              return (
+                <>
+                  <div className="ord-drawer-head">
+                    <div>
+                      <span className="ord-mono">{open.id}</span>
+                      <h2>{open.customerName}</h2>
+                      <span className="muted">{formatPkt(open.createdAt)} · {isCustom(open) ? "Custom bat" : "Catalogue"}</span>
+                    </div>
+                    <div className="ord-drawer-head-right">
+                      <StagePill stage={stage} />
+                      <button ref={closeRef} type="button" className="ord-icon" aria-label="Close order details" onClick={() => setOpenId(null)}>
+                        <X size={18} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="ord-quick">
+                    {phoneDigits(open) && (
+                      <a className="ord-btn wa" href={whatsappUrl(whatsappMessage(open), phoneDigits(open))} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle size={16} aria-hidden="true" /> WhatsApp
+                      </a>
+                    )}
+                    {open.customerEmail && (
+                      <a className="ord-btn" href={`mailto:${open.customerEmail}?subject=${encodeURIComponent(`Your order ${open.id} — Sialkot Cricket Kits`)}`}>Email</a>
+                    )}
+                    <a className="ord-btn" href={invoiceHref} target="_blank" rel="noopener noreferrer">
+                      <FileText size={16} aria-hidden="true" /> Invoice
+                    </a>
+                  </div>
+
+                  {warnings.length > 0 && (
+                    <div className="ord-warn" role="alert">
+                      <AlertTriangle size={16} aria-hidden="true" />
+                      <div>{warnings.map((w) => <p key={w}>{w}</p>)}</div>
+                    </div>
+                  )}
+
+                  {/* Payment check */}
+                  {sub && (
+                    <section className="ord-sec">
+                      <h3>Payment</h3>
+                      <div className="ord-pay">
+                        {sub.id &&
+                          (isImage ? (
+                            <a href={`/api/admin/receipts/${encodeURIComponent(sub.id)}`} target="_blank" rel="noopener noreferrer" className="ord-receipt" aria-label="Open receipt full size">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`/api/admin/receipts/${encodeURIComponent(sub.id)}`} alt={`Payment receipt for ${open.id}`} loading="lazy" />
+                            </a>
+                          ) : (
+                            <a href={`/api/admin/receipts/${encodeURIComponent(sub.id)}`} target="_blank" rel="noopener noreferrer" className="ord-receipt doc">
+                              <FileText size={22} aria-hidden="true" />
+                              <span>Open receipt</span>
+                            </a>
+                          ))}
+                        <dl className="ord-kv">
+                          {plan && (
+                            <div><dt>Due at order ({plan.percent}%)</dt><dd>{money(plan.due)}</dd></div>
+                          )}
+                          <div><dt>Customer says sent</dt><dd>{sub.amountSent} {sub.currencySent}</dd></div>
+                          <div><dt>Method</dt><dd>{sub.provider || sub.paymentMethod}</dd></div>
+                          <div><dt>Reference</dt><dd className="ord-mono">{sub.transferReference}</dd></div>
+                          <div><dt>Sender</dt><dd>{sub.senderName}</dd></div>
+                          <div><dt>Transfer date</dt><dd>{sub.transferDate}</dd></div>
+                        </dl>
+                      </div>
+
+                      {stage === "check" && (
+                        <div className="ord-verify">
+                          <label className="ord-check">
+                            <input type="checkbox" checked={checkedInBank} onChange={(e) => setCheckedInBank(e.target.checked)} />
+                            <span>I checked this payment in our UBL / Wise account and the amount and reference match.</span>
+                          </label>
+                          <label className="ord-field">
+                            <span>Note (optional)</span>
+                            <input type="text" value={verifyNote} onChange={(e) => setVerifyNote(e.target.value)} placeholder="e.g. received £120 on 3 Nov" />
+                          </label>
+                          <div className="ord-row">
+                            <button type="button" className="ord-btn primary grow" disabled={!checkedInBank || busy} onClick={() => verify(open)}>
+                              Verify payment
+                            </button>
+                            <button type="button" className="ord-btn" aria-expanded={rejectOpen} onClick={() => setRejectOpen((v) => !v)}>
+                              Reject…
+                            </button>
+                          </div>
+                          {rejectOpen && (
+                            <div className="ord-reject">
+                              <label className="ord-field">
+                                <span>Reason (the customer will see this)</span>
+                                <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={2} placeholder="e.g. The screenshot is not readable" />
+                              </label>
+                              <label className="ord-check">
+                                <input type="checkbox" checked={askReupload} onChange={(e) => setAskReupload(e.target.checked)} />
+                                <span>Ask the customer to upload a new receipt</span>
+                              </label>
+                              <button type="button" className="ord-btn danger" disabled={!rejectReason.trim() || busy} onClick={() => reject(open)}>
+                                {askReupload ? "Ask for new receipt" : "Reject payment"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* Next step */}
+                  {step && !step.check && (
+                    <section className="ord-sec">
+                      <h3>Next step</h3>
+                      <label className="ord-field">
+                        <span>{step.status === "dispatched" ? "Courier and tracking number (required)" : "Note (optional)"}</span>
+                        <input
+                          type="text"
+                          value={stepNote}
+                          onChange={(e) => setStepNote(e.target.value)}
+                          placeholder={step.status === "dispatched" ? "e.g. DHL 1234567890" : "Visible in the order history"}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="ord-btn primary"
+                        disabled={busy || (step.status === "dispatched" && !stepNote.trim())}
+                        onClick={() => changeStatus(open, step.status as string, stepNote.trim())}
+                      >
+                        {step.label}
+                      </button>
+                      {bal > 0 && (step.status === "ready_for_dispatch" || step.status === "dispatched") && (
+                        <p className="ord-hint due">Balance of {money(bal)} is still due before dispatch.</p>
+                      )}
+                    </section>
+                  )}
+
+                  {/* Items */}
+                  <section className="ord-sec">
+                    <h3>Items</h3>
+                    <ul className="ord-items-list">
+                      {open.items.map((it, idx) => (
+                        <li key={`${it.productId}-${idx}`}>
+                          <div className="ord-row between">
+                            <span>{it.customSpec ? it.name : `${it.name} × ${it.quantity}`}</span>
+                            <strong>{money(it.price * it.quantity)}</strong>
+                          </div>
+                          <SpecList item={it} />
+                        </li>
+                      ))}
+                    </ul>
+                    {legacySpec.length > 0 && (
+                      <dl className="ord-spec">
+                        {legacySpec.map((l) => {
+                          const [k, ...rest] = l.split(":");
+                          return (
+                            <div key={l} className={k === "Special Notes" ? "wide" : ""}>
+                              <dt>{k}</dt>
+                              <dd>{rest.join(":").trim()}</dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    )}
+                    <dl className="ord-kv totals">
+                      <div><dt>Total</dt><dd>{money(Number(open.totalAmount) || 0)}</dd></div>
+                      <div><dt>Paid (verified)</dt><dd>{paidOf(open) ? money(paidOf(open)) : "—"}</dd></div>
+                      <div><dt>Balance</dt><dd className={bal > 0 ? "due" : ""}>{bal > 0 ? money(bal) : "—"}</dd></div>
+                    </dl>
+                  </section>
+
+                  {/* Customer */}
+                  <section className="ord-sec">
+                    <h3>Customer</h3>
+                    <dl className="ord-kv">
+                      <div><dt>Phone</dt><dd>{open.customerPhone || "—"}</dd></div>
+                      <div><dt>Email</dt><dd>{open.customerEmail || "—"}</dd></div>
+                      <div><dt>Country</dt><dd>{open.country}</dd></div>
+                      {address && <div className="wide"><dt>Address</dt><dd>{address}</dd></div>}
+                    </dl>
+                  </section>
+
+                  {/* Change status (any) */}
+                  <section className="ord-sec">
+                    <h3>Change status</h3>
+                    <div className="ord-row wrap">
+                      <label className="ord-sr" htmlFor="ord-status-select">New status</label>
+                      <select id="ord-status-select" className="ord-select" value={manualStatus} onChange={(e) => setManualStatus(e.target.value)}>
+                        <option value="">Choose a status…</option>
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="ord-btn"
+                        disabled={!manualStatus || busy}
+                        onClick={() => changeStatus(open, manualStatus, stepNote.trim())}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* History */}
+                  <section className="ord-sec">
+                    <h3>History</h3>
+                    <ol className="ord-history">
+                      <li>{formatPkt(open.createdAt)} — Order placed{sub ? " with payment receipt" : ""}</li>
+                      {historyOf(open).map((h) => <li key={h}>{h}</li>)}
+                    </ol>
+                    <button type="button" className="ord-link" onClick={() => resendNotification(open)}>
+                      <ExternalLink size={14} aria-hidden="true" /> Resend order email / WhatsApp
+                    </button>
+                  </section>
+                </>
+              );
+            })()}
+          </aside>
         </div>
       )}
     </div>
