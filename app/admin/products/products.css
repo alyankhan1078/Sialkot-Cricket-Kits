@@ -1,0 +1,40 @@
+/* Admin › Products spreadsheet. Builds on the .ord tokens in ../orders/orders.css. */
+.prd-select { flex: 0 1 220px; min-width: 170px; }
+.prd-table { min-width: 820px; }
+.prd-table tr.prd-hidden td { background: #f8fafc; color: #64748b; }
+.prd-name { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+.prd-name img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #f1f5f9; flex: none; }
+.prd-name a { color: var(--o-text); font-weight: 600; text-decoration: none; }
+.prd-name a:hover { color: var(--o-accent); text-decoration: underline; }
+.prd-cell {
+  width: 100%; max-width: 150px; min-height: 36px; box-sizing: border-box; padding: 4px 8px;
+  border: 1px solid transparent; border-radius: 8px; background: transparent;
+  font: inherit; color: var(--o-text);
+}
+.prd-cell.num { text-align: right; max-width: 96px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.prd-cell:hover { border-color: #cbd5e1; background: #ffffff; }
+.prd-cell:focus { border-color: var(--o-accent); background: #ffffff; outline: none; box-shadow: 0 0 0 3px #ffedd5; }
+.prd-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.prd-actions a.ord-icon { text-decoration: none; }
+
+/* On/off switch */
+.prd-switch {
+  position: relative; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 999px;
+  background: #cbd5e1; cursor: pointer; transition: background 0.15s;
+}
+.prd-switch.on { background: #15803d; }
+.prd-switch:disabled { opacity: 0.6; }
+.prd-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3); transition: left 0.15s; }
+.prd-switch.on .prd-knob { left: 21px; }
+
+/* Phone cards */
+.prd-card { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.prd-card-top { display: flex; gap: 12px; align-items: center; }
+.prd-card-top img { width: 56px; height: 56px; object-fit: contain; border-radius: 10px; background: #f1f5f9; }
+.prd-card-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prd-card-title a { color: var(--o-text); font-weight: 700; font-size: 15px; text-decoration: none; }
+.prd-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.prd-card-grid .prd-cell { max-width: none; border-color: #cbd5e1; background: #ffffff; min-height: 44px; }
+.prd-card-switches { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--o-muted); font-weight: 600; }
+.prd-card-switches span { display: inline-flex; align-items: center; gap: 8px; }
+.prd-card.prd-hidden { opacity: 0.75; }

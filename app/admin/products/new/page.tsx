@@ -175,7 +175,7 @@ export default function AdminNewProductPage() {
       </div>
 
       {error && (
-        <div style={{ background: "rgba(239, 68, 68, 0.15)", color: "#f87171", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ background: "rgba(239, 68, 68, 0.15)", color: "#b91c1c", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <AlertTriangle size={16} />
           <span>{error}</span>
         </div>
@@ -184,7 +184,7 @@ export default function AdminNewProductPage() {
       <form onSubmit={handleSubmit}>
         {/* Basic Info */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>Product Information</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>Product Information</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
             <div className="admin-form-group" style={{ gridColumn: "span 2" }}>
               <label>Product Name *</label>
@@ -228,7 +228,7 @@ export default function AdminNewProductPage() {
 
         {/* Primary Image Upload */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>📸 Primary Image</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>📸 Primary Image</h3>
           <p style={{ color: "var(--adm-muted)", fontSize: "0.825rem", marginBottom: "1rem" }}>
             Upload the main product photo. You can add gallery images after creation.
           </p>
@@ -249,10 +249,10 @@ export default function AdminNewProductPage() {
               <img
                 src={uploadedImage.url}
                 alt=""
-                style={{ width: "80px", height: "80px", objectFit: "contain", borderRadius: "8px", background: "#070d17", border: "1px solid var(--adm-card-border)", padding: "0.25rem" }}
+                style={{ width: "80px", height: "80px", objectFit: "contain", borderRadius: "8px", background: "#ffffff", border: "1px solid var(--adm-card-border)", padding: "0.25rem" }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ color: "#10b981", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                <div style={{ color: "#047857", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
                   <CheckCircle2 size={14} /> Uploaded: {uploadedImage.name}
                 </div>
                 <button
@@ -268,7 +268,7 @@ export default function AdminNewProductPage() {
           ) : (
             <div
               style={{
-                border: "2px dashed #22354f", borderRadius: "10px", padding: "2rem",
+                border: "2px dashed #e2e8f0", borderRadius: "10px", padding: "2rem",
                 textAlign: "center", cursor: "pointer", background: "rgba(17, 28, 46, 0.4)",
               }}
               onClick={() => fileInputRef.current?.click()}
@@ -286,7 +286,7 @@ export default function AdminNewProductPage() {
               ) : (
                 <>
                   <Upload size={32} style={{ color: "var(--adm-muted)", marginBottom: "0.5rem" }} />
-                  <div style={{ color: "#cbd5e1", fontWeight: 600 }}>Click or drag to upload</div>
+                  <div style={{ color: "#334155", fontWeight: 600 }}>Click or drag to upload</div>
                   <div style={{ color: "var(--adm-muted)", fontSize: "0.8rem" }}>JPG, PNG, WebP, AVIF · Max 10 MB</div>
                 </>
               )}
@@ -296,7 +296,7 @@ export default function AdminNewProductPage() {
 
         {/* Description */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>📝 Description</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>📝 Description</h3>
           <div className="admin-form-group">
             <textarea
               className="admin-textarea" rows={4}
@@ -309,13 +309,13 @@ export default function AdminNewProductPage() {
 
         {/* Visibility */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>⚙️ Visibility</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>⚙️ Visibility</h3>
           <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#cbd5e1" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#334155" }}>
               <input type="checkbox" checked={formData.featured} onChange={(e) => updateField("featured", e.target.checked)} />
               Feature on Homepage
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#cbd5e1" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#334155" }}>
               <input type="checkbox" checked={formData.active} onChange={(e) => updateField("active", e.target.checked)} />
               Active (Visible in Shop)
             </label>

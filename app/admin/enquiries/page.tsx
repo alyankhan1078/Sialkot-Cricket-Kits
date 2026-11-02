@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Mail, Check, Trash2, Phone, Globe, Tag, MessageCircle, Copy, ShieldAlert, ShieldCheck, Link2, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Mail, Check, Trash2, MessageCircle, Copy, ShieldAlert, ShieldCheck, Link2, AlertTriangle, ChevronRight, RefreshCw, Search, X } from "lucide-react";
 import type { DBEnquiry } from "@/src/lib/data-service";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 import { buildResumeOrderFromLead, encodeResumePayload } from "@/src/lib/custom-bat-config";
+import { formatPkt } from "@/src/lib/admin-orders";
+import "../orders/orders.css";
+import "./inbox.css";
 
-type Tab = "leads" | "contact" | "spam";
+type Tab = "leads" | "contact" | "spam" | "all";
 
 const SITE_URL = "https://sialkotcricketkits.com";
 
@@ -94,47 +97,66 @@ export default function AdminEnquiriesPage() {
   const [enquiries, setEnquiries] = useState<DBEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("leads");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  const fetchEnquiries = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/admin/enquiries");
+      const res = await fetch("/api/admin/enquiries", { cache: "no-store" });
       if (res.status === 401) {
         window.location.href = "/admin";
         return;
       }
-      const json = await res.json();
-      if (json.success) {
-        setEnquiries(json.data);
-      } else {
-        showToast(json.error || "Failed to load enquiries", "error");
-      }
+      const json = await res.json().catch(() => ({}));
+      if (json.success) setEnquiries(json.data);
+      else showToast(json.error || "Failed to load the inbox", "error");
     } catch {
-      showToast("Failed to load enquiries", "error");
+      showToast("Failed to load the inbox", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    // Initial load; same pattern as the other admin pages.
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-    fetchEnquiries();
-  }, []);
+    // Initial load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (openId === null) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openId]);
 
   const duplicateIds = useMemo(() => findDuplicateIds(enquiries), [enquiries]);
 
+  const searched = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return enquiries;
+    return enquiries.filter((e) =>
+      [e.name, e.email, e.phone, e.country, e.product, e.message].filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
+    );
+  }, [enquiries, query]);
+
   const lists = useMemo(() => {
-    const notSpam = enquiries.filter((e) => !e.spam);
+    const live = searched.filter((e) => !e.spam);
     return {
-      leads: notSpam.filter((e) => e.type === "custom_bat"),
-      contact: notSpam.filter((e) => e.type !== "custom_bat"),
-      spam: enquiries.filter((e) => e.spam),
+      leads: live.filter((e) => e.type === "custom_bat"),
+      contact: live.filter((e) => e.type !== "custom_bat"),
+      spam: searched.filter((e) => e.spam),
+      all: searched,
     };
-  }, [enquiries]);
+  }, [searched]);
 
   const visible = lists[tab];
-  const selected = enquiries.find((e) => e.id === selectedId) || null;
+  const selected = enquiries.find((e) => e.id === openId) || null;
 
   const update = async (enquiry: DBEnquiry, body: Record<string, boolean>, successText: string) => {
     try {
@@ -145,25 +167,25 @@ export default function AdminEnquiriesPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
-        showToast(json.error || "Could not update this enquiry", "error");
+        showToast(json.error || "Could not update this message", "error");
         return;
       }
-      await fetchEnquiries();
+      await load();
       showToast(successText, "info");
     } catch {
       showToast("Network error while updating", "error");
     }
   };
 
-  const handleSelect = (enquiry: DBEnquiry) => {
-    setSelectedId(enquiry.id);
+  const openItem = (enquiry: DBEnquiry) => {
+    setOpenId(enquiry.id);
     if (!enquiry.read) update(enquiry, { read: true }, "Marked as read");
   };
 
   const handleDelete = (enquiry: DBEnquiry) => {
     confirmAction({
-      title: "Delete this enquiry permanently?",
-      message: `The enquiry from "${enquiry.name}" will be removed from the database. Tip: use "Mark as spam" instead if you only want to hide it.`,
+      title: "Delete this message permanently?",
+      message: `The message from "${enquiry.name}" will be removed from the database. Tip: use "Mark as spam" if you only want to hide it.`,
       confirmText: "Delete permanently",
       cancelText: "Keep it",
       danger: true,
@@ -172,14 +194,14 @@ export default function AdminEnquiriesPage() {
           const res = await fetch(`/api/admin/enquiries/${enquiry.id}`, { method: "DELETE" });
           const json = await res.json().catch(() => ({}));
           if (json.success) {
-            setSelectedId(null);
-            showToast("Enquiry deleted", "success");
-            fetchEnquiries();
+            setOpenId(null);
+            showToast("Message deleted", "success");
+            load();
           } else {
-            showToast(json.error || "Failed to delete enquiry", "error");
+            showToast(json.error || "Failed to delete", "error");
           }
         } catch {
-          showToast("Network error while deleting enquiry", "error");
+          showToast("Network error while deleting", "error");
         }
       },
     });
@@ -195,27 +217,39 @@ export default function AdminEnquiriesPage() {
   };
 
   const tabs: Array<{ id: Tab; label: string; hint: string }> = [
-    { id: "leads", label: "Unpaid Custom Bat Leads", hint: "Configured a bat but have NOT paid. Not orders." },
-    { id: "contact", label: "Contact Messages", hint: "Questions from the Contact page." },
+    { id: "leads", label: "Unpaid custom bat leads", hint: "Built a bat but did NOT pay. These are not orders." },
+    { id: "contact", label: "Messages", hint: "Questions from the Contact page." },
     { id: "spam", label: "Spam", hint: "Hidden messages. Nothing is deleted." },
+    { id: "all", label: "All", hint: "Everything in the inbox." },
   ];
+
+  const summaryOf = (e: DBEnquiry) => {
+    const x = parseExtras(e.extras);
+    if (e.type === "custom_bat" && x) {
+      return [x.construction, x.tierLabel, x.price ? `£${x.price}` : null].filter(Boolean).join(" · ") || e.product || e.message;
+    }
+    return e.message;
+  };
 
   const extras = parseExtras(selected?.extras);
   const cleanPhone = (selected?.phone || "").replace(/[^0-9]/g, "");
 
   return (
-    <div>
-      <div className="admin-header">
+    <div className="ord inbox">
+      <header className="ord-head">
         <div>
-          <h1>Enquiries &amp; Unpaid Leads</h1>
-          <p>
-            Paid custom bat orders appear under <strong>Orders</strong>. This page only holds messages and
-            configurations where no payment was made.
-          </p>
+          <h1>Inbox</h1>
+          <p>Paid orders are under Orders. Here: messages and unpaid custom bat leads.</p>
         </div>
-      </div>
+        <div className="ord-head-actions">
+          <button type="button" className="ord-btn" onClick={load} disabled={loading} aria-label="Refresh inbox">
+            <RefreshCw size={16} className={loading ? "ord-spin" : ""} aria-hidden="true" />
+            <span className="ord-hide-sm">Refresh</span>
+          </button>
+        </div>
+      </header>
 
-      <div className="adm-enq-tabs" role="tablist" aria-label="Enquiry folders">
+      <div className="ord-tiles inbox-tiles" role="tablist" aria-label="Inbox folders">
         {tabs.map((t) => {
           const unread = lists[t.id].filter((e) => !e.read).length;
           return (
@@ -224,257 +258,219 @@ export default function AdminEnquiriesPage() {
               type="button"
               role="tab"
               aria-selected={tab === t.id}
-              className={`adm-enq-tab ${tab === t.id ? "active" : ""}`}
-              onClick={() => {
-                setTab(t.id);
-                setSelectedId(null);
-              }}
-              title={t.hint}
+              className={`ord-tile ${tab === t.id ? "active" : ""} ${t.id !== "spam" && t.id !== "all" && unread > 0 ? "urgent" : ""}`}
+              onClick={() => setTab(t.id)}
             >
-              <span>{t.label}</span>
-              <span className="adm-enq-count">{lists[t.id].length}</span>
-              {unread > 0 && t.id !== "spam" && <span className="adm-enq-new">{unread} new</span>}
+              <span className="ord-tile-label">{t.label}</span>
+              <strong className="ord-tile-count">{loading ? "–" : lists[t.id].length}</strong>
+              <span className="ord-tile-sub">{loading ? "" : unread > 0 && t.id !== "spam" ? `${unread} unread` : t.id === "leads" ? "no payment" : " "}</span>
             </button>
           );
         })}
       </div>
-      <p className="adm-enq-hint">{tabs.find((t) => t.id === tab)?.hint}</p>
+      <p className="inbox-hint">{tabs.find((t) => t.id === tab)?.hint}</p>
 
-      <div className="adm-enq-grid">
-        <div className="admin-card" style={{ padding: 0, overflow: "hidden" }}>
-          {loading ? (
-            <div style={{ padding: "2rem", color: "var(--adm-muted)", textAlign: "center" }}>Loading…</div>
-          ) : visible.length === 0 ? (
-            <div style={{ padding: "3rem", color: "var(--adm-muted)", textAlign: "center" }}>Nothing here.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {visible.map((enquiry) => (
-                <button
-                  type="button"
-                  key={enquiry.id}
-                  onClick={() => handleSelect(enquiry)}
-                  className={`adm-enq-row ${selectedId === enquiry.id ? "selected" : ""} ${!enquiry.read ? "unread" : ""}`}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: "0.35rem" }}>
-                    <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{enquiry.name}</strong>
-                    <span style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      {enquiry.type === "custom_bat" && (
-                        <span className="admin-badge" style={{ background: "rgba(245, 158, 11, 0.18)", color: "#fbbf24" }}>
-                          Not paid
-                        </span>
-                      )}
-                      {duplicateIds.has(enquiry.id) && (
-                        <span className="admin-badge" style={{ background: "rgba(148, 163, 184, 0.2)", color: "#cbd5e1" }}>
-                          Duplicate
-                        </span>
-                      )}
-                      {!enquiry.read && (
-                        <span className="admin-badge" style={{ background: "rgba(239, 68, 68, 0.2)", color: "#f87171" }}>
-                          New
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <span className="adm-enq-preview">{enquiry.product || enquiry.message}</span>
-                  <span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <small style={{ color: "#64748b", fontSize: "0.75rem" }}>
-                      {new Date(enquiry.createdAt).toLocaleString()}
-                    </small>
-                    {enquiry.country && (
-                      <small style={{ color: "var(--adm-muted)", fontSize: "0.75rem" }}>{enquiry.country}</small>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="admin-card">
-          {!selected ? (
-            <div style={{ padding: "3rem 1rem", textAlign: "center", color: "var(--adm-muted)" }}>
-              <Mail size={40} style={{ opacity: 0.3, marginBottom: "1rem" }} />
-              <p>Select an item to see the details and follow-up options.</p>
-            </div>
-          ) : (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: "1.25rem" }}>
-                <div>
-                  <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.25rem", color: "#fff" }}>{selected.name}</h2>
-                  <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
-                    Received {new Date(selected.createdAt).toLocaleString()} · #{selected.id}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => update(selected, { read: !selected.read }, selected.read ? "Marked as unread" : "Marked as read")}
-                    className="admin-btn admin-btn-secondary"
-                    style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}
-                  >
-                    <Check size={14} />
-                    <span>{selected.read ? "Mark unread" : "Mark read"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => update(selected, { spam: !selected.spam }, selected.spam ? "Moved out of spam" : "Moved to spam")}
-                    className="admin-btn admin-btn-secondary"
-                    style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}
-                  >
-                    {selected.spam ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
-                    <span>{selected.spam ? "Not spam" : "Mark as spam"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selected)}
-                    className="admin-btn admin-btn-danger"
-                    style={{ padding: "0.4rem 0.6rem" }}
-                    aria-label="Delete enquiry permanently"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {selected.type === "custom_bat" && (
-                <div className="adm-enq-warning">
-                  <AlertTriangle size={16} />
-                  <span>
-                    <strong>No payment received.</strong> This customer configured a bat but did not complete checkout.
-                    Do not start production. Send them the follow-up below.
-                  </span>
-                </div>
-              )}
-
-              <div className="adm-enq-box" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {selected.email && (
-                  <div className="adm-enq-line">
-                    <Mail size={16} color="var(--adm-muted)" />
-                    <a href={`mailto:${selected.email}`} style={{ color: "var(--adm-primary)" }}>{selected.email}</a>
-                  </div>
-                )}
-                {selected.phone && (
-                  <div className="adm-enq-line">
-                    <Phone size={16} color="var(--adm-muted)" />
-                    <span style={{ color: "#fff" }}>{selected.phone}</span>
-                  </div>
-                )}
-                {!selected.email && !selected.phone && (
-                  <div className="adm-enq-line" style={{ color: "#fbbf24" }}>
-                    <Phone size={16} />
-                    <span>No phone or email was collected. You can only reach this person if they contact you.</span>
-                  </div>
-                )}
-                {selected.country && (
-                  <div className="adm-enq-line">
-                    <Globe size={16} color="var(--adm-muted)" />
-                    <span style={{ color: "#fff" }}>{selected.country}</span>
-                  </div>
-                )}
-                {selected.product && (
-                  <div className="adm-enq-line">
-                    <Tag size={16} color="var(--adm-muted)" />
-                    <span style={{ color: "#fff" }}>{selected.product}</span>
-                  </div>
-                )}
-              </div>
-
-              {extras && (
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <h3 className="adm-enq-h3">{selected.type === "custom_bat" ? "Bat specification" : "Details"}</h3>
-                  <dl className="adm-enq-spec">
-                    {SPEC_LABELS.filter(([key]) => extras[key] !== undefined && extras[key] !== "").map(([key, label]) => (
-                      <div key={key}>
-                        <dt>{label}</dt>
-                        <dd>{String(extras[key])}</dd>
-                      </div>
-                    ))}
-                    {Array.isArray(extras.services) && extras.services.length > 0 && (
-                      <div>
-                        <dt>Services</dt>
-                        <dd>{extras.services.join(", ")}</dd>
-                      </div>
-                    )}
-                    {(extras.engraving?.selected && extras.engraving?.text) || extras.engravingText ? (
-                      <div>
-                        <dt>Engraving</dt>
-                        <dd>“{extras.engraving?.text || extras.engravingText}”</dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                </div>
-              )}
-
-              <div style={{ marginBottom: "1.25rem" }}>
-                <h3 className="adm-enq-h3">Message</h3>
-                <div className="adm-enq-box" style={{ whiteSpace: "pre-wrap", color: "#f1f5f9", lineHeight: 1.6 }}>
-                  {selected.message}
-                </div>
-              </div>
-
-              {selected.type === "custom_bat" && (
-                <div>
-                  <h3 className="adm-enq-h3">Follow up</h3>
-                  {(() => {
-                    const link = completeOrderLink(selected);
-                    const message = followUpMessage(selected);
-                    return (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        <p style={{ color: "var(--adm-muted)", fontSize: "0.82rem", margin: 0 }}>
-                          {link.resumable
-                            ? "The link below re-opens checkout with this exact configuration (price is re-checked automatically)."
-                            : "This lead is missing some details, so the link opens the configurator instead."}
-                        </p>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <a
-                            className="admin-btn admin-btn-primary"
-                            href={whatsappUrl(message, cleanPhone)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <MessageCircle size={15} />
-                            <span>{cleanPhone ? "WhatsApp customer" : "Open WhatsApp with message"}</span>
-                          </a>
-                          <button type="button" className="admin-btn admin-btn-secondary" onClick={() => copy(message, "Follow-up message")}>
-                            <Copy size={15} />
-                            <span>Copy message</span>
-                          </button>
-                          <button type="button" className="admin-btn admin-btn-secondary" onClick={() => copy(link.url, "Order link")}>
-                            <Link2 size={15} />
-                            <span>Copy order link</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {selected.type !== "custom_bat" && (selected.phone || selected.email) && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {cleanPhone && (
-                    <a
-                      className="admin-btn admin-btn-primary"
-                      href={whatsappUrl(`Assalam o Alaikum ${selected.name}, this is Sialkot Cricket Kits replying to your message.`, cleanPhone)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <MessageCircle size={15} />
-                      <span>Reply on WhatsApp</span>
-                    </a>
-                  )}
-                  {selected.email && (
-                    <a className="admin-btn admin-btn-secondary" href={`mailto:${selected.email}?subject=${encodeURIComponent("Your enquiry — Sialkot Cricket Kits")}`}>
-                      <Mail size={15} />
-                      <span>Reply by email</span>
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      <div className="ord-toolbar">
+        <label className="ord-search">
+          <Search size={16} aria-hidden="true" />
+          <span className="ord-sr">Search the inbox</span>
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, email, phone or text" />
+        </label>
       </div>
+
+      <div className="ord-table-wrap">
+        <table className="ord-table inbox-table">
+          <thead>
+            <tr>
+              <th scope="col">Received</th>
+              <th scope="col">From</th>
+              <th scope="col">Country</th>
+              <th scope="col">Type</th>
+              <th scope="col">Summary</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span className="ord-sr">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={`s${i}`}><td colSpan={7}><span className="ord-skel" /></td></tr>
+              ))}
+            {!loading && visible.length === 0 && (
+              <tr><td colSpan={7} className="ord-empty">Nothing here.</td></tr>
+            )}
+            {!loading &&
+              visible.map((e) => (
+                <tr key={e.id} className={!e.read && !e.spam ? "attention" : ""}>
+                  <td className="nowrap muted">{formatPkt(e.createdAt)}</td>
+                  <td>
+                    <div className="ord-two">
+                      <button type="button" className="inbox-name" onClick={() => openItem(e)}>{e.name}</button>
+                      <span>{e.email || e.phone || "No contact details"}</span>
+                    </div>
+                  </td>
+                  <td className="nowrap muted">{e.country && e.country !== "Unspecified" ? e.country : "—"}</td>
+                  <td>
+                    <span className={`ord-type ${e.type === "custom_bat" ? "custom" : ""}`}>{e.type === "custom_bat" ? "Unpaid lead" : "Message"}</span>
+                  </td>
+                  <td className="inbox-summary" title={summaryOf(e)}>{summaryOf(e)}</td>
+                  <td>
+                    <span className="inbox-status">
+                      {e.spam ? <span className="ord-pill tone-grey">Spam</span> : !e.read ? <span className="ord-pill tone-amber">New</span> : <span className="ord-pill tone-grey">Read</span>}
+                      {duplicateIds.has(e.id) && <span className="ord-pill tone-grey">Duplicate</span>}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" className="ord-icon" aria-label={`Open message from ${e.name}`} onClick={() => openItem(e)}>
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="ord-cards">
+        {loading && Array.from({ length: 3 }).map((_, i) => <div key={`c${i}`} className="ord-card ord-skel-card" />)}
+        {!loading && visible.length === 0 && <p className="ord-empty">Nothing here.</p>}
+        {!loading &&
+          visible.map((e) => (
+            <article key={e.id} className={`ord-card ${!e.read && !e.spam ? "attention" : ""}`}>
+              <button type="button" className="ord-card-main" onClick={() => openItem(e)} aria-label={`Open message from ${e.name}`}>
+                <span className="ord-card-top">
+                  <span>{formatPkt(e.createdAt)}</span>
+                  <span className="inbox-status">
+                    {e.type === "custom_bat" ? <span className="ord-pill tone-orange">Unpaid lead</span> : <span className="ord-pill tone-blue">Message</span>}
+                    {!e.read && !e.spam && <span className="ord-pill tone-amber">New</span>}
+                  </span>
+                </span>
+                <span className="ord-card-name">{e.name}</span>
+                <span className="ord-card-meta inbox-card-summary">{summaryOf(e)}</span>
+                {duplicateIds.has(e.id) && <span className="ord-card-meta">Possible duplicate</span>}
+              </button>
+            </article>
+          ))}
+      </div>
+
+      {selected && (
+        <div className="ord-backdrop" onClick={() => setOpenId(null)}>
+          <aside className="ord-drawer" role="dialog" aria-modal="true" aria-label={`Message from ${selected.name}`} onClick={(ev) => ev.stopPropagation()}>
+            <div className="ord-drawer-head">
+              <div>
+                <span className="ord-mono">#{selected.id}</span>
+                <h2>{selected.name}</h2>
+                <span className="muted">{formatPkt(selected.createdAt)} · {selected.type === "custom_bat" ? "Unpaid custom bat lead" : "Message"}</span>
+              </div>
+              <button ref={closeRef} type="button" className="ord-icon" aria-label="Close" onClick={() => setOpenId(null)}>
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="ord-quick">
+              <button type="button" className="ord-btn" onClick={() => update(selected, { read: !selected.read }, selected.read ? "Marked as unread" : "Marked as read")}>
+                <Check size={16} aria-hidden="true" /> {selected.read ? "Mark unread" : "Mark read"}
+              </button>
+              <button type="button" className="ord-btn" onClick={() => update(selected, { spam: !selected.spam }, selected.spam ? "Moved out of spam" : "Moved to spam")}>
+                {selected.spam ? <ShieldCheck size={16} aria-hidden="true" /> : <ShieldAlert size={16} aria-hidden="true" />} {selected.spam ? "Not spam" : "Mark as spam"}
+              </button>
+              <button type="button" className="ord-btn" onClick={() => handleDelete(selected)} aria-label="Delete permanently">
+                <Trash2 size={16} aria-hidden="true" />
+              </button>
+            </div>
+
+            {selected.type === "custom_bat" && (
+              <div className="ord-warn" role="note">
+                <AlertTriangle size={16} aria-hidden="true" />
+                <div><p><strong>No payment received.</strong> This person built a bat but did not finish checkout. Do not start production.</p></div>
+              </div>
+            )}
+
+            <section className="ord-sec">
+              <h3>Contact</h3>
+              <dl className="ord-kv">
+                <div><dt>Email</dt><dd>{selected.email ? <a href={`mailto:${selected.email}`}>{selected.email}</a> : "—"}</dd></div>
+                <div><dt>Phone</dt><dd>{selected.phone || "—"}</dd></div>
+                <div><dt>Country</dt><dd>{selected.country && selected.country !== "Unspecified" ? selected.country : "—"}</dd></div>
+                {selected.product && <div><dt>Product</dt><dd>{selected.product}</dd></div>}
+              </dl>
+              {!selected.email && !selected.phone && (
+                <p className="ord-hint due">No phone or email was collected. You can only reach this person if they contact you.</p>
+              )}
+            </section>
+
+            {extras && (
+              <section className="ord-sec">
+                <h3>{selected.type === "custom_bat" ? "Bat they configured" : "Details"}</h3>
+                <dl className="ord-spec">
+                  {SPEC_LABELS.filter(([key]) => extras[key] !== undefined && extras[key] !== "").map(([key, label]) => (
+                    <div key={key}><dt>{label}</dt><dd>{String(extras[key])}</dd></div>
+                  ))}
+                  {Array.isArray(extras.services) && extras.services.length > 0 && (
+                    <div className="wide"><dt>Services</dt><dd>{extras.services.join(", ")}</dd></div>
+                  )}
+                  {(extras.engraving?.selected && extras.engraving?.text) || extras.engravingText ? (
+                    <div className="wide"><dt>Engraving</dt><dd>“{extras.engraving?.text || extras.engravingText}”</dd></div>
+                  ) : null}
+                </dl>
+              </section>
+            )}
+
+            <section className="ord-sec">
+              <h3>Message</h3>
+              <p className="inbox-message">{selected.message}</p>
+            </section>
+
+            {selected.type === "custom_bat" ? (
+              <section className="ord-sec">
+                <h3>Follow up</h3>
+                {(() => {
+                  const link = completeOrderLink(selected);
+                  const message = followUpMessage(selected);
+                  return (
+                    <>
+                      <p className="ord-hint muted">
+                        {link.resumable
+                          ? "The order link re-opens checkout with this exact bat. The price is checked again automatically."
+                          : "Some details are missing, so the link opens the custom bat builder instead."}
+                      </p>
+                      <div className="ord-quick">
+                        <a className="ord-btn wa" href={whatsappUrl(message, cleanPhone)} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle size={16} aria-hidden="true" /> {cleanPhone ? "WhatsApp customer" : "Open WhatsApp with message"}
+                        </a>
+                        <button type="button" className="ord-btn" onClick={() => copy(message, "Follow-up message")}>
+                          <Copy size={16} aria-hidden="true" /> Copy message
+                        </button>
+                        <button type="button" className="ord-btn" onClick={() => copy(link.url, "Order link")}>
+                          <Link2 size={16} aria-hidden="true" /> Copy order link
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </section>
+            ) : (
+              (cleanPhone || selected.email) && (
+                <section className="ord-sec">
+                  <h3>Reply</h3>
+                  <div className="ord-quick">
+                    {cleanPhone && (
+                      <a className="ord-btn wa" href={whatsappUrl(`Assalam o Alaikum ${selected.name}, this is Sialkot Cricket Kits replying to your message.`, cleanPhone)} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle size={16} aria-hidden="true" /> Reply on WhatsApp
+                      </a>
+                    )}
+                    {selected.email && (
+                      <a className="ord-btn" href={`mailto:${selected.email}?subject=${encodeURIComponent("Your enquiry — Sialkot Cricket Kits")}`}>
+                        <Mail size={16} aria-hidden="true" /> Reply by email
+                      </a>
+                    )}
+                  </div>
+                </section>
+              )
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

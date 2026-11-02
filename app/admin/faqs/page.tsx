@@ -122,7 +122,7 @@ export default function AdminFaqsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1.5rem" }}>
         {/* Add/Edit Form */}
         <div className="admin-card">
-          <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#fff" }}>
+          <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "var(--adm-text)" }}>
             {editingFaq ? "Edit FAQ" : "Add New FAQ"}
           </h2>
 
@@ -242,7 +242,7 @@ export default function AdminFaqsPage() {
                       <span style={{ color: "var(--adm-primary)", fontWeight: 700, fontSize: "0.85rem" }}>
                         #{index + 1}
                       </span>
-                      <strong style={{ color: "#fff", fontSize: "0.95rem" }}>{faq.question}</strong>
+                      <strong style={{ color: "var(--adm-text)", fontSize: "0.95rem" }}>{faq.question}</strong>
                       {!faq.active && (
                         <span className="admin-badge admin-badge-inactive">Hidden</span>
                       )}

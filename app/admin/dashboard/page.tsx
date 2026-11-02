@@ -1,672 +1,262 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Package,
-  Layers,
-  Sparkles,
-  Mail,
-  Plus,
-  ArrowRight,
-  TrendingUp,
-  Download,
-  Calendar,
-  DollarSign,
-  ShoppingBag,
-  CheckCircle2,
-  FileSpreadsheet,
-  Printer,
-  ChevronRight,
-} from "lucide-react";
-import { formatPrice } from "@/src/data/products";
-import type { SalesStats, DBOrder } from "@/src/lib/data-service";
+import { Download, RefreshCw, ChevronRight } from "lucide-react";
 import { useAdminFeedback } from "@/src/components/AdminFeedbackContext";
+import {
+  STAGE_LABEL,
+  STAGE_TONE,
+  balanceOf,
+  formatPkt,
+  inView,
+  isCustom,
+  money,
+  nextStepOf,
+  paidOf,
+  stageOf,
+  type Order,
+} from "@/src/lib/admin-orders";
+import "../orders/orders.css";
+import "./dashboard.css";
 
-interface StatsData {
-  totalProducts: number;
-  activeProducts: number;
-  featuredProducts: number;
-  totalCategories: number;
-  totalFaqs: number;
-  totalEnquiries: number;
-  unreadEnquiries: number;
-  pendingPaymentVerifications?: number;
-  customOrdersInProduction?: number;
+type Stats = {
+  unreadContactMessages?: number;
   unpaidCustomLeadsThisWeek?: number;
   unpaidCustomLeadsTotal?: number;
-  unreadContactMessages?: number;
-  outstandingBalanceGbp?: number;
+  activeProducts?: number;
+  totalProducts?: number;
+};
+
+// Month key in Pakistan time, e.g. "2026-11".
+const PKT_MONTH = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit" });
+const PKT_LONG_DATE = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", weekday: "long", day: "numeric", month: "long" });
+const MONTH_NAME = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", month: "long" });
+
+function monthKey(d: Date): string {
+  return PKT_MONTH.format(d).slice(0, 7);
 }
 
 export default function AdminDashboardPage() {
   const { showToast } = useAdminFeedback();
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [sales, setSales] = useState<SalesStats | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<Stats>({});
   const [loading, setLoading] = useState(true);
-  const [trendMode, setTrendMode] = useState<"daily" | "monthly">("daily");
-  const [exportRange, setExportRange] = useState("all");
-  const [isExporting, setIsExporting] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
 
-  const fetchDashboardData = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const [statsRes, salesRes] = await Promise.all([
-        fetch("/api/admin/stats").then((r) => r.json()),
-        fetch("/api/admin/sales/stats").then((r) => r.json()),
+      const [ordersRes, statsRes] = await Promise.all([
+        fetch("/api/admin/orders", { cache: "no-store" }),
+        fetch("/api/admin/stats", { cache: "no-store" }),
       ]);
-
-      if (statsRes.success) setStats(statsRes.data);
-      if (salesRes.success) setSales(salesRes.data);
+      if (ordersRes.status === 401 || statsRes.status === 401) {
+        window.location.href = "/admin";
+        return;
+      }
+      const [ordersJson, statsJson] = await Promise.all([
+        ordersRes.json().catch(() => ({})),
+        statsRes.json().catch(() => ({})),
+      ]);
+      if (ordersJson.success && Array.isArray(ordersJson.data)) setOrders(ordersJson.data);
+      if (statsJson.success && statsJson.data) setStats(statsJson.data);
+      if (!ordersJson.success) showToast(ordersJson.error || "Could not load orders", "error");
     } catch {
-      showToast("Failed to load dashboard metrics", "error");
+      showToast("Could not load the dashboard. Check your connection.", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    // Initial load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
-  const handleDownloadReport = async (range = exportRange) => {
-    setIsExporting(true);
-    try {
-      let url = `/api/admin/sales/export?range=${range}`;
-      const now = new Date();
+  const now = useMemo(() => new Date(), []);
+  const thisMonth = monthKey(now);
+  const lastMonthDate = new Date(now.getTime() - 32 * 24 * 3600 * 1000);
+  const lastMonth = monthKey(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 24 * 3600 * 1000));
 
-      if (range === "daily") {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        url += `&startDate=${start}`;
-      } else if (range === "weekly") {
-        const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        url += `&startDate=${start}`;
-      } else if (range === "monthly") {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        url += `&startDate=${start}`;
-      } else if (range === "yearly") {
-        const start = new Date(now.getFullYear(), 0, 1).toISOString();
-        url += `&startDate=${start}`;
-      }
+  const figures = useMemo(() => {
+    const check = orders.filter((o) => inView(o, "check"));
+    const balance = orders.filter((o) => inView(o, "balance"));
+    const customInProduction = orders.filter((o) => isCustom(o) && inView(o, "production"));
+    const ready = orders.filter((o) => inView(o, "ready"));
+    const revenue = (key: string) =>
+      orders.filter((o) => monthKey(new Date(o.createdAt)) === key).reduce((t, o) => t + paidOf(o), 0);
+    const ordersIn = (key: string) =>
+      orders.filter((o) => monthKey(new Date(o.createdAt)) === key && !["rejected", "cancelled", "refunded"].includes(stageOf(o))).length;
+    return {
+      checkCount: check.length,
+      checkReported: check.reduce((t, o) => t + (Number(o.paymentSubmission?.amountSent) || 0), 0),
+      balanceCount: balance.length,
+      balanceTotal: balance.reduce((t, o) => t + balanceOf(o), 0),
+      customInProduction: customInProduction.length,
+      readyCount: ready.length,
+      revenueThis: revenue(thisMonth),
+      revenueLast: revenue(lastMonth),
+      ordersThis: ordersIn(thisMonth),
+      ordersLast: ordersIn(lastMonth),
+      revenueAll: orders.reduce((t, o) => t + paidOf(o), 0),
+    };
+  }, [orders, thisMonth, lastMonth]);
 
-      // Trigger file download
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Sialkot_Cricket_Kits_Sales_Report_${range}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const latest = useMemo(
+    () => [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8),
+    [orders]
+  );
 
-      showToast(`Sales report (${range.toUpperCase()}) downloaded!`, "success");
-    } catch {
-      showToast("Failed to generate sales report", "error");
-    } finally {
-      setIsExporting(false);
-    }
+  const exportCsv = () => {
+    const link = document.createElement("a");
+    link.href = "/api/admin/sales/export?range=all";
+    link.setAttribute("download", `Sialkot_Cricket_Kits_Orders_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  if (loading) {
-    return <div style={{ color: "var(--adm-muted)", padding: "2rem" }}>Loading dashboard analytics...</div>;
-  }
+  const actions: Array<{ href: string; label: string; value: string; hint: string; urgent?: boolean }> = [
+    {
+      href: "/admin/orders?view=check",
+      label: "Payments to verify",
+      value: String(figures.checkCount),
+      hint: figures.checkCount ? `${money(figures.checkReported)} reported by customers` : "Nothing waiting",
+      urgent: figures.checkCount > 0,
+    },
+    {
+      href: "/admin/orders?view=balance",
+      label: "Balances still due",
+      value: money(figures.balanceTotal),
+      hint: figures.balanceCount ? `${figures.balanceCount} order${figures.balanceCount === 1 ? "" : "s"} · collect before dispatch` : "All collected",
+    },
+    {
+      href: "/admin/orders?view=production&type=custom",
+      label: "Custom bats in production",
+      value: String(figures.customInProduction),
+      hint: figures.readyCount ? `${figures.readyCount} order${figures.readyCount === 1 ? "" : "s"} ready to dispatch` : "Paid, not dispatched yet",
+    },
+    {
+      href: "/admin/enquiries",
+      label: "Unpaid custom bat leads",
+      value: String(stats.unpaidCustomLeadsThisWeek ?? 0),
+      hint: `this week · ${stats.unpaidCustomLeadsTotal ?? 0} in total (not orders)`,
+    },
+    {
+      href: "/admin/enquiries",
+      label: "Unread messages",
+      value: String(stats.unreadContactMessages ?? 0),
+      hint: "Reply within 24 hours",
+      urgent: (stats.unreadContactMessages ?? 0) > 0,
+    },
+  ];
 
-  // Max value calculation for trend chart normalization
-  const maxTrendRevenue =
-    trendMode === "daily"
-      ? Math.max(...(sales?.dailyTrend.map((d) => d.revenue) || [1]), 1)
-      : Math.max(...(sales?.monthlyTrend.map((m) => m.revenue) || [1]), 1);
+  const change = figures.revenueLast > 0 && figures.revenueThis > 0 ? Math.round(((figures.revenueThis - figures.revenueLast) / figures.revenueLast) * 100) : null;
 
   return (
-    <div>
-      {/* ── Top Header & Report Actions ── */}
-      <div className="admin-header">
+    <div className="ord dash">
+      <header className="ord-head">
         <div>
-          <h1>Sales & Operations Dashboard</h1>
-          <p>Real-time revenue metrics, daily/weekly/monthly/yearly sales tracking, and downloadable reports.</p>
+          <h1>Today</h1>
+          <p>{PKT_LONG_DATE.format(now)} · Pakistan time</p>
         </div>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            onClick={() => setShowReportModal(true)}
-            className="admin-btn admin-btn-secondary"
-          >
-            <Printer size={16} />
-            <span>View Printable Report</span>
+        <div className="ord-head-actions">
+          <button type="button" className="ord-btn" onClick={load} disabled={loading} aria-label="Refresh dashboard">
+            <RefreshCw size={16} className={loading ? "ord-spin" : ""} aria-hidden="true" />
+            <span className="ord-hide-sm">Refresh</span>
           </button>
-
-          <button
-            onClick={() => handleDownloadReport("all")}
-            className="admin-btn admin-btn-primary"
-            disabled={isExporting}
-          >
-            <Download size={16} />
-            <span>{isExporting ? "Generating..." : "Download Sales CSV"}</span>
+          <button type="button" className="ord-btn" onClick={exportCsv}>
+            <Download size={16} aria-hidden="true" />
+            <span className="ord-hide-sm">Export CSV</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* ── Action needed today ── */}
-      <section aria-label="Action needed" className="adm-action-grid">
-        <Link href="/admin/orders" className={`adm-action-card ${(stats?.pendingPaymentVerifications || 0) > 0 ? "urgent" : ""}`}>
-          <span className="adm-action-label">Payments to verify</span>
-          <strong className="adm-action-value">{stats?.pendingPaymentVerifications ?? 0}</strong>
-          <span className="adm-action-hint">Check each receipt against the UBL account, then confirm.</span>
-        </Link>
-        <Link href="/admin/orders" className="adm-action-card">
-          <span className="adm-action-label">Custom bats in production</span>
-          <strong className="adm-action-value">{stats?.customOrdersInProduction ?? 0}</strong>
-          <span className="adm-action-hint">Paid custom orders not yet dispatched.</span>
-        </Link>
-        <Link href="/admin/orders" className="adm-action-card">
-          <span className="adm-action-label">Balances still due</span>
-          <strong className="adm-action-value">£ {(stats?.outstandingBalanceGbp ?? 0).toLocaleString("en-GB")}</strong>
-          <span className="adm-action-hint">Collect before dispatch.</span>
-        </Link>
-        <Link href="/admin/enquiries" className="adm-action-card">
-          <span className="adm-action-label">Unpaid custom bat leads</span>
-          <strong className="adm-action-value">{stats?.unpaidCustomLeadsThisWeek ?? 0}<small> this week</small></strong>
-          <span className="adm-action-hint">{stats?.unpaidCustomLeadsTotal ?? 0} total · not orders, follow up on WhatsApp.</span>
-        </Link>
-        <Link href="/admin/enquiries" className="adm-action-card">
-          <span className="adm-action-label">Unread contact messages</span>
-          <strong className="adm-action-value">{stats?.unreadContactMessages ?? 0}</strong>
-          <span className="adm-action-hint">Reply within 24 hours.</span>
-        </Link>
+      <section aria-label="Needs your attention" className="dash-actions">
+        {actions.map((a) => (
+          <Link key={a.label} href={a.href} className={`dash-action ${a.urgent ? "urgent" : ""}`}>
+            <span className="dash-action-label">{a.label}</span>
+            <strong className="dash-action-value">{loading ? <span className="ord-skel dash-skel" /> : a.value}</strong>
+            <span className="dash-action-hint">{loading ? "" : a.hint}</span>
+          </Link>
+        ))}
       </section>
 
-      {/* ── 4 Main Sales Metrics: Daily, Weekly, Monthly, Yearly ── */}
-      <div className="admin-sales-grid">
-        {/* Daily Sales Card */}
-        <div className="admin-sales-card admin-sales-card-daily">
-          <div className="admin-sales-header">
-            <span className="admin-sales-title">Daily Sales (Today)</span>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "rgba(16, 185, 129, 0.15)",
-                color: "var(--adm-primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <DollarSign size={18} />
-            </div>
-          </div>
-          <div className="admin-sales-amount">
-            £ {(sales?.dailySales.revenue || 0).toLocaleString("en-GB")}
-          </div>
-          <div className="admin-sales-subtext">
-            <span style={{ color: "#34d399", fontWeight: 600 }}>
-              {sales?.dailySales.orderCount || 0} Orders today
-            </span>
-            <span>·</span>
-            <span>{sales?.dailySales.date}</span>
-          </div>
+      <section aria-label="Revenue" className="dash-money">
+        <div className="dash-money-card">
+          <span className="dash-action-label">Verified payments · {MONTH_NAME.format(now)}</span>
+          <strong className="dash-big">{loading ? "–" : money(figures.revenueThis)}</strong>
+          <span className="dash-action-hint">
+            {loading
+              ? ""
+              : `${figures.ordersThis} order${figures.ordersThis === 1 ? "" : "s"} placed${
+                  change === null ? "" : ` · ${change >= 0 ? "+" : ""}${change}% vs ${MONTH_NAME.format(lastMonthDate)}`
+                }`}
+          </span>
         </div>
-
-        {/* Weekly Sales Card */}
-        <div className="admin-sales-card admin-sales-card-weekly">
-          <div className="admin-sales-header">
-            <span className="admin-sales-title">Weekly Sales (7 Days)</span>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "rgba(59, 130, 246, 0.15)",
-                color: "#60a5fa",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TrendingUp size={18} />
-            </div>
-          </div>
-          <div className="admin-sales-amount">
-            £ {(sales?.weeklySales.revenue || 0).toLocaleString("en-GB")}
-          </div>
-          <div className="admin-sales-subtext">
-            <span style={{ color: "#60a5fa", fontWeight: 600 }}>
-              {sales?.weeklySales.orderCount || 0} Orders this week
-            </span>
-          </div>
+        <div className="dash-money-card">
+          <span className="dash-action-label">Verified payments · {MONTH_NAME.format(lastMonthDate)}</span>
+          <strong className="dash-big">{loading ? "–" : money(figures.revenueLast)}</strong>
+          <span className="dash-action-hint">{loading ? "" : `${figures.ordersLast} order${figures.ordersLast === 1 ? "" : "s"} placed`}</span>
         </div>
-
-        {/* Monthly Sales Card */}
-        <div className="admin-sales-card admin-sales-card-monthly">
-          <div className="admin-sales-header">
-            <span className="admin-sales-title">Monthly Sales</span>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "rgba(139, 92, 246, 0.15)",
-                color: "#c084fc",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Calendar size={18} />
-            </div>
-          </div>
-          <div className="admin-sales-amount">
-            £ {(sales?.monthlySales.revenue || 0).toLocaleString("en-GB")}
-          </div>
-          <div className="admin-sales-subtext">
-            <span style={{ color: "#c084fc", fontWeight: 600 }}>
-              {sales?.monthlySales.orderCount || 0} Orders in {sales?.monthlySales.month}
-            </span>
-          </div>
+        <div className="dash-money-card">
+          <span className="dash-action-label">All verified payments</span>
+          <strong className="dash-big">{loading ? "–" : money(figures.revenueAll)}</strong>
+          <span className="dash-action-hint">Only money you have verified in the bank</span>
         </div>
+      </section>
 
-        {/* Yearly Sales Card */}
-        <div className="admin-sales-card admin-sales-card-yearly">
-          <div className="admin-sales-header">
-            <span className="admin-sales-title">Yearly Sales ({sales?.yearlySales.year})</span>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "rgba(245, 158, 11, 0.15)",
-                color: "#fbbf24",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ShoppingBag size={18} />
-            </div>
-          </div>
-          <div className="admin-sales-amount">
-            £ {(sales?.yearlySales.revenue || 0).toLocaleString("en-GB")}
-          </div>
-          <div className="admin-sales-subtext">
-            <span style={{ color: "#fbbf24", fontWeight: 600 }}>
-              {sales?.yearlySales.orderCount || 0} Orders in {sales?.yearlySales.year}
-            </span>
-          </div>
+      <section aria-label="Latest orders" className="dash-latest">
+        <div className="dash-latest-head">
+          <h2>Latest orders</h2>
+          <Link href="/admin/orders" className="ord-link">All orders <ChevronRight size={14} aria-hidden="true" /></Link>
         </div>
-      </div>
-
-      {/* ── Revenue Chart & Export Report Panel ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
-        {/* Revenue Trend Visualizer */}
-        <div className="admin-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <div>
-              <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#fff" }}>Revenue Trend</h2>
-              <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
-                Visual sales progression over time
-              </span>
-            </div>
-            <div className="admin-period-tabs">
-              <button
-                onClick={() => setTrendMode("daily")}
-                className={`admin-period-pill ${trendMode === "daily" ? "active" : ""}`}
-              >
-                Last 7 Days
-              </button>
-              <button
-                onClick={() => setTrendMode("monthly")}
-                className={`admin-period-pill ${trendMode === "monthly" ? "active" : ""}`}
-              >
-                Monthly (Year)
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-trend-chart">
-            {trendMode === "daily"
-              ? sales?.dailyTrend.map((d) => {
-                  const heightPercent = maxTrendRevenue > 0 ? (d.revenue / maxTrendRevenue) * 100 : 0;
+        <div className="ord-table-wrap dash-table-wrap">
+          <table className="ord-table dash-table">
+            <thead>
+              <tr>
+                <th scope="col">Order</th>
+                <th scope="col">Customer</th>
+                <th scope="col" className="num dash-col-total">Total</th>
+                <th scope="col">Stage</th>
+                <th scope="col" className="dash-col-next">Next step</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading &&
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={`s${i}`}><td colSpan={5}><span className="ord-skel" /></td></tr>
+                ))}
+              {!loading && latest.length === 0 && (
+                <tr><td colSpan={5} className="ord-empty">No orders yet.</td></tr>
+              )}
+              {!loading &&
+                latest.map((o) => {
+                  const stage = stageOf(o);
+                  const step = nextStepOf(o);
                   return (
-                    <div key={d.date} className="admin-trend-column">
-                      {d.revenue > 0 && (
-                        <span className="admin-trend-value">£{(d.revenue / 1000).toFixed(0)}k</span>
-                      )}
-                      <div className="admin-trend-bar-wrapper">
-                        <div
-                          className="admin-trend-bar-fill"
-                          style={{ height: `${Math.max(heightPercent, 4)}%` }}
-                        />
-                      </div>
-                      <span className="admin-trend-label">{d.label.split(",")[0]}</span>
-                    </div>
-                  );
-                })
-              : sales?.monthlyTrend.map((m) => {
-                  const heightPercent = maxTrendRevenue > 0 ? (m.revenue / maxTrendRevenue) * 100 : 0;
-                  return (
-                    <div key={m.month} className="admin-trend-column">
-                      {m.revenue > 0 && (
-                        <span className="admin-trend-value">£{(m.revenue / 1000).toFixed(0)}k</span>
-                      )}
-                      <div className="admin-trend-bar-wrapper">
-                        <div
-                          className="admin-trend-bar-fill"
-                          style={{
-                            height: `${Math.max(heightPercent, 4)}%`,
-                            background: "linear-gradient(180deg, #818cf8 0%, #4f46e5 100%)",
-                          }}
-                        />
-                      </div>
-                      <span className="admin-trend-label">{m.month}</span>
-                    </div>
+                    <tr key={o.id} className={stage === "check" ? "attention" : ""}>
+                      <td>
+                        <Link href="/admin/orders" className="ord-id">{o.id}</Link>
+                        <span className="ord-sub"><span className="muted">{formatPkt(o.createdAt)}</span></span>
+                      </td>
+                      <td>
+                        <div className="ord-two">
+                          <strong>{o.customerName}</strong>
+                          <span>{o.country}<span className="dash-sm-total"> · {money(Number(o.totalAmount) || 0)}</span></span>
+                        </div>
+                      </td>
+                      <td className="num strong dash-col-total">{money(Number(o.totalAmount) || 0)}</td>
+                      <td><span className={`ord-pill tone-${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span></td>
+                      <td className="muted dash-col-next">{step ? step.label : "—"}</td>
+                    </tr>
                   );
                 })}
-          </div>
+            </tbody>
+          </table>
         </div>
-
-        {/* Download Sales Reports Panel */}
-        <div className="admin-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-              <FileSpreadsheet size={20} color="var(--adm-primary)" />
-              <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#fff" }}>Export Sales Report</h2>
-            </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--adm-muted)", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-              Generate structured sales and order reports formatted for accounting, tax filing, or inventory planning.
-            </p>
-
-            <div className="admin-form-group">
-              <label>Select Report Period</label>
-              <select
-                className="admin-select"
-                value={exportRange}
-                onChange={(e) => setExportRange(e.target.value)}
-              >
-                <option value="all">All-Time Sales Record (Full History)</option>
-                <option value="daily">Today&apos;s Sales Only</option>
-                <option value="weekly">This Week&apos;s Sales (Last 7 Days)</option>
-                <option value="monthly">This Month&apos;s Sales</option>
-                <option value="yearly">This Year&apos;s Sales (2026)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
-            <button
-              onClick={() => handleDownloadReport(exportRange)}
-              className="admin-btn admin-btn-primary"
-              style={{ width: "100%", justifyContent: "center" }}
-              disabled={isExporting}
-            >
-              <Download size={16} />
-              <span>Download Excel/CSV Report</span>
-            </button>
-            <Link
-              href="/admin/orders"
-              className="admin-btn admin-btn-secondary"
-              style={{ width: "100%", justifyContent: "center" }}
-            >
-              <span>Manage All Orders & Invoices →</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Recent Orders & Catalogue Stats ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
-        {/* Recent Orders List */}
-        <div className="admin-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-            <div>
-              <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#fff" }}>Recent Sales & Orders</h2>
-              <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
-                Latest transactions processed through WhatsApp & bank transfer
-              </span>
-            </div>
-            <Link href="/admin/orders" style={{ color: "var(--adm-primary)", fontSize: "0.85rem", textDecoration: "none" }}>
-              View all orders ({sales?.lifetime.orderCount}) →
-            </Link>
-          </div>
-
-          {!sales?.recentOrders || sales.recentOrders.length === 0 ? (
-            <p style={{ color: "var(--adm-muted)", fontSize: "0.9rem" }}>No orders recorded yet.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {sales.recentOrders.slice(0, 5).map((order) => (
-                <div
-                  key={order.id}
-                  style={{
-                    background: "#09101d",
-                    border: "1px solid var(--adm-card-border)",
-                    borderRadius: "8px",
-                    padding: "0.85rem 1rem",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <strong style={{ color: "#fff" }}>{order.customerName}</strong>
-                      <span className="admin-badge admin-badge-completed">{order.status.toUpperCase()}</span>
-                      <small style={{ color: "#64748b" }}>{order.id}</small>
-                    </div>
-                    <p style={{ color: "var(--adm-muted)", fontSize: "0.825rem", margin: "0.2rem 0" }}>
-                      {order.items.map((i) => `${i.name} (x${i.quantity})`).join(", ")}
-                    </p>
-                    <small style={{ color: "#64748b", fontSize: "0.75rem" }}>
-                      📍 {order.country} · {new Date(order.createdAt).toLocaleDateString()}
-                    </small>
-                  </div>
-
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ color: "var(--adm-primary)", fontWeight: 700, fontSize: "1rem" }}>
-                      £ {order.totalAmount.toLocaleString("en-GB")}
-                    </div>
-                    <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>{order.paymentMethod}</small>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Secondary System Metrics & Quick Actions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Quick Catalogue Overview */}
-          <div className="admin-card">
-            <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#fff" }}>Catalogue Overview</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ color: "var(--adm-muted)", fontSize: "0.9rem" }}>Total Products</span>
-                <strong style={{ color: "#fff" }}>{stats?.totalProducts} items</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ color: "var(--adm-muted)", fontSize: "0.9rem" }}>Active in Shop</span>
-                <strong style={{ color: "#34d399" }}>{stats?.activeProducts} items</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ color: "var(--adm-muted)", fontSize: "0.9rem" }}>Categories</span>
-                <strong style={{ color: "#60a5fa" }}>{stats?.totalCategories}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0" }}>
-                <span style={{ color: "var(--adm-muted)", fontSize: "0.9rem" }}>Unread Customer Messages</span>
-                <strong style={{ color: "#f87171" }}>{stats?.unreadEnquiries}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Nav Links */}
-          <div className="admin-card">
-            <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#fff" }}>Quick Navigation</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <Link
-                href="/admin/orders"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0.65rem 0.85rem",
-                  background: "#09101d",
-                  borderRadius: "6px",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontSize: "0.875rem",
-                }}
-              >
-                <span>Orders & Sales Log</span>
-                <ArrowRight size={14} color="var(--adm-primary)" />
-              </Link>
-              <Link
-                href="/admin/products"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0.65rem 0.85rem",
-                  background: "#09101d",
-                  borderRadius: "6px",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontSize: "0.875rem",
-                }}
-              >
-                <span>Products & Pricing</span>
-                <ArrowRight size={14} color="var(--adm-primary)" />
-              </Link>
-              <Link
-                href="/admin/enquiries"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0.65rem 0.85rem",
-                  background: "#09101d",
-                  borderRadius: "6px",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontSize: "0.875rem",
-                }}
-              >
-                <span>Customer Enquiries</span>
-                <ArrowRight size={14} color="var(--adm-primary)" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Printable Report Modal Dialog ── */}
-      {showReportModal && (
-        <div className="admin-modal-backdrop" onClick={() => setShowReportModal(false)}>
-          <div
-            className="admin-modal-card admin-modal-card-lg"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "800px" }}
-          >
-            <div className="admin-modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <img
-                  src="/assets/brand/sialkot-cricket-kits-logo.png"
-                  alt="Sialkot Cricket Kits"
-                  style={{ width: "40px", height: "40px", borderRadius: "8px" }}
-                />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.2rem" }}>Official Sales Summary Report</h3>
-                  <span style={{ fontSize: "0.8rem", color: "var(--adm-muted)" }}>
-                    Generated on {new Date().toLocaleString()} · Sialkot Cricket Kits
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowReportModal(false)}
-                className="admin-modal-close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="admin-modal-body">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
-                <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
-                  <small style={{ color: "var(--adm-muted)", display: "block" }}>Daily Sales</small>
-                  <strong style={{ color: "#34d399", fontSize: "1.1rem" }}>
-                    £ {(sales?.dailySales.revenue || 0).toLocaleString("en-GB")}
-                  </strong>
-                </div>
-                <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
-                  <small style={{ color: "var(--adm-muted)", display: "block" }}>Weekly Sales</small>
-                  <strong style={{ color: "#60a5fa", fontSize: "1.1rem" }}>
-                    £ {(sales?.weeklySales.revenue || 0).toLocaleString("en-GB")}
-                  </strong>
-                </div>
-                <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
-                  <small style={{ color: "var(--adm-muted)", display: "block" }}>Monthly Sales</small>
-                  <strong style={{ color: "#c084fc", fontSize: "1.1rem" }}>
-                    £ {(sales?.monthlySales.revenue || 0).toLocaleString("en-GB")}
-                  </strong>
-                </div>
-                <div style={{ background: "#09101d", padding: "1rem", borderRadius: "8px" }}>
-                  <small style={{ color: "var(--adm-muted)", display: "block" }}>Yearly Sales</small>
-                  <strong style={{ color: "#fbbf24", fontSize: "1.1rem" }}>
-                    £ {(sales?.yearlySales.revenue || 0).toLocaleString("en-GB")}
-                  </strong>
-                </div>
-              </div>
-
-              <h4 style={{ color: "#fff", margin: "0 0 0.75rem", fontSize: "0.95rem" }}>
-                Recorded Orders Breakdown ({sales?.lifetime.orderCount} total orders)
-              </h4>
-              <div style={{ maxHeight: "280px", overflowY: "auto", border: "1px solid var(--adm-card-border)", borderRadius: "8px" }}>
-                <table className="admin-table" style={{ fontSize: "0.85rem" }}>
-                  <thead>
-                    <tr>
-                      <th>Order ID</th>
-                      <th>Date</th>
-                      <th>Customer</th>
-                      <th>Country</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sales?.recentOrders.map((o) => (
-                      <tr key={o.id}>
-                        <td><strong>{o.id}</strong></td>
-                        <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                        <td>{o.customerName}</td>
-                        <td>{o.country}</td>
-                        <td style={{ color: "var(--adm-primary)", fontWeight: 700 }}>
-                          £ {o.totalAmount.toLocaleString("en-GB")}
-                        </td>
-                        <td><span className="admin-badge admin-badge-completed">{o.status}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="admin-modal-actions">
-              <button
-                onClick={() => window.print()}
-                className="admin-btn admin-btn-secondary"
-              >
-                <Printer size={16} />
-                <span>Print Document</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleDownloadReport("all");
-                  setShowReportModal(false);
-                }}
-                className="admin-btn admin-btn-primary"
-              >
-                <Download size={16} />
-                <span>Download as CSV</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   );
 }

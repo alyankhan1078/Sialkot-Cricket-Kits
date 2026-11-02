@@ -110,7 +110,7 @@ export default function AdminCategoriesPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1.5rem" }}>
         {/* Add Category Form */}
         <div className="admin-card">
-          <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#fff" }}>Add New Category</h2>
+          <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "var(--adm-text)" }}>Add New Category</h2>
           <form onSubmit={handleAddCategory}>
             <div className="admin-form-group">
               <label>Category Name</label>
@@ -155,7 +155,7 @@ export default function AdminCategoriesPage() {
                   <tr key={cat.id}>
                     <td style={{ color: "var(--adm-muted)", width: "50px" }}>#{index + 1}</td>
                     <td>
-                      <strong style={{ color: "#fff" }}>{cat.name}</strong>
+                      <strong style={{ color: "var(--adm-text)" }}>{cat.name}</strong>
                     </td>
                     <td>
                       <button

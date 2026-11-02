@@ -53,9 +53,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }
         })
         .catch(() => {});
-    } else {
-      setIsAuthVerified(true);
     }
+    // The login page renders without the auth check (see the early return below).
   }, [pathname, isLoginPage, router]);
 
   const handleLogout = async () => {
@@ -106,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "FAQs", href: "/admin/faqs", icon: HelpCircle },
     { label: "Site Settings", href: "/admin/settings", icon: Settings },
     {
-      label: "Enquiries",
+      label: "Inbox",
       href: "/admin/enquiries",
       icon: Mail,
       badge: unreadCount > 0 ? unreadCount : undefined,
