@@ -270,6 +270,23 @@ export async function sendWhatsAppDirect({
     }
   }
 
+  // Free option: the business's own Android phone sends the message from the WhatsApp Business app.
+  // An automation app on the phone (e.g. MacroDroid) exposes a private webhook URL; we call it with the
+  // customer's number and the message text. The URL is a secret and lives only in Vercel.
+  const phoneWebhook = process.env.WHATSAPP_PHONE_WEBHOOK_URL;
+  if (phoneWebhook) {
+    try {
+      const url = new URL(phoneWebhook);
+      url.searchParams.set("phone", cleanPhone.replace(/\+/g, ""));
+      url.searchParams.set("message", message);
+      const res = await fetch(url.toString(), { method: "GET" });
+      if (res.ok) return { success: true, providerMessageId: `phone_${Date.now()}` };
+      return { success: false, error: `Phone webhook answered HTTP ${res.status}` };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? err.message : "Phone webhook request failed" };
+    }
+  }
+
   // No keys yet: nothing is sent, the attempt is logged as "simulated".
   console.log(`[WhatsApp Notice]: not configured, prepared message for ${cleanPhone.slice(0, 5)}…`);
   return { success: true, simulated: true, providerMessageId: `sim_wa_${Date.now()}` };
