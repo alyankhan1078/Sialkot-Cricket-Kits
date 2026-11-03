@@ -198,11 +198,14 @@ export async function sendWhatsAppDirect({
   toPhone,
   message,
   template,
+  viaPhone = true,
 }: {
   toPhone: string;
   message: string;
   /** Business-initiated messages need an approved template; text only works inside the 24-hour reply window. */
   template?: { name: string; params: string[] };
+  /** false = never use the business phone for this message (e.g. alerts to the owner's own number). */
+  viaPhone?: boolean;
 }): Promise<NotificationSendResult> {
   const cleanPhone = toPhone.replace(/[^0-9+]/g, "").replace(/^00/, "+");
   const metaAccessToken = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_WHATSAPP_TOKEN;
@@ -271,25 +274,93 @@ export async function sendWhatsAppDirect({
   }
 
   // Free option: the business's own Android phone sends the message from the WhatsApp Business app.
-  // An automation app on the phone (e.g. MacroDroid) exposes a private webhook URL; we call it with the
+  // An automation app on the phone (MacroDroid) exposes a private webhook URL; we call it with the
   // customer's number and the message text. The URL is a secret and lives only in Vercel.
   const phoneWebhook = process.env.WHATSAPP_PHONE_WEBHOOK_URL;
-  if (phoneWebhook) {
-    try {
-      const url = new URL(phoneWebhook);
-      url.searchParams.set("phone", cleanPhone.replace(/\+/g, ""));
-      url.searchParams.set("message", message);
-      const res = await fetch(url.toString(), { method: "GET" });
-      if (res.ok) return { success: true, providerMessageId: `phone_${Date.now()}` };
-      return { success: false, error: `Phone webhook answered HTTP ${res.status}` };
-    } catch (err) {
-      return { success: false, error: err instanceof Error && err.message ? err.message : "Phone webhook request failed" };
-    }
+  if (phoneWebhook && viaPhone) {
+    return sendThroughPhone(phoneWebhook, cleanPhone.replace(/\+/g, ""), message);
   }
 
   // No keys yet: nothing is sent, the attempt is logged as "simulated".
   console.log(`[WhatsApp Notice]: not configured, prepared message for ${cleanPhone.slice(0, 5)}…`);
   return { success: true, simulated: true, providerMessageId: `sim_wa_${Date.now()}` };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS PHONE ROUTE (free): safety limits + one message at a time
+// ─────────────────────────────────────────────────────────────────────────────
+// The phone needs about 10 seconds to open a chat and press Send, so messages are spaced out. The limits
+// make sure a fault or a flood of fake orders can never make the business number look like a spammer.
+const PHONE_GAP_MS = 25_000;
+const envLimit = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+const digitsOf = (s: string) => (s || "").replace(/\D/g, "");
+let phoneQueue: Promise<unknown> = Promise.resolve();
+let lastPhoneSendAt = 0;
+
+/** Phone-route messages that were actually handed to the phone in the given window (database + this server). */
+async function phoneSendsSince(ms: number): Promise<{ digits: string; at: number }[]> {
+  const since = Date.now() - ms;
+  const byId = new Map<string, { digits: string; at: number }>();
+  for (const l of memoryNotificationLogs) {
+    if (l.channel === "whatsapp" && l.status === "sent" && (l.providerMessageId || "").startsWith("phone_")) {
+      byId.set(l.id, { digits: digitsOf(l.recipient), at: new Date(l.sentAt).getTime() });
+    }
+  }
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { data, error } = await sb
+        .from("notification_logs")
+        .select("id, recipient, sent_at")
+        .eq("channel", "whatsapp")
+        .eq("status", "sent")
+        .like("provider_message_id", "phone_%")
+        .gte("sent_at", new Date(since).toISOString())
+        .limit(1000);
+      if (!error && data) for (const d of data as any[]) byId.set(d.id, { digits: digitsOf(d.recipient), at: new Date(d.sent_at).getTime() });
+    }
+  } catch {}
+  return [...byId.values()].filter((s) => s.at >= since);
+}
+
+function sendThroughPhone(webhook: string, digits: string, message: string): Promise<NotificationSendResult> {
+  const run = async (): Promise<NotificationSendResult> => {
+    const handBack = (why: string): NotificationSendResult => ({ success: false, error: `${why} Use "Send on WhatsApp" in the Orders sheet for this one.` });
+    if (!/^[1-9]\d{9,14}$/.test(digits)) return handBack("Number has no country code, so the phone cannot open the chat.");
+
+    const day = await phoneSendsSince(24 * 60 * 60 * 1000);
+    const hour = day.filter((s) => s.at >= Date.now() - 60 * 60 * 1000);
+    if (hour.length >= envLimit("WHATSAPP_PHONE_MAX_PER_HOUR", 20)) return handBack("Safety limit: too many WhatsApp messages from the phone in the last hour.");
+    if (day.length >= envLimit("WHATSAPP_PHONE_MAX_PER_DAY", 60)) return handBack("Safety limit: too many WhatsApp messages from the phone today.");
+    const exempt = [digitsOf(process.env.BUSINESS_WHATSAPP || "+923231438214"), digitsOf(process.env.NOTIFY_TEST_WHATSAPP || "")];
+    if (!exempt.includes(digits) && day.filter((s) => s.digits === digits).length >= envLimit("WHATSAPP_PHONE_MAX_PER_NUMBER_DAY", 6)) {
+      return handBack("Safety limit: this customer already got several messages today.");
+    }
+
+    const last = Math.max(lastPhoneSendAt, ...day.map((s) => s.at), 0);
+    const wait = last + PHONE_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, Math.min(wait, PHONE_GAP_MS)));
+
+    try {
+      const url = new URL(webhook);
+      url.searchParams.set("phone", digits);
+      url.searchParams.set("message", message);
+      // Ready-made chat link, so the phone only has to open it and press Send (no encoding needed on the phone).
+      url.searchParams.set("link", `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(message)}`);
+      lastPhoneSendAt = Date.now();
+      const res = await fetch(url.toString(), { method: "GET", signal: AbortSignal.timeout(15_000) });
+      if (res.ok) return { success: true, providerMessageId: `phone_${Date.now()}` };
+      return { success: false, error: `The phone's automation app answered HTTP ${res.status}.` };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? `Could not reach the phone's automation app: ${err.message}` : "Could not reach the phone's automation app." };
+    }
+  };
+  const p = phoneQueue.then(run);
+  phoneQueue = p.catch(() => undefined);
+  return p;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -397,7 +468,8 @@ export async function notifyOrderEvent(
   const built = buildMessage(event, messageInputFor(order, submission, extra), language());
   const live = isLive();
   const toEmail = live ? order.customerEmail : OWNER_EMAIL;
-  const toPhone = live ? order.customerPhone : OWNER_WHATSAPP;
+  // In test mode WhatsApp goes to NOTIFY_TEST_WHATSAPP (e.g. the owner's personal number) or else the business number.
+  const toPhone = live ? order.customerPhone : process.env.NOTIFY_TEST_WHATSAPP || OWNER_WHATSAPP;
   const testTag = live ? "" : `[TEST → ${order.customerEmail || order.customerPhone || "customer"}] `;
   const out: { email?: NotificationSendResult; whatsapp?: NotificationSendResult } = {};
 
@@ -427,7 +499,8 @@ export async function notifyOwnerNewOrder(order: DBOrder, submission?: DBPayment
   const built = buildMessage("admin_alert", messageInputFor(order, submission, { customerName: order.customerName }), "en");
   const email = await sendEmailDirect({ to: OWNER_EMAIL, subject: built.subject, html: renderEmailHtml(built.heading, `${built.text}\n\nAddress: ${addressOf(asSheetOrder(order, submission)) || order.country}`), text: built.text });
   await logResult(order.id, "admin_alert", "email", OWNER_EMAIL, email, "email");
-  const whatsapp = await sendWhatsAppDirect({ toPhone: OWNER_WHATSAPP, message: built.text, template: { name: built.templateName, params: built.templateParams } });
+  // Never through the business phone: that phone *is* the owner's number, and the owner already gets the email.
+  const whatsapp = await sendWhatsAppDirect({ toPhone: OWNER_WHATSAPP, message: built.text, template: { name: built.templateName, params: built.templateParams }, viaPhone: false });
   await logResult(order.id, "admin_alert", "whatsapp", OWNER_WHATSAPP, whatsapp, "whatsapp");
   return { email, whatsapp };
 }
