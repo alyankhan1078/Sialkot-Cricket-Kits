@@ -49,7 +49,7 @@ export type Product = {
 import { PRODUCT_CONTENT_MAP } from "./product-content.ts";
 
 const item = (number: number) => `/assets/products/item-${String(number).padStart(3, "0")}.webp`;
-const batImage = "/assets/products/bat-collection.webp";
+const batImage = "/assets/products/placeholder.webp";
 const brandImage = "/assets/brand/sialkot-cricket-kits-logo.png";
 const vvipBonafideGallery = [
   "/assets/products/vvip-bonafide-original-front-a.webp",

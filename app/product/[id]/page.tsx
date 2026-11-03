@@ -61,6 +61,9 @@ export default async function ProductPage({ params }: PageProps) {
     .filter((item) => item.category === product.category && item.id !== product.id)
     .slice(0, 4);
 
+  // Ask the browser to fetch the main photo straight away (it is the largest thing on screen).
+  const mainImage = product.images?.length ? product.images[0] : product.image;
+
   // Normalize product for client
   const clientProduct = {
     ...product,
@@ -130,6 +133,8 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <main className="product-page">
+      {/* React moves this into <head>, so the browser starts fetching the main photo immediately. */}
+      {mainImage && <link rel="preload" as="image" href={mainImage} fetchPriority="high" />}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}

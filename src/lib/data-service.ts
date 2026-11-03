@@ -606,7 +606,7 @@ export async function createProduct(data: Omit<DBProduct, "createdAt" | "updated
       stock: data.stock,
       right_stock: data.rightStock || null,
       left_stock: data.leftStock || null,
-      image: data.image || "/assets/products/bat-collection.webp",
+      image: data.image || "/assets/products/placeholder.webp",
       images: data.images || [],
       description: data.description || "",
       featured: data.featured ?? false,
@@ -992,7 +992,7 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   const allImages = await getProductImages(productId);
   const mainImgRow = allImages.find((i) => i.isMain) || allImages[0];
   await sb.from("products").update({
-    image: mainImgRow?.url || "/assets/products/bat-collection.webp",
+    image: mainImgRow?.url || "/assets/products/placeholder.webp",
     images: allImages.map((i) => i.url),
     updated_at: now,
   }).eq("id", productId);
@@ -1107,6 +1107,7 @@ export async function createCategory(name: string): Promise<DBCategory> {
       .select("*")
       .single();
     if (error) throw new Error(`Category could not be saved: ${error.message}`);
+    revalidateProductPages();
     return mapCategoryRow(data);
   }
   const newCat: DBCategory = {
@@ -1133,6 +1134,7 @@ export async function updateCategory(id: number, data: Partial<DBCategory>): Pro
       .select("*")
       .maybeSingle();
     if (error) throw new Error(`Category could not be updated: ${error.message}`);
+    revalidateProductPages();
     return row ? mapCategoryRow(row) : null;
   }
   const index = memoryCategories.findIndex((c) => c.id === id);
@@ -1146,6 +1148,7 @@ export async function deleteCategory(id: number): Promise<boolean> {
   if (sb) {
     const { data, error } = await sb.from("categories").delete().eq("id", id).select("id");
     if (error) throw new Error(`Category could not be deleted: ${error.message}`);
+    revalidateProductPages();
     return Boolean(data && data.length > 0);
   }
   const initialLength = memoryCategories.length;
@@ -1194,6 +1197,7 @@ export async function createFaq(question: string, answer: string): Promise<DBFaq
       .select("*")
       .single();
     if (error) throw new Error(`FAQ could not be saved: ${error.message}`);
+    revalidateProductPages();
     return mapFaqRow(data);
   }
   const newFaq: DBFaq = {
@@ -1222,6 +1226,7 @@ export async function updateFaq(id: number, data: Partial<DBFaq>): Promise<DBFaq
       .select("*")
       .maybeSingle();
     if (error) throw new Error(`FAQ could not be updated: ${error.message}`);
+    revalidateProductPages();
     return row ? mapFaqRow(row) : null;
   }
   const index = memoryFaqs.findIndex((f) => f.id === id);
@@ -1235,6 +1240,7 @@ export async function deleteFaq(id: number): Promise<boolean> {
   if (sb) {
     const { data, error } = await sb.from("faqs").delete().eq("id", id).select("id");
     if (error) throw new Error(`FAQ could not be deleted: ${error.message}`);
+    revalidateProductPages();
     return Boolean(data && data.length > 0);
   }
   const initialLength = memoryFaqs.length;
@@ -1350,6 +1356,8 @@ export async function updateSettings(data: Partial<DBSettings>): Promise<DBSetti
     if (rows.length > 0) {
       const { error } = await sb.from("site_settings").upsert(rows, { onConflict: "key" });
       if (error) throw new Error(`Settings could not be saved: ${error.message}`);
+      // Contact details, announcement text and links appear on static pages.
+      revalidateProductPages();
     }
   }
 

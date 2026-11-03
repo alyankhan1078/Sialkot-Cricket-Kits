@@ -265,7 +265,7 @@ export default function CheckoutPage() {
             category: "Bespoke Custom Bat" as any,
             price: customBatOrder.payment.orderValue,
             stock: "Available" as const,
-            image: "/assets/products/bat-collection.webp",
+            image: "/assets/products/placeholder.webp",
             description: `Size: ${customBatOrder.bat.size}, Handle: ${customBatOrder.bat.handlePreference}, Profile: ${customBatOrder.bat.profile}, Weight: ${customBatOrder.bat.preferredWeight}`,
             shortDescription: "Custom manufactured English Willow bat",
             openingStatement: "Custom Bat",

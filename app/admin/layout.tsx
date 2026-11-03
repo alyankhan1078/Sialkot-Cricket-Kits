@@ -117,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="admin-body">
         <aside className="admin-sidebar">
           <div className="admin-brand">
-            <img src="/assets/brand/sialkot-cricket-kits-logo.png" alt="Sialkot Cricket Kits" />
+            <img src="/assets/brand/logo-160.webp" alt="Sialkot Cricket Kits" width={40} height={40} />
             <div>
               <strong>Sialkot Cricket</strong>
               <span>Admin Control Panel</span>

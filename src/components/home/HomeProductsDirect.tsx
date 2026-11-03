@@ -107,8 +107,9 @@ export function HomeProductsDirect({
   const displayedProducts = filteredProducts.slice(0, visibleCount);
 
   return (
-    <section className="home-direct-products-section" id="products">
+    <section className="home-direct-products-section" id="products" aria-labelledby="home-products-title">
       <div className="home-direct-container">
+        <h2 id="home-products-title" className="sr-only">Shop the catalogue</h2>
         {/* TOP CONTROL BAR */}
         <div className="home-products-toolbar">
           {/* Left: 3-icon button (Hamburger / Menu) to view catalogue categories */}
@@ -207,7 +208,7 @@ export function HomeProductsDirect({
             type="button"
             className="quick-cat-btn more-btn"
             onClick={() => setIsDrawerOpen(true)}
-            aria-label="Open full category list"
+            aria-label="More categories"
           >
             <span>+ More</span>
           </button>

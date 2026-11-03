@@ -214,8 +214,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
       {/* Header — white/light */}
       <header className="site-header">
-        <Link className="brand-lockup" href="/" aria-label="Sialkot Cricket Kits home">
-          <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="Sialkot Cricket Kits" />
+        <Link className="brand-lockup" href="/">
+          <img src="/assets/brand/logo-160.webp" alt="" width={58} height={58} decoding="async" />
           <span>
             <strong>{settings.businessName}</strong>
             <small>Performance equipment · Sialkot</small>
@@ -421,7 +421,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         >
           <div className="mobile-drawer-head">
             <div className="mobile-drawer-brand">
-              <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="" width={32} height={32} />
+              <img src="/assets/brand/logo-160.webp" alt="" width={32} height={32} decoding="async" />
               <strong>Menu</strong>
             </div>
             <button
@@ -601,7 +601,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       {/* Footer — white/light */}
       <footer className="site-footer">
         <div className="footer-brand">
-          <img src="/assets/brand/sialkot-cricket-kits-logo-transparent.png" alt="Sialkot Cricket Kits Logo" />
+          <img src="/assets/brand/logo-160.webp" alt="Sialkot Cricket Kits logo" width={80} height={80} loading="lazy" decoding="async" />
           <div>
             <strong>{settings.businessName}</strong>
             <span>Cricket equipment crafted in Sialkot</span>
@@ -645,10 +645,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <div>
-          <h3>Explore &amp; Policies</h3>
+          <h2>Explore &amp; Policies</h2>
           <Link href="/shop">Shop equipment</Link>
           <Link href="/custom-bat">Custom bat service</Link>
-          <Link href="/policies/international-agreement" style={{ color: "#f2a928", fontWeight: 600 }}>
+          <Link href="/policies/international-agreement" style={{ color: "#b45309", fontWeight: 600 }}>
             🛡️ International Agreement
           </Link>
           <Link href="/faq">FAQs</Link>
@@ -663,7 +663,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <div>
-          <h3>Follow &amp; Watch</h3>
+          <h2>Follow &amp; Watch</h2>
           <p style={{ fontSize: ".76rem", color: "var(--text-muted)", marginBottom: ".25rem", lineHeight: "1.4" }}>
             Live bat ping videos, grain inspection &amp; customer dispatches:
           </p>
@@ -697,7 +697,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <div>
-          <h3>Contact &amp; Factory</h3>
+          <h2>Contact &amp; Factory</h2>
           <a href={`tel:${settings.contactPhone.replace(/\s+/g, "")}`}>{settings.contactPhone}</a>
           <a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>
           <p style={{ whiteSpace: "pre-line" }}>{settings.factoryAddress}</p>
@@ -725,7 +725,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           href={whatsappUrl("Hello Sialkot Cricket Kits, I would like information about your products.")}
           target="_blank"
           rel="noreferrer"
-          aria-label="Chat with Sialkot Cricket Kits on WhatsApp"
+          aria-label={`WhatsApp ${settings.whatsappNumber}: chat with Sialkot Cricket Kits`}
         >
           WhatsApp <span>{settings.whatsappNumber}</span>
         </a>

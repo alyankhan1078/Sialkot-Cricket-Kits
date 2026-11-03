@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: "Custom Cricket Bat Configurator | Sialkot Cricket Kits",
     description:
       "Handcrafted English Willow cricket bats tailored to your exact specifications. Select willow grade, profile, handle, and 30% advance payment.",
-    images: ["/assets/products/bat-collection.webp"],
+    images: ["/assets/products/bats/special-edition/special-edition-front-a.webp"],
   },
 };
 

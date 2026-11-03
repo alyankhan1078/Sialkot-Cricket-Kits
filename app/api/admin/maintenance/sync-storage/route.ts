@@ -84,7 +84,7 @@ export async function POST(request: Request) {
           category: "English Willow Bats",
           price: 349,
           stock: "Available",
-          image: "/assets/products/bat-collection.webp",
+          image: "/assets/products/placeholder.webp",
           images: [],
           description: "Handcrafted from Grade 1+ English Willow, the CA Plus 15000 is engineered for extraordinary power, balance, and pick-up. Featuring massive 38-40mm edges, prominent spine, and authentic factory knocking.",
           featured: true,

@@ -103,7 +103,7 @@ export default function AdminNewProductPage() {
         stock: formData.stock,
         rightStock: formData.rightStock || undefined,
         leftStock: formData.leftStock || undefined,
-        image: uploadedImage?.url || "/assets/products/bat-collection.webp",
+        image: uploadedImage?.url || "/assets/products/placeholder.webp",
         images: uploadedImage ? [uploadedImage.url] : undefined,
         description: formData.description,
         featured: formData.featured,

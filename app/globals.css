@@ -11,7 +11,7 @@
   --paper: #fffdf8;
   --line: #ddd6cb;
   --muted: #6e6962;
-  --green: #168b52;
+  --green: #137a47; /* white text on it passes WCAG AA (5.4:1) */
 
   /* Light theme tokens */
   --surface: #ffffff;
@@ -21,7 +21,7 @@
   --border-strong: #d1d5db;
   --text-primary: #171717;
   --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --text-muted: #6b7280; /* readable on white (4.8:1); was #9ca3af (2.5:1) */
   --accent: #f2a928;
   --accent-light: #fff5de;
   --success-light: #e8f7ef;
@@ -2392,6 +2392,16 @@ textarea.checkout-input {
   gap: 16px; width: 100%; box-sizing: border-box;
 }
 
+/* "Show more" under the shop grid */
+.shop-show-more { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0 6px; }
+.shop-show-more p { margin: 0; color: #cbd5e1; font-size: .86rem; }
+.shop-show-more-btn {
+  min-height: 48px; padding: 0 28px; border-radius: 12px; border: 1.5px solid rgba(242, 169, 40, .6);
+  background: transparent; color: #ffffff; font-weight: 700; font-size: .95rem; cursor: pointer;
+}
+.shop-show-more-btn:hover { background: rgba(242, 169, 40, .12); border-color: #f2a928; }
+.shop-show-more-btn:focus-visible { outline: 3px solid #f2a928; outline-offset: 3px; }
+
 /* ──────────────────────────────────────────
    CUSTOM BAT ORDER CONFIGURATOR
    ────────────────────────────────────────── */
@@ -3897,7 +3907,7 @@ textarea.checkout-input {
 .footer-brand strong { text-transform: uppercase; letter-spacing: .1em; color: var(--text-primary); }
 .footer-brand span { margin-top: .3rem; color: var(--gold); font-size: .65rem; }
 .site-footer > div:not(.footer-brand) { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
-.site-footer h3 { margin: 0 0 .5rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .12em; font-size: .62rem; }
+.site-footer h2, .site-footer h3 { margin: 0 0 .5rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .12em; font-size: .62rem; }
 .site-footer a, .site-footer p { margin: 0; color: var(--text-secondary); font-size: .8rem; line-height: 1.65; }
 .site-footer a:hover { color: var(--text-primary); }
 .site-footer .footer-cta { color: var(--orange); font-weight: 850; }
@@ -8769,4 +8779,53 @@ textarea.checkout-input {
   .announcement-bar, .site-header, .site-footer, .floating-whatsapp, .cart-layer, .hero-actions, .product-card-actions, .shop-controls { display: none!important; }
   body { background: white; }
   .home-hero, .page-hero, .dark-section, .custom-cta, .split-feature { color: black; background: white; }
+}
+
+/* ──────────────────────────────────────────
+   READABILITY FIXES (WCAG AA colour contrast)
+   One place for the overrides, so earlier rules stay untouched.
+   ────────────────────────────────────────── */
+/* Homepage sections are dark: headings and eyebrows must be light. */
+.world-homepage .section-heading { color: #ffffff; }
+.world-homepage .section-eyebrow { color: #f2a928; }
+.custom-banner-steps .cb-step .cb-num { color: #0b0c10; }
+
+/* Gold/orange text on light backgrounds → darker shades of the same colours. */
+.brand-lockup small { color: #b45309; font-size: .58rem; }
+.site-footer .footer-cta { color: #c2410c; }
+.product-detail .mini-label,
+.product-detail-info .mini-label { color: #c2410c; }
+
+/* Green/amber badges on pale tints. */
+.service-included-badge,
+.advance-badge,
+.advance-pill { color: #166534; }
+.tier-badge.popular { color: #92400e; }
+.label-sync-badge { color: #15803d; }
+.pay-today-sub { color: #475569; }
+
+/* Gold button needs dark text (a generic link rule was turning it white). */
+a.checkout-primary-cta, .checkout-primary-cta { color: #0b0c10 !important; }
+
+/* Footer: tagline and social badges. */
+.site-footer .footer-brand > div > span { color: #b45309; }
+.site-footer .footer-brand .footer-soc-badge span { color: #ffffff; }
+.footer-soc-badge.fb { background: #1466d6; }
+.footer-soc-badge.insta { background: linear-gradient(135deg, #833ab4 0%, #c13584 100%); }
+.concierge-whatsapp-btn { background: var(--green); }
+
+/* Bigger tap targets for the custom bat add-on checkboxes. */
+.service-checkbox { width: 24px; height: 24px; }
+
+/* Product page: "Related products" heading stacks above the grid at a sensible size. */
+.related-section .section-intro { display: block; margin-bottom: 1.5rem; }
+.related-section .section-intro .eyebrow { margin-bottom: .5rem; color: #c2410c; }
+.related-section .section-intro h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.1; letter-spacing: -.02em; }
+.floating-whatsapp span { font-size: .62rem; opacity: 1; }
+
+/* Header on laptop widths (1181–1440px): tighter spacing so the WhatsApp button is not cut off. */
+@media (min-width: 1181px) and (max-width: 1440px) {
+  .site-header { gap: 1rem; padding-inline: 1.25rem; }
+  .desktop-nav { gap: 1.05rem; min-width: 0; }
+  .brand-lockup { min-width: 0; }
 }

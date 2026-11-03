@@ -63,6 +63,8 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           <img
             src={activeImage}
             alt={product.imageAlt || `${product.name} from Sialkot Cricket Kits`}
+            fetchPriority="high"
+            decoding="async"
           />
         </div>
         {gallery.length > 1 && (
@@ -75,7 +77,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
                 aria-label={`View ${product.name} image ${index + 1}`}
                 aria-pressed={activeImage === image}
               >
-                <img src={image} alt="" />
+                <img src={image} alt="" loading="lazy" decoding="async" width={80} height={80} />
               </button>
             ))}
           </div>
@@ -92,7 +94,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
                 fontSize: ".72rem",
                 fontWeight: 700,
                 background: "rgba(242, 169, 40, 0.15)",
-                color: "#f2a928",
+                color: "#92400e",
                 padding: "2px 8px",
                 borderRadius: 4,
                 border: "1px solid rgba(242, 169, 40, 0.3)",
@@ -107,7 +109,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
                 fontSize: ".72rem",
                 fontWeight: 700,
                 background: "rgba(34, 197, 94, 0.15)",
-                color: "#4ade80",
+                color: "#166534",
                 padding: "2px 8px",
                 borderRadius: 4,
                 border: "1px solid rgba(34, 197, 94, 0.3)",
@@ -128,7 +130,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
             style={{
               fontSize: ".96rem",
               fontWeight: 600,
-              color: "#f1f5f9",
+              color: "#1f2937",
               lineHeight: 1.5,
               marginBottom: 12,
               paddingLeft: 12,
@@ -140,7 +142,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
         )}
 
         {/* 3. Full Product Description */}
-        <p style={{ lineHeight: 1.65, fontSize: ".9rem", color: "#cbd5e1", margin: "12px 0 16px" }}>
+        <p style={{ lineHeight: 1.65, fontSize: ".9rem", color: "#374151", margin: "12px 0 16px" }}>
           {product.description}
         </p>
 
@@ -151,18 +153,18 @@ export function ProductDetailsClient({ product }: { product: Product }) {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
+              background: "#f8fafc",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               padding: "6px 12px",
               fontSize: ".82rem",
-              color: "#94a3b8",
+              color: "#4b5563",
               marginBottom: 16,
             }}
           >
             <Sparkles size={15} color="var(--primary, #f2a928)" />
             <span>
-              <strong style={{ color: "#fff" }}>Best For:</strong> {product.bestFor}
+              <strong style={{ color: "#111827" }}>Best For:</strong> {product.bestFor}
             </span>
           </div>
         )}
@@ -171,7 +173,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
         {product.highlights && product.highlights.length > 0 && (
           <div
             style={{
-              background: "rgba(0, 0, 0, 0.3)",
+              background: "#ffffff",
               border: "1px solid var(--border)",
               borderRadius: 10,
               padding: "14px 18px",
@@ -211,11 +213,11 @@ export function ProductDetailsClient({ product }: { product: Product }) {
                     alignItems: "flex-start",
                     gap: 8,
                     fontSize: ".84rem",
-                    color: "#cbd5e1",
+                    color: "#374151",
                     lineHeight: 1.45,
                   }}
                 >
-                  <Check size={15} color="#22c55e" style={{ marginTop: 2, flexShrink: 0 }} />
+                  <Check size={15} color="#15803d" style={{ marginTop: 2, flexShrink: 0 }} />
                   <span>{h}</span>
                 </li>
               ))}
@@ -253,12 +255,12 @@ export function ProductDetailsClient({ product }: { product: Product }) {
                     display: "grid",
                     gridTemplateColumns: "140px 1fr",
                     padding: "8px 14px",
-                    background: idx % 2 === 0 ? "rgba(255, 255, 255, 0.02)" : "rgba(0, 0, 0, 0.2)",
-                    borderBottom: idx < cleanSpecs.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
+                    background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                    borderBottom: idx < cleanSpecs.length - 1 ? "1px solid var(--border)" : "none",
                   }}
                 >
                   <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{s.label}</span>
-                  <span style={{ color: "#fff", fontWeight: 500 }}>{s.value}</span>
+                  <span style={{ color: "#111827", fontWeight: 600 }}>{s.value}</span>
                 </div>
               ))}
             </div>
@@ -346,14 +348,14 @@ export function ProductDetailsClient({ product }: { product: Product }) {
               border: "1px solid rgba(242, 169, 40, 0.25)",
               borderRadius: 8,
               fontSize: ".8rem",
-              color: "#fbbf24",
+              color: "#92400e",
               lineHeight: 1.45,
             }}
           >
             <strong>Beauty Processed Disclosure:</strong> Beauty Processed bats receive additional cosmetic finishing intended to create a cleaner and more uniform visual presentation. Surface marks may become less visible and the grain presentation may appear cleaner or more prominent. This cosmetic process does not, by itself, guarantee a higher natural grade or improved playing performance.{" "}
             <Link
               href="/policies/international-agreement"
-              style={{ color: "#38bdf8", textDecoration: "underline" }}
+              style={{ color: "#0369a1", textDecoration: "underline" }}
             >
               Read full policy agreement
             </Link>
@@ -369,7 +371,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
               border: "1px solid rgba(34, 197, 94, 0.25)",
               borderRadius: 8,
               fontSize: ".8rem",
-              color: "#86efac",
+              color: "#166534",
               lineHeight: 1.45,
             }}
           >
@@ -382,7 +384,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
             style={{
               marginTop: 14,
               padding: "10px 14px",
-              background: "rgba(255, 255, 255, 0.04)",
+              background: "#f8fafc",
               border: "1px solid var(--border)",
               borderRadius: 8,
               fontSize: ".78rem",
@@ -399,11 +401,11 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           style={{
             marginTop: 16,
             padding: "12px 16px",
-            background: "rgba(56, 189, 248, 0.08)",
-            border: "1px solid rgba(56, 189, 248, 0.25)",
+            background: "#f0f9ff",
+            border: "1px solid #bae6fd",
             borderRadius: 8,
             fontSize: ".82rem",
-            color: "#bae6fd",
+            color: "#0c4a6e",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -412,7 +414,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <HelpCircle size={17} color="#38bdf8" />
+            <HelpCircle size={17} color="#0369a1" />
             <span>Need help confirming the right size or specification?</span>
           </div>
           <a
@@ -420,7 +422,7 @@ export function ProductDetailsClient({ product }: { product: Product }) {
             target="_blank"
             rel="noreferrer"
             style={{
-              color: "#38bdf8",
+              color: "#0369a1",
               fontWeight: 700,
               textDecoration: "underline",
               display: "inline-flex",
