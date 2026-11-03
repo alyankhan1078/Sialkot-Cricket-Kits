@@ -320,7 +320,7 @@ async function phoneSendsSince(ms: number): Promise<{ digits: string; at: number
         .like("provider_message_id", "phone_%")
         .gte("sent_at", new Date(since).toISOString())
         .limit(1000);
-      if (!error && data) for (const d of data as any[]) byId.set(d.id, { digits: digitsOf(d.recipient), at: new Date(d.sent_at).getTime() });
+      if (!error && data) for (const d of data as { id: string; recipient: string; sent_at: string }[]) byId.set(d.id, { digits: digitsOf(d.recipient), at: new Date(d.sent_at).getTime() });
     }
   } catch {}
   return [...byId.values()].filter((s) => s.at >= since);
