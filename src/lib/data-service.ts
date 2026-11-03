@@ -1635,9 +1635,8 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  const local = memoryOrders.find((o) => o.id === id || o.orderReference === id);
-  if (local) return local;
-
+  // Database first: a memory copy can be stale when several server instances run,
+  // and edits built on a stale copy would overwrite newer notes.
   try {
     const sb = getAdminSupabase();
     if (sb) {
@@ -1667,7 +1666,7 @@ export async function getOrderById(id: string): Promise<DBOrder | null> {
     }
   } catch {}
 
-  return null;
+  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
 }
 
 export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
@@ -1750,27 +1749,19 @@ export async function createOrder(
 }
 
 export async function updateOrder(id: string, data: Partial<DBOrder>): Promise<DBOrder | null> {
-  const index = memoryOrders.findIndex((o) => o.id === id);
   const nowStr = new Date().toISOString();
-  let updated: DBOrder;
-
-  if (index !== -1) {
-    memoryOrders[index] = {
-      ...memoryOrders[index],
-      ...data,
-      updatedAt: nowStr,
-    };
-    updated = memoryOrders[index];
-  } else {
-    const existing = await getOrderById(id);
-    if (!existing) return null;
-    updated = {
-      ...existing,
-      ...data,
-      updatedAt: nowStr,
-    };
-    memoryOrders.unshift(updated);
-  }
+  const index = memoryOrders.findIndex((o) => o.id === id);
+  // Merge onto the freshest copy (database first), never onto a possibly stale memory copy.
+  const base = getAdminSupabase() ? await getOrderById(id) : index !== -1 ? memoryOrders[index] : await getOrderById(id);
+  if (!base) return null;
+  const updated: DBOrder = {
+    ...(index !== -1 ? memoryOrders[index] : {}),
+    ...base,
+    ...data,
+    updatedAt: nowStr,
+  };
+  if (index !== -1) memoryOrders[index] = updated;
+  else memoryOrders.unshift(updated);
 
   // Sync update to Supabase with CHECK constraint compliant status
   try {
@@ -2185,15 +2176,7 @@ export async function verifyAndConfirmOrder(
     }
   } catch {}
 
-  // 4. Dispatch Automated Confirmation Notifications if not already confirmed
-  if (!alreadyConfirmed && updatedOrder) {
-    try {
-      const { sendOrderConfirmedNotifications } = await import("./notifications.ts");
-      sendOrderConfirmedNotifications(updatedOrder).catch((err) => {
-        console.warn("[Confirmation Notification Dispatch Notice]:", err);
-      });
-    } catch {}
-  }
+  // 4. Confirmation messages are sent by the API route (once, after the response).
 
   return {
     success: true,
@@ -2305,12 +2288,17 @@ export async function rejectPaymentSubmission(
     return { success: false, error: `Payment rejection could not be saved: ${err instanceof Error ? err.message : "database error"}` };
   }
 
-  // Update Order
-  await updateOrder(submission.orderId, {
-    paymentStatus: newStatus,
-    status: newStatus,
-    notes: `${memoryOrders.find(o => o.id === submission.orderId)?.notes || ""}\n[Admin Review]: Payment rejected by ${adminEmail}. Reason: ${rejectionReason}`
-  });
+  // Update Order: append to the order's real notes (never replace them).
+  const orderNow = await getOrderById(submission.orderId);
+  if (orderNow) {
+    await updateOrder(submission.orderId, {
+      paymentStatus: newStatus,
+      status: newStatus,
+      notes: `${orderNow.notes || ""}\n[${nowStr.slice(0, 16).replace("T", " ")} UTC] ${
+        requestReupload ? "New payment screenshot requested" : "Payment rejected"
+      } by ${adminEmail} — ${rejectionReason}`,
+    });
+  }
 
   // Record audit history
   memoryPaymentStatusHistory.unshift({
@@ -2325,6 +2313,93 @@ export async function rejectPaymentSubmission(
   });
 
   return { success: true, submission };
+}
+
+/**
+ * Takes the tick off a checked payment: the order goes back to "needs checking".
+ * Nothing is deleted; the reason is written to the order history and the audit table.
+ */
+export async function reopenPaymentSubmission(
+  submissionId: string,
+  adminEmail: string,
+  reason: string
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; order?: DBOrder; error?: string }> {
+  const submission = (await getPaymentSubmissionById(submissionId)) || memoryPaymentSubmissions.find((p) => p.id === submissionId) || null;
+  if (!submission) return { success: false, error: "Payment submission not found" };
+  if (submission.status !== "payment_verified") return { success: false, error: "Only a checked (ticked) payment can be reopened." };
+
+  const order = await getOrderById(submission.orderId);
+  if (!order) return { success: false, error: "Associated order could not be found." };
+  const blocked = ["ready_for_dispatch", "dispatched", "delivered", "completed", "cancelled", "refunded"];
+  if (blocked.includes(String(order.status).toLowerCase())) {
+    return { success: false, error: "This order is already packed or closed, so its payment can no longer be reopened." };
+  }
+
+  const nowStr = new Date().toISOString();
+  const cleanReason = reason.replace(/\s+/g, " ").trim().slice(0, 300);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { error } = await sb
+        .from("payment_submissions")
+        .update({ status: "payment_submitted", verified_by: null, verified_at: null, updated_at: nowStr })
+        .eq("id", submission.id);
+      if (error) throw new Error(error.message);
+    }
+  } catch (err) {
+    return { success: false, error: `Could not reopen the payment: ${err instanceof Error ? err.message : "database error"}` };
+  }
+
+  const reopened: DBPaymentSubmission = { ...submission, status: "payment_submitted", verifiedBy: undefined, verifiedAt: undefined, updatedAt: nowStr };
+  const mIndex = memoryPaymentSubmissions.findIndex((p) => p.id === submission.id);
+  if (mIndex !== -1) memoryPaymentSubmissions[mIndex] = reopened;
+
+  const updatedOrder = await updateOrder(order.id, {
+    status: "payment_submitted" as any,
+    paymentStatus: "payment_submitted" as any,
+    notes: `${order.notes || ""}\n[${nowStr.slice(0, 16).replace("T", " ")} UTC] Payment reopened (tick removed) by ${adminEmail} — ${cleanReason}`,
+  });
+
+  const history: DBPaymentStatusHistory = {
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: submission.id,
+    orderId: submission.orderId,
+    oldStatus: "payment_verified",
+    newStatus: "payment_submitted",
+    changedBy: adminEmail,
+    internalNote: `Reopened: ${cleanReason}`,
+    createdAt: nowStr,
+  };
+  memoryPaymentStatusHistory.unshift(history);
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("payment_status_history").insert({
+        id: history.id,
+        payment_submission_id: history.paymentSubmissionId,
+        order_id: history.orderId,
+        old_status: history.oldStatus,
+        new_status: history.newStatus,
+        changed_by: history.changedBy,
+        internal_note: history.internalNote || null,
+        created_at: history.createdAt,
+      });
+    }
+  } catch {}
+
+  return { success: true, submission: reopened, order: updatedOrder || order };
+}
+
+/** Sets the owner's short note on an order (one "Admin Note:" line; other notes are kept). */
+export async function setOrderAdminNote(orderId: string, note: string): Promise<{ success: boolean; order?: DBOrder; error?: string }> {
+  const order = await getOrderById(orderId);
+  if (!order) return { success: false, error: "Order not found." };
+  const clean = note.replace(/\s+/g, " ").trim().slice(0, 300);
+  const lines = (order.notes || "").split("\n").filter((l) => !/^Admin Note:/.test(l.trim()));
+  if (clean) lines.push(`Admin Note: ${clean}`);
+  const updated = await updateOrder(orderId, { notes: lines.join("\n") });
+  return updated ? { success: true, order: updated } : { success: false, error: "Could not save the note." };
 }
 
 export async function getPaymentStatusHistory(submissionIdOrOrderId: string): Promise<DBPaymentStatusHistory[]> {

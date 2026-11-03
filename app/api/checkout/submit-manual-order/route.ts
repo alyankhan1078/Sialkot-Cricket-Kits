@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   createOrder,
   getProductById,
@@ -523,7 +523,7 @@ export async function POST(request: Request) {
       notes: orderNotes,
     });
 
-    await createPaymentSubmission({
+    const paymentSubmission = await createPaymentSubmission({
       id: `psub_${orderId}`,
       orderId,
       paymentMethod: `UBL Bank Transfer (${provider})`,
@@ -542,16 +542,15 @@ export async function POST(request: Request) {
       customerNote: customerNote || undefined,
     });
 
-    // ── Non-blocking Asynchronous Notification Dispatch (Never blocks or fails checkout) ──
-    try {
-      import("@/src/lib/notifications")
-        .then(({ sendOrderReceivedNotifications }) => {
-          sendOrderReceivedNotifications(newOrder).catch((err) => {
-            console.warn("[Order Received Notification Notice]:", err);
-          });
-        })
-        .catch(() => {});
-    } catch {}
+    // ── Messages to the customer and the owner, sent after the response so checkout never waits or fails ──
+    after(async () => {
+      try {
+        const { sendOrderReceivedNotifications } = await import("@/src/lib/notifications");
+        await sendOrderReceivedNotifications(newOrder, paymentSubmission);
+      } catch (err) {
+        console.warn("[Order Received Notification Notice]:", err);
+      }
+    });
 
     // ── Immediate Clean Success Response ──
     return NextResponse.json(

@@ -1,6 +1,17 @@
-import { formatPrice } from "@/src/data/products";
 import type { DBOrder, DBPaymentSubmission } from "@/src/lib/data-service";
 import { getAdminSupabase } from "@/src/lib/supabase";
+import { buildMessage, type MessageEvent, type MessageInput, type MessageLanguage } from "@/src/lib/order-messages";
+import {
+  addressOf,
+  isCustom,
+  itemsSummary,
+  money,
+  paidOf,
+  planLabelOf,
+  reportedOf,
+  sheetBalanceOf,
+  trackingOf,
+} from "@/src/lib/admin-orders";
 
 export interface NotificationLog {
   id: string;
@@ -142,8 +153,8 @@ export async function sendEmailDirect({
         return { success: true, providerMessageId: json.id };
       }
       return { success: false, error: json.message || `Resend HTTP error ${res.status}` };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Resend API connection failed" };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? err.message : "Resend API connection failed" };
     }
   }
 
@@ -168,8 +179,8 @@ export async function sendEmailDirect({
       });
 
       return { success: true, providerMessageId: info.messageId };
-    } catch (err: any) {
-      return { success: false, error: err.message || "SMTP dispatch error" };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? err.message : "SMTP dispatch error" };
     }
   }
 
@@ -179,374 +190,236 @@ export async function sendEmailDirect({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WHATSAPP NOTIFICATION SENDER (Meta Cloud API / Twilio)
+// WHATSAPP SENDER (Meta Cloud API: approved templates or text; Twilio fallback)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function sendWhatsAppDirect({
   toPhone,
   message,
+  template,
 }: {
   toPhone: string;
   message: string;
+  /** Business-initiated messages need an approved template; text only works inside the 24-hour reply window. */
+  template?: { name: string; params: string[] };
 }): Promise<NotificationSendResult> {
-  // Normalize E.164 phone
   const cleanPhone = toPhone.replace(/[^0-9+]/g, "").replace(/^00/, "+");
   const metaAccessToken = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_WHATSAPP_TOKEN;
   const metaPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.META_PHONE_NUMBER_ID;
+  const useTemplates = process.env.WHATSAPP_TEMPLATES_APPROVED === "1";
+  const templatePrefix = process.env.WHATSAPP_TEMPLATE_PREFIX || "";
+  const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en";
 
   const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
   const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioWhatsAppFrom = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
+  const twilioWhatsAppFrom = process.env.TWILIO_WHATSAPP_FROM || "";
 
-  // 1. Meta WhatsApp Cloud API
   if (metaAccessToken && metaPhoneNumberId) {
     try {
-      const digitsOnly = cleanPhone.replace(/\+/g, "");
-      const res = await fetch(`https://graph.facebook.com/v19.0/${metaPhoneNumberId}/messages`, {
+      const to = cleanPhone.replace(/\+/g, "");
+      const payload =
+        useTemplates && template
+          ? {
+              messaging_product: "whatsapp",
+              to,
+              type: "template",
+              template: {
+                name: `${templatePrefix}${template.name}`,
+                language: { code: templateLanguage },
+                components: [
+                  {
+                    type: "body",
+                    // Template parameters may not contain new lines or tabs.
+                    parameters: template.params.map((p) => ({ type: "text", text: String(p).replace(/\s+/g, " ").trim().slice(0, 900) || "-" })),
+                  },
+                ],
+              },
+            }
+          : { messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { preview_url: true, body: message } };
+      const res = await fetch(`https://graph.facebook.com/v21.0/${metaPhoneNumberId}/messages`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${metaAccessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: digitsOnly,
-          type: "text",
-          text: { preview_url: true, body: message },
-        }),
+        headers: { Authorization: `Bearer ${metaAccessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-
       const json = await res.json().catch(() => ({}));
-      if (res.ok && json.messages?.[0]?.id) {
-        return { success: true, providerMessageId: json.messages[0].id };
-      }
+      if (res.ok && json.messages?.[0]?.id) return { success: true, providerMessageId: json.messages[0].id };
       return { success: false, error: json.error?.message || `Meta WhatsApp API error ${res.status}` };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Meta WhatsApp API request failed" };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? err.message : "Meta WhatsApp API request failed" };
     }
   }
 
-  // 2. Twilio WhatsApp API
-  if (twilioAccountSid && twilioAuthToken) {
+  if (twilioAccountSid && twilioAuthToken && twilioWhatsAppFrom) {
     try {
       const formattedTo = cleanPhone.startsWith("+") ? `whatsapp:${cleanPhone}` : `whatsapp:+${cleanPhone}`;
-      const authHeader = `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`;
       const params = new URLSearchParams();
       params.append("From", twilioWhatsAppFrom.startsWith("whatsapp:") ? twilioWhatsAppFrom : `whatsapp:${twilioWhatsAppFrom}`);
       params.append("To", formattedTo);
       params.append("Body", message);
-
       const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`, {
         method: "POST",
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+        headers: { Authorization: `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
         body: params.toString(),
       });
-
       const json = await res.json().catch(() => ({}));
-      if (res.ok && json.sid) {
-        return { success: true, providerMessageId: json.sid };
-      }
+      if (res.ok && json.sid) return { success: true, providerMessageId: json.sid };
       return { success: false, error: json.message || `Twilio HTTP error ${res.status}` };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Twilio WhatsApp request failed" };
+    } catch (err) {
+      return { success: false, error: err instanceof Error && err.message ? err.message : "Twilio WhatsApp request failed" };
     }
   }
 
-  // 3. Graceful Simulated Mode
-  console.log(`[WhatsApp Notice]: Prepared automated WhatsApp message for ${cleanPhone}: "${message.slice(0, 80)}..."`);
+  // No keys yet: nothing is sent, the attempt is logged as "simulated".
+  console.log(`[WhatsApp Notice]: not configured, prepared message for ${cleanPhone.slice(0, 5)}…`);
   return { success: true, simulated: true, providerMessageId: `sim_wa_${Date.now()}` };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. ORDER RECEIVED NOTIFICATIONS (Submitted → Pending Verification)
+// ORDER MESSAGES (customer + owner)
 // ─────────────────────────────────────────────────────────────────────────────
-export async function sendOrderReceivedNotifications(
-  order: DBOrder,
-  _paymentSubmission?: DBPaymentSubmission
-): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult; adminAlertResult: NotificationSendResult }> {
-  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}?token=${encodeURIComponent(order.trackingToken || "")}`;
-  const adminReviewLink = `https://sialkotcricketkits.com/admin/orders?search=${encodeURIComponent(order.id)}`;
-  const totalFormatted = formatPrice(order.totalAmount);
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://sialkotcricketkits.com").replace(/\/$/, "");
+const OWNER_EMAIL = process.env.BUSINESS_EMAIL || "sialkotcricketkits@gmail.com";
+const OWNER_WHATSAPP = process.env.BUSINESS_WHATSAPP || "+923231438214";
 
-  // ── A. Customer Email (Order Received) ──
-  let customerEmailResult: NotificationSendResult = { success: false, error: "No email provided" };
-  if (order.customerEmail) {
-    const subject = `We Have Received Your Order — Sialkot Cricket Kits #${order.id}`;
-    const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${subject}</title></head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0c1017; color: #ffffff; margin: 0; padding: 24px;">
-  <table width="100%" style="max-width: 620px; margin: 0 auto; background-color: #141922; border-radius: 14px; border: 1px solid #2a3240; overflow: hidden;">
-    <tr>
-      <td style="background: linear-gradient(135deg, #1e2634 0%, #0f141d 100%); padding: 28px 24px; text-align: center; border-bottom: 2px solid #f2a928;">
-        <h1 style="color: #f2a928; font-size: 22px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px;">Sialkot Cricket Kits</h1>
-        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 2px;">Order Received &amp; Under Verification</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 28px 24px; font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-        <p style="color: #ffffff; font-size: 16px; margin: 0 0 16px;">Hello <strong>${order.customerName}</strong>,</p>
-        <p>Thank you for placing your order with <strong>Sialkot Cricket Kits</strong>.</p>
-        <p>We have successfully received your order and payment evidence.</p>
-        
-        <table width="100%" style="background-color: #181f2b; border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 14px;">
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Order ID:</td>
-            <td style="color: #f2a928; font-weight: 700; text-align: right; padding: 4px 8px;">#${order.id}</td>
-          </tr>
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Order Total:</td>
-            <td style="color: #ffffff; font-weight: 700; text-align: right; padding: 4px 8px;">${totalFormatted}</td>
-          </tr>
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Current Status:</td>
-            <td style="color: #f59e0b; font-weight: 700; text-align: right; padding: 4px 8px; text-transform: uppercase;">Payment Verification Pending</td>
-          </tr>
-        </table>
+/** Messages go to real customers only when NOTIFY_LIVE=1. Until then every customer message goes to the owner (test mode). */
+const isLive = () => process.env.NOTIFY_LIVE === "1";
+const language = (): MessageLanguage => (process.env.MESSAGE_LANGUAGE === "ur" ? "ur" : "en");
 
-        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 22px; font-size: 13.5px; color: #fde68a;">
-          ⚠️ <strong>Please note:</strong> Your order is not confirmed until our finance team verifies the payment in our official UBL account. We will email and message you again immediately after verification.
-        </div>
+type CustomerEvent = Exclude<MessageEvent, "admin_alert">;
 
-        <p style="margin-bottom: 24px; text-align: center;">
-          <a href="${trackingLink}" style="display: inline-block; background-color: #0284c7; color: #ffffff; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px;">
-            📄 View Order Details &amp; Live Tracking
-          </a>
-        </p>
-
-        <p style="font-size: 13.5px; color: #94a3b8; border-top: 1px solid #2d3748; padding-top: 16px;">
-          For assistance, contact our master craftsmen on WhatsApp:<br>
-          <strong style="color: #22c55e;">+92 323 1438214</strong>
-        </p>
-      </td>
-    </tr>
-    <tr>
-      <td style="background-color: #0f141d; padding: 16px; text-align: center; border-top: 1px solid #2a3240; color: #64748b; font-size: 12px;">
-        <strong>Sialkot Cricket Kits</strong> · Handcrafted in Sialkot, Pakistan · Worldwide Delivery Available
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `;
-
-    const text = `Hello ${order.customerName},\n\nThank you for placing your order with Sialkot Cricket Kits.\nWe have successfully received your order and payment evidence.\n\nOrder ID: #${order.id}\nOrder Total: ${totalFormatted}\nCurrent Status: Payment Verification Pending\n\nPlease note that your order is not confirmed until our team verifies the payment. We will email and message you again after verification.\n\nYou can track your order here:\n${trackingLink}\n\nFor assistance, contact us on WhatsApp:\n+92 323 1438214\n\nSialkot Cricket Kits\nHandcrafted in Sialkot, Pakistan\nWorldwide Delivery Available`;
-
-    customerEmailResult = await sendEmailDirect({
-      to: order.customerEmail,
-      subject,
-      html,
-      text,
-    });
-
-    await saveNotificationLog({
-      orderId: order.id,
-      type: "order_received",
-      channel: "email",
-      recipient: order.customerEmail,
-      status: customerEmailResult.success ? (customerEmailResult.simulated ? "simulated" : "sent") : "failed",
-      provider: customerEmailResult.simulated ? "simulated_logger" : "resend_smtp",
-      providerMessageId: customerEmailResult.providerMessageId,
-      errorReason: customerEmailResult.error,
-    });
-  }
-
-  // ── B. Customer WhatsApp (Order Received) ──
-  let customerWhatsAppResult: NotificationSendResult = { success: false, error: "No phone provided" };
-  if (order.customerPhone) {
-    const waText = `Hello ${order.customerName},
-
-We have received your Sialkot Cricket Kits order.
-
-Order ID: #${order.id}
-Order Total: ${totalFormatted}
-Status: Payment Verification Pending
-
-Your payment evidence is being reviewed. Your order is not yet confirmed. We will notify you after verification.
-
-Track your order:
-${trackingLink}
-
-Sialkot Cricket Kits
-+92 323 1438214`;
-
-    customerWhatsAppResult = await sendWhatsAppDirect({
-      toPhone: order.customerPhone,
-      message: waText,
-    });
-
-    await saveNotificationLog({
-      orderId: order.id,
-      type: "order_received",
-      channel: "whatsapp",
-      recipient: order.customerPhone,
-      status: customerWhatsAppResult.success ? (customerWhatsAppResult.simulated ? "simulated" : "sent") : "failed",
-      provider: customerWhatsAppResult.simulated ? "simulated_logger" : "meta_twilio",
-      providerMessageId: customerWhatsAppResult.providerMessageId,
-      errorReason: customerWhatsAppResult.error,
-    });
-  }
-
-  // ── C. Admin Notifications (Email & WhatsApp) ──
-  const adminEmail = "sialkotcricketkits@gmail.com";
-  const adminSubject = `🚨 New Manual Order Submitted: #${order.id} (£${order.totalAmount}) — Verification Needed`;
-  const adminHtml = `
-    <div style="font-family: sans-serif; padding: 20px; color: #1e293b;">
-      <h2 style="color: #b45309; margin-top: 0;">🏏 New Order Received &amp; Payment Verification Needed</h2>
-      <p>A new customer has placed an order and uploaded bank transfer evidence.</p>
-      <ul>
-        <li><strong>Order ID:</strong> #${order.id}</li>
-        <li><strong>Customer Name:</strong> ${order.customerName}</li>
-        <li><strong>WhatsApp:</strong> ${order.customerPhone || "N/A"}</li>
-        <li><strong>Email:</strong> ${order.customerEmail || "N/A"}</li>
-        <li><strong>Country / City:</strong> ${order.country} / ${order.city || ""}</li>
-        <li><strong>Total Amount:</strong> £${order.totalAmount}</li>
-        <li><strong>Payment Reference:</strong> ${order.transferReference || "N/A"}</li>
-      </ul>
-      <p><a href="${adminReviewLink}" style="background: #16a34a; color: #fff; padding: 10px 18px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review in Admin Dashboard →</a></p>
-    </div>
-  `;
-
-  const adminAlertResult = await sendEmailDirect({
-    to: adminEmail,
-    subject: adminSubject,
-    html: adminHtml,
-  });
-
-  await saveNotificationLog({
-    orderId: order.id,
-    type: "admin_alert",
-    channel: "email",
-    recipient: adminEmail,
-    status: adminAlertResult.success ? (adminAlertResult.simulated ? "simulated" : "sent") : "failed",
-    provider: adminAlertResult.simulated ? "simulated_logger" : "resend_smtp",
-    providerMessageId: adminAlertResult.providerMessageId,
-    errorReason: adminAlertResult.error,
-  });
-
-  return { customerEmailResult, customerWhatsAppResult, adminAlertResult };
+/** The notification_logs.type column only accepts these four values. */
+function logTypeFor(event: MessageEvent): NotificationLog["type"] {
+  if (event === "order_received") return "order_received";
+  if (event === "payment_confirmed") return "order_confirmed";
+  if (event === "admin_alert") return "admin_alert";
+  return "status_update";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. ORDER CONFIRMED NOTIFICATIONS (Admin Verified & Confirmed)
-// ─────────────────────────────────────────────────────────────────────────────
-export async function sendOrderConfirmedNotifications(
-  order: DBOrder
-): Promise<{ customerEmailResult: NotificationSendResult; customerWhatsAppResult: NotificationSendResult }> {
-  const trackingLink = `https://sialkotcricketkits.com/checkout/invoice/${encodeURIComponent(order.id)}?token=${encodeURIComponent(order.trackingToken || "")}`;
-  const totalFormatted = formatPrice(order.totalAmount);
+/** Test orders send no messages at all, to the customer or to the owner. */
+export function isTestOrder(order: DBOrder): boolean {
+  const email = (order.customerEmail || "").toLowerCase();
+  return (
+    /@(example\.(com|org|net)|test\.com|mailinator\.com)$/.test(email) ||
+    /\[test order\]/i.test(order.notes || "") ||
+    /^test\b/i.test((order.customerName || "").trim())
+  );
+}
 
-  // ── A. Customer Confirmation Email ──
-  let customerEmailResult: NotificationSendResult = { success: false, error: "No email provided" };
-  if (order.customerEmail) {
-    const subject = `Your Order Is Confirmed — Sialkot Cricket Kits #${order.id}`;
-    const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${subject}</title></head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0c1017; color: #ffffff; margin: 0; padding: 24px;">
-  <table width="100%" style="max-width: 620px; margin: 0 auto; background-color: #141922; border-radius: 14px; border: 1px solid #2a3240; overflow: hidden;">
-    <tr>
-      <td style="background: linear-gradient(135deg, #14532d 0%, #052e16 100%); padding: 28px 24px; text-align: center; border-bottom: 2px solid #22c55e;">
-        <h1 style="color: #4ade80; font-size: 22px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px;">Sialkot Cricket Kits</h1>
-        <p style="color: #86efac; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 2px;">Official Order Confirmation</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 28px 24px; font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-        <p style="color: #ffffff; font-size: 16px; margin: 0 0 16px;">Hello <strong>${order.customerName}</strong>,</p>
-        <p>Your payment has been <strong>successfully verified</strong>, and your order is now <strong>confirmed</strong>.</p>
-        
-        <table width="100%" style="background-color: #181f2b; border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 14px;">
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Order ID:</td>
-            <td style="color: #f2a928; font-weight: 700; text-align: right; padding: 4px 8px;">#${order.id}</td>
-          </tr>
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Status:</td>
-            <td style="color: #4ade80; font-weight: 800; text-align: right; padding: 4px 8px; text-transform: uppercase;">Order Confirmed</td>
-          </tr>
-          <tr>
-            <td style="color: #94a3b8; padding: 4px 8px;">Total Verified:</td>
-            <td style="color: #ffffff; font-weight: 700; text-align: right; padding: 4px 8px;">${totalFormatted}</td>
-          </tr>
-        </table>
+function asSheetOrder(order: DBOrder, submission?: DBPaymentSubmission | null) {
+  return { ...order, paymentSubmission: submission ?? null } as Parameters<typeof reportedOf>[0];
+}
 
-        <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 22px; font-size: 14px; color: #bbf7d0;">
-          🏏 <strong>Workshop Notice:</strong> Our master craftsmen will now begin preparing your equipment. Before dispatch, we will record and send your live ping video demo on WhatsApp. We will notify you again when it is ready for courier collection.
-        </div>
+export function messageInputFor(order: DBOrder, submission?: DBPaymentSubmission | null, extra: Partial<MessageInput> = {}): MessageInput {
+  const o = asSheetOrder(order, submission);
+  return {
+    orderId: order.id,
+    customerName: order.customerName,
+    country: order.country,
+    items: itemsSummary(order.items || []),
+    total: money(Number(order.totalAmount) || 0),
+    reported: reportedOf(o) || undefined,
+    plan: planLabelOf(o),
+    paid: money(paidOf(o)),
+    balance: money(sheetBalanceOf(o).amount),
+    reason: submission?.rejectionReason,
+    tracking: trackingOf(o),
+    isCustomBat: isCustom(o),
+    orderLink: `${SITE_URL}/checkout/invoice/${encodeURIComponent(order.id)}${order.trackingToken ? `?token=${encodeURIComponent(order.trackingToken)}` : ""}`,
+    adminLink: `${SITE_URL}/admin/orders?search=${encodeURIComponent(order.id)}`,
+    ...extra,
+  };
+}
 
-        <p style="margin-bottom: 24px; text-align: center;">
-          <a href="${trackingLink}" style="display: inline-block; background-color: #16a34a; color: #ffffff; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px;">
-            📄 View Official Invoice &amp; Track Status
-          </a>
-        </p>
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-        <p style="font-size: 13.5px; color: #94a3b8;">
-          Thank you for choosing <strong>Sialkot Cricket Kits</strong>.<br>
-          Handcrafted in Sialkot, Pakistan · Worldwide Delivery
-        </p>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `;
+/** Clean, light, mobile-friendly email built from the same text as the WhatsApp message. */
+export function renderEmailHtml(heading: string, text: string): string {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((block) =>
+      esc(block)
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#c2410c;font-weight:600;word-break:break-all">$1</a>')
+        .replace(/\n/g, "<br>")
+    )
+    .map((html) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937">${html}</p>`)
+    .join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(heading)}</title></head>
+<body style="margin:0;padding:24px 12px;background:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
+<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e7e5e4;border-radius:14px;overflow:hidden">
+<tr><td style="padding:20px 24px;border-bottom:3px solid #f2a928">
+<img src="${SITE_URL}/assets/brand/logo-email.png" width="56" height="56" alt="Sialkot Cricket Kits" style="vertical-align:middle;margin-right:10px">
+<span style="font-size:17px;font-weight:800;color:#111827;vertical-align:middle">Sialkot Cricket Kits</span></td></tr>
+<tr><td style="padding:24px"><h1 style="margin:0 0 16px;font-size:21px;color:#111827">${esc(heading)}</h1>${paragraphs}</td></tr>
+<tr><td style="padding:14px 24px;background:#fafaf9;border-top:1px solid #e7e5e4;font-size:12.5px;color:#57534e">
+Sialkot Cricket Kits · Sialkot, Pakistan · WhatsApp +92 323 1438214</td></tr>
+</table></body></html>`;
+}
 
-    const text = `Hello ${order.customerName},\n\nYour payment has been successfully verified, and your order is now confirmed.\n\nOrder ID: #${order.id}\nStatus: Order Confirmed\n\nOur team will now begin preparing your order. We will notify you again when it is ready for dispatch.\n\nThank you for choosing Sialkot Cricket Kits.\n\nTrack order:\n${trackingLink}`;
+async function logResult(orderId: string, event: MessageEvent, channel: "email" | "whatsapp", recipient: string, r: NotificationSendResult, provider: string) {
+  await saveNotificationLog({
+    orderId,
+    type: logTypeFor(event),
+    channel,
+    recipient,
+    status: r.success ? (r.simulated ? "simulated" : "sent") : "failed",
+    provider: r.simulated ? "simulated_logger" : provider,
+    providerMessageId: r.providerMessageId,
+    errorReason: r.error,
+  });
+}
 
-    customerEmailResult = await sendEmailDirect({
-      to: order.customerEmail,
-      subject,
-      html,
-      text,
+/** Sends one customer event by email and WhatsApp, and logs the real result of each. */
+export async function notifyOrderEvent(
+  order: DBOrder,
+  event: CustomerEvent,
+  submission?: DBPaymentSubmission | null,
+  extra: Partial<MessageInput> = {}
+): Promise<{ skipped?: string; email?: NotificationSendResult; whatsapp?: NotificationSendResult }> {
+  if (isTestOrder(order)) return { skipped: "test order" };
+  const built = buildMessage(event, messageInputFor(order, submission, extra), language());
+  const live = isLive();
+  const toEmail = live ? order.customerEmail : OWNER_EMAIL;
+  const toPhone = live ? order.customerPhone : OWNER_WHATSAPP;
+  const testTag = live ? "" : `[TEST → ${order.customerEmail || order.customerPhone || "customer"}] `;
+  const out: { email?: NotificationSendResult; whatsapp?: NotificationSendResult } = {};
+
+  if (toEmail) {
+    out.email = await sendEmailDirect({
+      to: toEmail,
+      subject: `${testTag}${built.subject}`,
+      html: renderEmailHtml(built.heading, built.text),
+      text: built.text,
     });
-
-    await saveNotificationLog({
-      orderId: order.id,
-      type: "order_confirmed",
-      channel: "email",
-      recipient: order.customerEmail,
-      status: customerEmailResult.success ? (customerEmailResult.simulated ? "simulated" : "sent") : "failed",
-      provider: customerEmailResult.simulated ? "simulated_logger" : "resend_smtp",
-      providerMessageId: customerEmailResult.providerMessageId,
-      errorReason: customerEmailResult.error,
-    });
+    await logResult(order.id, event, "email", toEmail, out.email, live ? "email" : "email_test_to_owner");
   }
-
-  // ── B. Customer Confirmation WhatsApp ──
-  let customerWhatsAppResult: NotificationSendResult = { success: false, error: "No phone provided" };
-  if (order.customerPhone) {
-    const waText = `Hello ${order.customerName},
-
-Your payment has been verified successfully.
-
-Your Sialkot Cricket Kits order #${order.id} is now CONFIRMED.
-
-We will notify you when your order is ready for dispatch.
-
-Thank you for choosing Sialkot Cricket Kits.`;
-
-    customerWhatsAppResult = await sendWhatsAppDirect({
-      toPhone: order.customerPhone,
-      message: waText,
+  if (toPhone) {
+    out.whatsapp = await sendWhatsAppDirect({
+      toPhone,
+      message: `${testTag}${built.text}`,
+      template: { name: built.templateName, params: built.templateParams },
     });
-
-    await saveNotificationLog({
-      orderId: order.id,
-      type: "order_confirmed",
-      channel: "whatsapp",
-      recipient: order.customerPhone,
-      status: customerWhatsAppResult.success ? (customerWhatsAppResult.simulated ? "simulated" : "sent") : "failed",
-      provider: customerWhatsAppResult.simulated ? "simulated_logger" : "meta_twilio",
-      providerMessageId: customerWhatsAppResult.providerMessageId,
-      errorReason: customerWhatsAppResult.error,
-    });
+    await logResult(order.id, event, "whatsapp", toPhone, out.whatsapp, live ? "whatsapp" : "whatsapp_test_to_owner");
   }
+  return out;
+}
 
-  return { customerEmailResult, customerWhatsAppResult };
+/** Alerts the owner by email and WhatsApp that a new order with a payment screenshot arrived. */
+export async function notifyOwnerNewOrder(order: DBOrder, submission?: DBPaymentSubmission | null) {
+  if (isTestOrder(order)) return { skipped: "test order" };
+  const built = buildMessage("admin_alert", messageInputFor(order, submission, { customerName: order.customerName }), "en");
+  const email = await sendEmailDirect({ to: OWNER_EMAIL, subject: built.subject, html: renderEmailHtml(built.heading, `${built.text}\n\nAddress: ${addressOf(asSheetOrder(order, submission)) || order.country}`), text: built.text });
+  await logResult(order.id, "admin_alert", "email", OWNER_EMAIL, email, "email");
+  const whatsapp = await sendWhatsAppDirect({ toPhone: OWNER_WHATSAPP, message: built.text, template: { name: built.templateName, params: built.templateParams } });
+  await logResult(order.id, "admin_alert", "whatsapp", OWNER_WHATSAPP, whatsapp, "whatsapp");
+  return { email, whatsapp };
+}
+
+// Kept for existing callers.
+export async function sendOrderReceivedNotifications(order: DBOrder, submission?: DBPaymentSubmission | null) {
+  const customer = await notifyOrderEvent(order, "order_received", submission);
+  const owner = await notifyOwnerNewOrder(order, submission);
+  return { customer, owner };
+}
+
+export async function sendOrderConfirmedNotifications(order: DBOrder, submission?: DBPaymentSubmission | null) {
+  return notifyOrderEvent(order, "payment_confirmed", submission);
 }

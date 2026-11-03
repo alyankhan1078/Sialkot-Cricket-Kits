@@ -202,3 +202,99 @@ export function itemsSummary(items: OrderItem[]): string {
   return items.map((i) => (i.customSpec ? i.name : `${i.name} × ${i.quantity}`)).join(", ");
 }
 
+
+// ─── Orders sheet helpers ───────────────────────────────────────────────────
+
+/** Reads a "Label: value" line from the order notes (address, admin note, etc.). */
+export function noteLine(order: Order, label: string): string {
+  const m = new RegExp(`^${label}:\\s*(.+)$`, "m").exec(order.notes || "");
+  return m ? m[1].trim() : "";
+}
+
+export const addressOf = (order: Order) => noteLine(order, "Address");
+export const adminNoteOf = (order: Order) => noteLine(order, "Admin Note");
+
+export type SheetTab = "needs" | "verified" | "production" | "dispatched" | "all";
+
+/** Which sheet tab an order belongs to ("all" = only in All). */
+export function sheetTabOf(order: Order): Exclude<SheetTab, "all"> | "other" {
+  const stage = stageOf(order);
+  if (stage === "check") return "needs";
+  if (stage === "confirmed") return "verified";
+  if (["production", "pictures", "balance_requested", "balance_paid", "ready"].includes(stage)) return "production";
+  if (stage === "dispatched" || stage === "delivered") return "dispatched";
+  return "other";
+}
+
+/** Row colour: yellow = check, green = paid, red = rejected / new receipt, grey = closed. */
+export function rowToneOf(order: Order): "yellow" | "green" | "red" | "grey" | "plain" {
+  const stage = stageOf(order);
+  if (stage === "check") return "yellow";
+  if (stage === "reupload" || stage === "rejected") return "red";
+  if (stage === "cancelled" || stage === "refunded" || stage === "delivered") return "grey";
+  if (stage === "awaiting") return "plain";
+  return "green";
+}
+
+/** What the customer says they sent, in their currency. */
+export function reportedOf(order: Order): string {
+  const sub = order.paymentSubmission;
+  if (!sub || !(Number(sub.amountSent) > 0)) return "";
+  const cur = (sub.currencySent || "GBP").toUpperCase();
+  const n = Number(sub.amountSent);
+  return cur === "GBP" ? money(n) : `${cur} ${n.toLocaleString("en-GB")}`;
+}
+
+/** Amount required at checkout (deposit or full). */
+export function requiredNowOf(order: Order): number {
+  return planOf(order)?.due ?? (Number(order.totalAmount) || 0);
+}
+
+/** True when the customer reported less (in GBP) than was required at checkout. */
+export function isUnderpaid(order: Order): boolean {
+  const sub = order.paymentSubmission;
+  if (!sub) return false;
+  if ((sub.currencySent || "GBP").toUpperCase() !== "GBP") return false;
+  return (Number(sub.amountSent) || 0) + 0.005 < requiredNowOf(order);
+}
+
+export function planLabelOf(order: Order): string {
+  const plan = planOf(order);
+  if (!plan) return "full payment";
+  return plan.percent >= 100 ? "full payment" : `${plan.percent}% deposit`;
+}
+
+/** Balance shown in the sheet: real balance once verified, otherwise the planned balance. */
+export function sheetBalanceOf(order: Order): { amount: number; planned: boolean } {
+  const stage = stageOf(order);
+  if (CLOSED.includes(stage)) return { amount: 0, planned: false };
+  if (UNPAID.includes(stage)) return { amount: planOf(order)?.balance ?? 0, planned: true };
+  return { amount: balanceOf(order), planned: false };
+}
+
+/** Latest customer-facing notification per channel. */
+export function lastMessageOf(order: Order, channel: "email" | "whatsapp"): { status: "sent" | "failed" | "simulated" | "none"; at?: string; type?: string } {
+  const logs = (order.notificationLogs || []).filter((l) => l.channel === channel && l.type !== "admin_alert");
+  if (logs.length === 0) return { status: "none" };
+  const latest = [...logs].sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
+  const s = String(latest.status);
+  return { status: s === "sent" || s === "failed" || s === "simulated" ? s : "none", at: latest.sentAt, type: latest.type };
+}
+
+/** The customer message that fits the order's current stage. */
+export function messageEventFor(order: Order): "order_received" | "payment_confirmed" | "payment_rejected" | "balance_requested" | "dispatched" {
+  const stage = stageOf(order);
+  if (stage === "reupload" || stage === "rejected") return "payment_rejected";
+  if (stage === "balance_requested") return "balance_requested";
+  if (stage === "dispatched" || stage === "delivered") return "dispatched";
+  if (UNPAID.includes(stage)) return "order_received";
+  return "payment_confirmed";
+}
+
+/** Latest "Status: … → dispatched … — note" audit line's note (courier + tracking). */
+export function trackingOf(order: Order): string {
+  const lines = (order.notes || "").split("\n").filter((l) => /Status: .*→ dispatched/.test(l));
+  const last = lines[lines.length - 1] || "";
+  const m = / — (.+)$/.exec(last);
+  return m ? m[1].trim() : "";
+}
