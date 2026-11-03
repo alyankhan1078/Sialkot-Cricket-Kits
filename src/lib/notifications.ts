@@ -139,7 +139,8 @@ export async function sendEmailDirect({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "orders@sialkotcricketkits.com",
+          from: process.env.EMAIL_FROM || "Sialkot Cricket Kits <orders@sialkotcricketkits.com>",
+          reply_to: process.env.EMAIL_REPLY_TO || "sialkotcricketkits@gmail.com",
           to: [to],
           bcc: bccList.length > 0 ? bccList : undefined,
           subject,
@@ -171,6 +172,7 @@ export async function sendEmailDirect({
 
       const info = await transporter.sendMail({
         from: smtpFrom,
+        replyTo: process.env.EMAIL_REPLY_TO || undefined,
         to,
         bcc: bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : undefined,
         subject,
