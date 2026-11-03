@@ -4,7 +4,7 @@ import { getFaqs } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions | Sialkot Cricket Kits",
+  title: "Frequently Asked Questions",
   description:
     "Answers about worldwide delivery, English Willow bats, customization, live ping videos, stock confirmation and international ordering.",
 };

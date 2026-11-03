@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Eye, Handshake, MapPin, PackageCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About Sialkot Cricket Kits",
+  title: "About Us — Cricket Bat Makers in Sialkot",
   description: "Learn about Sialkot Cricket Kits, our catalogue, custom equipment service, customer communication and worldwide order support.",
 };
 

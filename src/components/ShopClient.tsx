@@ -27,9 +27,19 @@ import { whatsappUrl } from "@/src/lib/whatsapp";
 type SortOption = "featured" | "price-low" | "price-high" | "name";
 type PriceFilter = "all" | "under-50" | "50-150" | "150-250" | "250-plus";
 
-export function ShopClient() {
-  const [productsList, setProductsList] = useState<Product[]>(defaultProducts);
-  const [categoriesList, setCategoriesList] = useState<string[]>(defaultCategories.map((c) => c.name));
+const PAGE_SIZE = 24;
+
+export function ShopClient({
+  initialProducts,
+  initialCategories,
+}: {
+  /** Loaded on the server, so the first paint already shows live prices. */
+  initialProducts?: Product[];
+  initialCategories?: string[];
+}) {
+  const productsList = initialProducts && initialProducts.length > 0 ? initialProducts : defaultProducts;
+  const categoriesList =
+    initialCategories && initialCategories.length > 0 ? initialCategories : defaultCategories.map((c) => c.name);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All equipment");
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
@@ -39,25 +49,6 @@ export function ShopClient() {
   const { favourites } = useStore();
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.success && res.data) {
-          setProductsList(res.data);
-        }
-      })
-      .catch(() => {});
-
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.success && res.data) {
-          setCategoriesList(res.data.map((c: { name: string }) => c.name));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let lastUrl = window.location.href;
@@ -162,6 +153,12 @@ export function ShopClient() {
       return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
     });
   }, [availability, category, favourites, priceFilter, query, sort, productsList]);
+
+  // Show the catalogue 24 at a time; any filter change starts again from the top.
+  const filterKey = [query, category, priceFilter, availability, sort].join("|");
+  const [shown, setShown] = useState({ key: filterKey, count: PAGE_SIZE });
+  const visibleCount = shown.key === filterKey ? shown.count : PAGE_SIZE;
+  const visible = filtered.slice(0, visibleCount);
 
   const resetAllFilters = () => {
     setQuery("");
@@ -378,7 +375,7 @@ export function ShopClient() {
       <section
         style={{
           position: "relative",
-          background: "linear-gradient(90deg, rgba(8,9,12,0.92) 0%, rgba(8,9,12,0.72) 48%, rgba(8,9,12,0.2) 100%), url('/images/shop-catalogue-cover.jpg') right center/cover no-repeat",
+          background: "radial-gradient(700px 300px at 85% 30%, rgba(242,169,40,0.12), transparent 70%), linear-gradient(180deg, #16130f 0%, #1d1913 100%)",
           borderBottom: "1px solid rgba(255,255,255,.06)",
           padding: "3.5rem clamp(1.2rem, 6vw, 6rem)",
           width: "100%", boxSizing: "border-box",
@@ -394,8 +391,9 @@ export function ShopClient() {
           <h1 style={{ fontSize: "clamp(1.7rem, 3.5vw, 3rem)", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-.03em", lineHeight: 1.15, textTransform: "uppercase" }}>
             Shop Cricket Equipment.
           </h1>
-          <p style={{ color: "#cbd5e1", fontSize: ".95rem", lineHeight: 1.6, margin: "0", maxWidth: 600 }}>
-            100+ championship match-grade articles handcrafted in Sialkot. Express tracked courier to UK, USA, Australia, New Zealand, Europe &amp; Pakistan.
+          <p style={{ color: "#d9d0c3", fontSize: ".98rem", lineHeight: 1.6, margin: "0", maxWidth: 620 }}>
+            {productsList.length} products made in Sialkot: bats, pads, gloves, bags and more. Tracked courier delivery to the UK, USA,
+            Australia, New Zealand, Europe and Pakistan. Prices in GBP.
           </p>
         </div>
       </section>
@@ -509,6 +507,7 @@ export function ShopClient() {
                 <ArrowUpDown size={14} color="var(--gold)" />
                 <span style={{ fontSize: ".78rem", color: "var(--text-muted)", fontWeight: 600 }}>Sort:</span>
                 <select
+                  aria-label="Sort products"
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortOption)}
                   style={{
@@ -559,18 +558,35 @@ export function ShopClient() {
 
             {/* Results count when no active filter */}
             {!hasActiveFilters && (
-              <div style={{ fontSize: ".82rem", color: "var(--text-muted)", padding: "0 2px" }}>
-                <strong style={{ color: "var(--text-primary)" }}>{filtered.length}</strong> articles available
+              <div style={{ fontSize: ".86rem", color: "#cbd5e1", padding: "0 2px" }} aria-live="polite">
+                <strong style={{ color: "#ffffff" }}>{filtered.length}</strong> products
               </div>
             )}
 
             {/* Product Grid */}
             {filtered.length > 0 ? (
-              <div className="shop-products-grid">
-                {filtered.map((product) => (
-                  <ProductCard product={product} key={product.id} />
-                ))}
-              </div>
+              <>
+                <h2 className="sr-only">Products</h2>
+                <div className="shop-products-grid">
+                  {visible.map((product) => (
+                    <ProductCard product={product} key={product.id} />
+                  ))}
+                </div>
+                {filtered.length > visible.length && (
+                  <div className="shop-show-more">
+                    <p>
+                      Showing {visible.length} of {filtered.length}
+                    </p>
+                    <button
+                      type="button"
+                      className="shop-show-more-btn"
+                      onClick={() => setShown({ key: filterKey, count: visibleCount + PAGE_SIZE })}
+                    >
+                      Show {Math.min(PAGE_SIZE, filtered.length - visible.length)} more
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div style={{
                 background: "var(--surface)", border: "1px solid var(--border)",

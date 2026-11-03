@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       stock: stock ? String(stock) : "Available",
       rightStock: rightStock ? String(rightStock) : undefined,
       leftStock: leftStock ? String(leftStock) : undefined,
-      image: image || "/assets/products/bat-collection.webp",
+      image: image || "/assets/products/placeholder.webp",
       images: Array.isArray(images) ? images : undefined,
       description: typeof description === "string" ? description.slice(0, 10000) : "",
       featured: !!featured,

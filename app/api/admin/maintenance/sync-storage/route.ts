@@ -11,8 +11,10 @@ export async function POST(request: Request) {
 
   // Allow authenticated admin OR request with ADMIN_SESSION_SECRET header
   const authHeader = request.headers.get("x-maintenance-key");
-  const secretKey = process.env.ADMIN_SESSION_SECRET || "sialkot_cricket_kits_secure_admin_2026";
-  const isSecretMatch = authHeader && authHeader === secretKey;
+  // No fallback secret: if ADMIN_SESSION_SECRET is not configured, only a
+  // logged-in admin can run this.
+  const secretKey = process.env.ADMIN_SESSION_SECRET || "";
+  const isSecretMatch = secretKey.length >= 24 && authHeader === secretKey;
 
   if (!isSecretMatch && !(await isAuthenticatedAdmin(request))) {
     return NextResponse.json(
@@ -82,7 +84,7 @@ export async function POST(request: Request) {
           category: "English Willow Bats",
           price: 349,
           stock: "Available",
-          image: "/assets/products/bat-collection.webp",
+          image: "/assets/products/placeholder.webp",
           images: [],
           description: "Handcrafted from Grade 1+ English Willow, the CA Plus 15000 is engineered for extraordinary power, balance, and pick-up. Featuring massive 38-40mm edges, prominent spine, and authentic factory knocking.",
           featured: true,

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Truck, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Shipping & Delivery Policy | Sialkot Cricket Kits",
+  title: "Shipping & Delivery Policy",
   description:
     "Shipping and Delivery Policy for Sialkot Cricket Kits. Worldwide tracked courier delivery via DHL Express & FedEx.",
 };

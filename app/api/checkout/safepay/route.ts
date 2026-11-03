@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createOrder, getProductById, updateOrder } from "@/src/lib/data-service";
+import { createOrder, getProductById, getSettings, updateOrder } from "@/src/lib/data-service";
 import { calculateShippingFee, SHIPPING_DESTINATIONS } from "@/src/lib/shipping";
 import { convertGbpToCurrency } from "@/src/lib/currency";
 import { createSafepayTracker } from "@/src/lib/safepay";
@@ -20,6 +20,19 @@ export async function POST(request: Request) {
       depositPercent,
       notes,
     } = body;
+
+    // 0. Payment-first rule: never create an order for a gateway that is not
+    // configured, otherwise unpaid "awaiting payment" orders pile up.
+    const gatewaySettings = await getSettings();
+    if (!gatewaySettings.safepayEnabled) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Card payments are not available yet. Please use bank transfer at checkout.",
+        },
+        { status: 503 }
+      );
+    }
 
     // 1. Basic validation
     if (!customerName || !customerName.trim()) {

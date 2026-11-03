@@ -124,3 +124,9 @@ export function getAdminResponseHeaders(): Record<string, string> {
     "Expires": "0",
   };
 }
+
+/** Email of the signed-in admin, for audit lines (never taken from the request body). */
+export async function getAdminEmail(request: NextRequest | Request): Promise<string> {
+  const user = await getAuthenticatedAdminUser(request);
+  return user?.email || AUTHORIZED_ADMIN_EMAIL;
+}

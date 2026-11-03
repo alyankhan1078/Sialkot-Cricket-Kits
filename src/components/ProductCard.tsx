@@ -27,6 +27,9 @@ export function ProductCard({ product }: { product: Product }) {
             src={product.image}
             alt={product.imageAlt || `${product.name} from Sialkot Cricket Kits`}
             loading="lazy"
+            decoding="async"
+            width={400}
+            height={260}
           />
         </Link>
         <button

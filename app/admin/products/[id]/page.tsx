@@ -205,7 +205,7 @@ export default function AdminEditProductPage({
       <div className="admin-header" style={{ marginBottom: "1.25rem" }}>
         <div>
           <h1>Edit: {formData.name || "Product"}</h1>
-          <p>ID: <code style={{ background: "#09101d", padding: "0.15rem 0.4rem", borderRadius: "4px" }}>{id}</code></p>
+          <p>ID: <code style={{ background: "#f8fafc", padding: "0.15rem 0.4rem", borderRadius: "4px" }}>{id}</code></p>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
           <button onClick={handleDelete} className="admin-btn admin-btn-danger">
@@ -216,10 +216,10 @@ export default function AdminEditProductPage({
       </div>
 
       {error && (
-        <div style={{ background: "rgba(239, 68, 68, 0.15)", color: "#f87171", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ background: "rgba(239, 68, 68, 0.15)", color: "#b91c1c", padding: "1rem", borderRadius: "8px", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <AlertTriangle size={16} />
           <span>{error}</span>
-          <button onClick={() => setError("")} style={{ marginLeft: "auto", background: "transparent", border: "none", color: "#f87171", cursor: "pointer" }}>✕</button>
+          <button onClick={() => setError("")} style={{ marginLeft: "auto", background: "transparent", border: "none", color: "#b91c1c", cursor: "pointer" }}>✕</button>
         </div>
       )}
 
@@ -227,7 +227,7 @@ export default function AdminEditProductPage({
       <form onSubmit={handleSubmit}>
         {/* Section: Product Information */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Settings size={16} /> Product Information
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
@@ -250,7 +250,7 @@ export default function AdminEditProductPage({
 
         {/* Section: Inventory */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>📦 Inventory & Stock</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>📦 Inventory & Stock</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
             <div className="admin-form-group">
               <label>Stock Status</label>
@@ -269,7 +269,7 @@ export default function AdminEditProductPage({
 
         {/* Section: Description */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>📝 Description</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>📝 Description</h3>
           <div className="admin-form-group">
             <textarea className="admin-textarea" rows={5} value={formData.description} onChange={(e) => updateField("description", e.target.value)} placeholder="Full product description..." />
           </div>
@@ -277,7 +277,7 @@ export default function AdminEditProductPage({
 
         {/* Section: SEO */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>🔍 SEO Preview</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>🔍 SEO Preview</h3>
           <div style={{ display: "grid", gap: "1rem" }}>
             <div className="admin-form-group">
               <label>SEO Title</label>
@@ -295,14 +295,14 @@ export default function AdminEditProductPage({
             </div>
           </div>
           {/* Preview Box */}
-          <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#09101d", borderRadius: "8px", border: "1px solid var(--adm-card-border)" }}>
+          <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid var(--adm-card-border)" }}>
             <div style={{ color: "#1a73e8", fontSize: "1rem", fontWeight: 500 }}>
               {formData.seoTitle || formData.name || "Product Name"} | Sialkot Cricket Kits
             </div>
-            <div style={{ color: "#10b981", fontSize: "0.75rem" }}>
+            <div style={{ color: "#047857", fontSize: "0.75rem" }}>
               sialkotcricketkits.com/product/{id}
             </div>
-            <div style={{ color: "#94a3b8", fontSize: "0.825rem", marginTop: "0.25rem" }}>
+            <div style={{ color: "#475569", fontSize: "0.825rem", marginTop: "0.25rem" }}>
               {formData.seoDescription || formData.description?.slice(0, 160) || "Product description..."}
             </div>
           </div>
@@ -310,16 +310,16 @@ export default function AdminEditProductPage({
 
         {/* Section: Visibility */}
         <div className="admin-card" style={{ marginBottom: "1.25rem" }}>
-          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#fff" }}>⚙️ Visibility & Featured</h3>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "var(--adm-text)" }}>⚙️ Visibility & Featured</h3>
           <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#cbd5e1" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#334155" }}>
               <input type="checkbox" checked={formData.active} onChange={(e) => updateField("active", e.target.checked)} />
               {formData.active ? <Eye size={16} /> : <EyeOff size={16} />}
               {formData.active ? "Visible in Shop" : "Hidden from Shop"}
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#cbd5e1" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "#334155" }}>
               <input type="checkbox" checked={formData.featured} onChange={(e) => updateField("featured", e.target.checked)} />
-              <Star size={16} fill={formData.featured ? "currentColor" : "none"} style={{ color: formData.featured ? "#fbbf24" : "inherit" }} />
+              <Star size={16} fill={formData.featured ? "currentColor" : "none"} style={{ color: formData.featured ? "#b45309" : "inherit" }} />
               {formData.featured ? "Featured on Homepage" : "Not Featured"}
             </label>
           </div>
@@ -327,14 +327,14 @@ export default function AdminEditProductPage({
 
         {/* Sticky Save Bar */}
         <div style={{
-          position: "sticky", bottom: "1rem", background: "#111c2e", border: "1px solid var(--adm-card-border)",
+          position: "sticky", bottom: "1rem", background: "#ffffff", border: "1px solid var(--adm-card-border)",
           borderRadius: "10px", padding: "0.75rem 1.25rem",
           display: "flex", justifyContent: "space-between", alignItems: "center",
           boxShadow: "0 -4px 20px rgba(0,0,0,0.3)", zIndex: 10,
         }}>
           <div style={{ fontSize: "0.85rem", color: "var(--adm-muted)" }}>
-            {hasChanges && <span style={{ color: "#fbbf24" }}>● Unsaved changes</span>}
-            {!hasChanges && <span style={{ color: "#10b981" }}>✓ All changes saved</span>}
+            {hasChanges && <span style={{ color: "#b45309" }}>● Unsaved changes</span>}
+            {!hasChanges && <span style={{ color: "#047857" }}>✓ All changes saved</span>}
           </div>
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <Link href="/admin/products" className="admin-btn admin-btn-secondary">Cancel</Link>

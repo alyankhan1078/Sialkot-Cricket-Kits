@@ -1,0 +1,136 @@
+/* Admin › Dashboard ("What do I do today?"). Builds on the .ord tokens in orders.css. */
+
+.dash-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.dash-action {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 112px;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  background: var(--o-surface);
+  border: 1px solid var(--o-border);
+  border-radius: 14px;
+  color: var(--o-text);
+  text-decoration: none;
+}
+
+.dash-action:hover {
+  border-color: #94a3b8;
+}
+
+.dash-action.urgent {
+  border: 2px solid #f59e0b;
+  background: #fffbeb;
+  padding: 13px 15px;
+}
+
+.dash-action-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--o-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dash-action-value {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-action-hint {
+  font-size: 13px;
+  color: var(--o-muted);
+  line-height: 1.4;
+}
+
+.dash-skel {
+  display: inline-block;
+  width: 64px;
+  height: 26px;
+}
+
+.dash-money {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.dash-money-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--o-surface);
+  border: 1px solid var(--o-border);
+  border-radius: 14px;
+}
+
+.dash-big {
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-latest {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-latest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-latest-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--o-text);
+}
+
+.dash-table {
+  min-width: 600px;
+}
+
+@media (max-width: 900px) {
+  /* On phones the latest-orders table stays visible but scrolls sideways. */
+  .dash .dash-table-wrap {
+    display: block;
+  }
+
+  .dash-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-action {
+    min-height: 104px;
+    padding: 12px;
+  }
+
+  .dash-action.urgent {
+    padding: 11px;
+  }
+
+  .dash-action-value {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Phones: Order · Customer (+ total) · Stage, so nothing hides off-screen. */
+  .dash-table { min-width: 0; }
+  .dash-table .dash-col-total,
+  .dash-table .dash-col-next { display: none; }
+  .dash-sm-total { display: inline; font-weight: 700; color: var(--o-text); }
+}
+@media (min-width: 601px) {
+  .dash-sm-total { display: none; }
+}

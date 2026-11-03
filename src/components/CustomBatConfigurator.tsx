@@ -33,6 +33,7 @@ import {
   CUSTOM_BAT_CONFIG,
   CUSTOM_BAT_STORAGE_KEY,
   calculateAdvancePayment,
+  customProductIdFor,
   generateCustomBatWhatsAppMessage,
   type CustomBatTier,
   type CustomBatOrder,
@@ -78,6 +79,13 @@ export function CustomBatConfigurator() {
   // ── UI States ──
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+
+  // Re-enable the checkout button if the customer comes back with the browser's Back button.
+  useEffect(() => {
+    const reset = () => setIsSubmitting(false);
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
 
   // Find active size option
   const activeSize = useMemo(() => {
@@ -196,25 +204,17 @@ export function CustomBatConfigurator() {
       return activeSize.catalogProductId;
     }
 
-    if (constructionMode === "budget") {
-      return `custom-bat-recommended-build-${selectedPrice}`;
-    }
-
-    if (selectedConstruction === "Beauty Processed") {
-      if (selectedPrice === 140) return "custom-bat-beauty-processed-140-essential";
-      if (selectedPrice === 190) return "custom-bat-beauty-processed-190-performance";
-      if (selectedPrice === 220) return "custom-bat-beauty-processed-220-advanced";
-      if (selectedPrice === 230) return "custom-bat-beauty-processed-230-premium";
-      if (selectedPrice === 250) return "custom-bat-beauty-processed-250-top";
-      return "custom-bat-beauty-processed-140-essential";
-    } else {
-      if (selectedPrice === 220) return "custom-bat-bonafide-220-entry";
-      if (selectedPrice === 250) return "custom-bat-bonafide-250-performance";
-      if (selectedPrice === 300) return "custom-bat-bonafide-300-professional";
-      if (selectedPrice === 400) return "custom-bat-bonafide-400-elite";
-      if (selectedPrice === 500) return "custom-bat-bonafide-500-top-spec";
-      return "custom-bat-bonafide-300-professional";
-    }
+    // Shared with the order API, which re-prices this ID on the server.
+    return (
+      customProductIdFor({
+        construction: selectedConstruction,
+        price: selectedPrice,
+        budgetMode: constructionMode === "budget",
+      }) ||
+      (selectedConstruction === "Beauty Processed"
+        ? "custom-bat-beauty-processed-140-essential"
+        : "custom-bat-bonafide-300-professional")
+    );
   }, [isJuniorSize, activeSize, constructionMode, selectedConstruction, selectedPrice]);
 
   // Resolved final weight string
@@ -271,8 +271,12 @@ export function CustomBatConfigurator() {
     remainingBalance,
   ]);
 
-  // Submit Enquiry to backend & proceed to checkout
+  // Save the configuration and continue to checkout.
+  // Nothing is sent to the server here: an order only exists once the customer
+  // has paid the advance, uploaded the receipt and accepted the terms at checkout.
   const handleProceedToCheckout = async () => {
+    if (isSubmitting) return;
+
     // ── Engraving Validation ──
     if (isEngravingSelected) {
       const trimmed = engravingText.trim();
@@ -350,76 +354,26 @@ export function CustomBatConfigurator() {
       }
     } catch {}
 
-    // 1. Record custom enquiry lead in database
-    try {
-      await fetch("/api/enquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "custom_bat",
-          name: customerName || "Customer",
-          country: customerCountry || "Unspecified",
-          message: specialNotes || `Custom Bat Configuration: ${activeSize.name}, ${selectedConstruction}, £${selectedPrice}, ${activeProfile.name}, ${finalWeight}, ${advancePercent}% Advance`,
-          product: `Custom Bat - ${selectedConstruction} (£${selectedPrice})`,
-          extras: {
-            size: activeSize.name,
-            sizeId: selectedSizeId,
-            construction: isJuniorSize ? "Junior Willow" : selectedConstruction,
-            price: selectedPrice,
-            tierLabel: selectedTierLabel,
-            handle,
-            weight: finalWeight,
-            profile: activeProfile.name,
-            services: selectedServiceNames,
-            engraving: isEngravingSelected && engravingText.trim() ? { selected: true, text: engravingText.trim(), confirmed: true } : { selected: false },
-            notes: specialNotes,
-            advancePercent,
-            advanceAmount,
-            remainingBalance,
-          },
-        }),
-      }).catch(() => {});
-    } catch {}
+    // Lock the button so a double tap cannot fire twice while navigating.
+    setIsSubmitting(true);
 
-    // 2. Explicitly ensure Cart Drawer is closed so it NEVER overlays the checkout flow
+    // Make sure the cart drawer never overlays the checkout flow.
     try {
       setCartOpen(false);
     } catch {}
 
-    // 3. Navigate directly to custom checkout
     router.push("/checkout?source=custom");
   };
 
-  // Dispatch WhatsApp enquiry directly
-  const handleOpenWhatsApp = async () => {
-    if (isEngravingSelected && !engravingText.trim()) {
-      setEngravingError("Please enter the text you want engraved.");
-      document.getElementById("step-services")?.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
-
-    try {
-      await fetch("/api/enquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "custom_bat",
-          name: customerName || "Customer",
-          country: customerCountry || "Unspecified",
-          message: specialNotes || `WhatsApp Custom Bat Enquiry: ${activeSize.name}, £${selectedPrice}`,
-          product: `Custom Bat - £${selectedPrice}`,
-          extras: {
-            size: activeSize.name,
-            price: selectedPrice,
-            tierLabel: selectedTierLabel,
-            engravingText: isEngravingSelected ? engravingText.trim() : undefined,
-            advancePercent,
-          },
-        }),
-      }).catch(() => {});
-    } catch {}
-
-    window.open(whatsappUrl(whatsappMessage), "_blank", "noopener,noreferrer");
+  // Opens a WhatsApp chat for questions only. It does not create an order or an
+  // enquiry: custom bats are ordered exclusively through the paid checkout.
+  const handleOpenWhatsApp = () => {
+    const question = [
+      "Hello Sialkot Cricket Kits, I have a question before placing my custom bat order (not ordered yet).",
+      "",
+      whatsappMessage.replace("🏏 *Custom Bat Enquiry — Sialkot Cricket Kits*", "🏏 *Configuration I am considering:*"),
+    ].join("\n");
+    window.open(whatsappUrl(question), "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -1301,18 +1255,26 @@ export function CustomBatConfigurator() {
                 disabled={isSubmitting}
                 className="configurator-primary-cta"
               >
-                <span>Continue to Checkout</span>
+                <span>{isSubmitting ? "Opening Secure Checkout…" : "Continue to Secure Checkout"}</span>
                 <ArrowRight size={18} />
               </button>
 
-              {/* Secondary WhatsApp CTA */}
+              <p className="configurator-payment-rule" role="note">
+                <Lock size={13} aria-hidden="true" />
+                <span>
+                  Your order is placed only after you pay the {advancePercent}% advance, upload your payment
+                  screenshot and accept the order terms at checkout.
+                </span>
+              </p>
+
+              {/* Secondary WhatsApp CTA — questions only, never an order */}
               <button
                 type="button"
                 onClick={handleOpenWhatsApp}
                 className="configurator-whatsapp-cta"
               >
                 <MessageCircle size={17} />
-                <span>Send Specifications on WhatsApp</span>
+                <span>Ask a Question on WhatsApp</span>
               </button>
             </div>
 
@@ -1346,7 +1308,7 @@ export function CustomBatConfigurator() {
                 <Building2 size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <strong>Official Sialkot Factory Direct</strong>
-                  <p>Direct export from Sialkot, Pakistan with 256-bit encrypted checkout and UBL bank transfer assurance.</p>
+                  <p>Direct export from Sialkot, Pakistan. Every payment is checked manually against our official UBL account before production starts.</p>
                 </div>
               </div>
             </div>

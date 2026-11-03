@@ -463,7 +463,7 @@ export function ProductImageManager({
       <div
         className="admin-card"
         style={{
-          border: "2px dashed #22354f",
+          border: "2px dashed #e2e8f0",
           background: "rgba(17, 28, 46, 0.6)",
           padding: "1.5rem",
           display: "flex",
@@ -498,7 +498,7 @@ export function ProductImageManager({
             <Upload size={24} />
           </div>
           <div style={{ textAlign: "left" }}>
-            <strong style={{ color: "#fff", fontSize: "1rem", display: "block" }}>
+            <strong style={{ color: "var(--adm-text)", fontSize: "1rem", display: "block" }}>
               Upload Photos
             </strong>
             <span style={{ color: "var(--adm-muted)", fontSize: "0.825rem" }}>
@@ -521,7 +521,7 @@ export function ProductImageManager({
       {/* Upload Progress */}
       {uploadingFiles.length > 0 && (
         <div className="admin-card" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
-          <h3 style={{ fontSize: "0.9rem", margin: "0 0 0.75rem", color: "#fff" }}>Upload Progress</h3>
+          <h3 style={{ fontSize: "0.9rem", margin: "0 0 0.75rem", color: "var(--adm-text)" }}>Upload Progress</h3>
           {uploadingFiles.map((uf) => (
             <div
               key={uf.id}
@@ -538,19 +538,19 @@ export function ProductImageManager({
                 alt=""
                 style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "6px" }}
               />
-              <span style={{ flex: 1, fontSize: "0.85rem", color: "#cbd5e1" }}>
+              <span style={{ flex: 1, fontSize: "0.85rem", color: "#334155" }}>
                 {uf.file.name}
               </span>
               {uf.progress === "uploading" && (
                 <Loader2 size={16} style={{ color: "var(--adm-primary)", animation: "spin 1s linear infinite" }} />
               )}
               {uf.progress === "success" && (
-                <CheckCircle2 size={16} style={{ color: "#10b981" }} />
+                <CheckCircle2 size={16} style={{ color: "#047857" }} />
               )}
               {uf.progress === "error" && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <XCircle size={16} style={{ color: "#ef4444" }} />
-                  <span style={{ fontSize: "0.75rem", color: "#f87171" }}>{uf.errorMessage}</span>
+                  <XCircle size={16} style={{ color: "#b91c1c" }} />
+                  <span style={{ fontSize: "0.75rem", color: "#b91c1c" }}>{uf.errorMessage}</span>
                   <button
                     onClick={() => handleRetryUpload(uf)}
                     className="admin-btn admin-btn-secondary"
@@ -569,7 +569,7 @@ export function ProductImageManager({
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div>
-            <h2 style={{ fontSize: "1.1rem", color: "#fff", margin: 0 }}>
+            <h2 style={{ fontSize: "1.1rem", color: "var(--adm-text)", margin: 0 }}>
               Gallery ({images.length} {images.length === 1 ? "image" : "images"})
             </h2>
             <span style={{ fontSize: "0.825rem", color: "var(--adm-muted)" }}>
@@ -589,7 +589,7 @@ export function ProductImageManager({
             style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--adm-muted)" }}
           >
             <ImageIcon size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
-            <h3 style={{ color: "#fff", margin: "0 0 0.5rem" }}>No images yet</h3>
+            <h3 style={{ color: "var(--adm-text)", margin: "0 0 0.5rem" }}>No images yet</h3>
             <p style={{ margin: 0, fontSize: "0.9rem" }}>
               Upload your first image above to set the product cover and gallery.
             </p>
@@ -618,7 +618,7 @@ export function ProductImageManager({
                     display: "flex",
                     flexDirection: "column",
                     position: "relative",
-                    background: img.isMain ? "#12233a" : "#111c2e",
+                    background: img.isMain ? "#f1f5f9" : "#ffffff",
                     border: isDragTarget
                       ? "2px dashed var(--adm-primary)"
                       : img.isMain
@@ -637,7 +637,7 @@ export function ProductImageManager({
                       <span
                         className="admin-badge"
                         style={{
-                          background: img.isMain ? "var(--adm-primary)" : "#1e2d42",
+                          background: img.isMain ? "var(--adm-primary)" : "#e2e8f0",
                           color: img.isMain ? "#000" : "#fff",
                           fontWeight: 700,
                           fontSize: "0.7rem",
@@ -663,7 +663,7 @@ export function ProductImageManager({
 
                   {/* Image Preview */}
                   <div style={{
-                    width: "100%", height: "200px", background: "#070d17", borderRadius: "8px",
+                    width: "100%", height: "200px", background: "#ffffff", borderRadius: "8px",
                     overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
                     position: "relative", border: "1px solid rgba(255,255,255,0.05)",
                   }}>
@@ -744,7 +744,7 @@ export function ProductImageManager({
               <button onClick={() => setPreviewImage(null)} className="admin-modal-close">✕</button>
             </div>
             <div style={{
-              background: "#070d17", borderRadius: "10px", padding: "1rem",
+              background: "#ffffff", borderRadius: "10px", padding: "1rem",
               display: "flex", alignItems: "center", justifyContent: "center",
               minHeight: "400px", maxHeight: "65vh", overflow: "hidden", margin: "1rem 0",
             }}>

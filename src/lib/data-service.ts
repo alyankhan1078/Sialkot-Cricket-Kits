@@ -139,6 +139,8 @@ export interface DBEnquiry {
   product?: string;
   extras?: string;
   read: boolean;
+  /** Marked as spam by the admin (stored in extras._admin.spam). */
+  spam?: boolean;
   createdAt: string;
 }
 
@@ -148,6 +150,30 @@ export interface OrderItem {
   category?: string;
   price: number;
   quantity: number;
+  /** Present on custom bat orders: the exact specification the customer paid for. */
+  customSpec?: {
+    size: string;
+    construction: string;
+    tier: string;
+    handle: string;
+    weight: string;
+    profile: string;
+    services: string[];
+    engravingText: string;
+    requirements: string;
+  };
+}
+
+/** True when an order contains a bespoke custom bat. */
+export function isCustomBatOrder(order: Pick<DBOrder, "items" | "notes">): boolean {
+  return (
+    (order.items || []).some(
+      (i) =>
+        Boolean(i.customSpec) ||
+        (i.productId || "").includes("custom-bat") ||
+        (i.category || "").toLowerCase().includes("custom")
+    ) || (order.notes || "").includes("--- CUSTOM BAT SPECIFICATIONS ---")
+  );
 }
 
 export type PaymentStatus =
@@ -458,9 +484,9 @@ function getFallbackStaticProducts(options?: {
     name: p.name,
     category: p.category,
     price: p.price,
-    stock: p.stockStatus === "in_stock" ? "Available" : "0",
+    stock: String(p.stock ?? "Available"),
     image: p.image,
-    images: p.gallery && p.gallery.length > 0 ? p.gallery : [p.image],
+    images: p.images && p.images.length > 0 ? p.images : [p.image],
     description: p.description || "",
     featured: Boolean(p.featured),
     active: true,
@@ -551,9 +577,9 @@ export async function getProductById(id: string): Promise<DBProduct | null> {
       name: fallback.name,
       category: fallback.category,
       price: fallback.price,
-      stock: fallback.stockStatus === "in_stock" ? "Available" : "0",
+      stock: String(fallback.stock ?? "Available"),
       image: fallback.image,
-      images: fallback.gallery && fallback.gallery.length > 0 ? fallback.gallery : [fallback.image],
+      images: fallback.images && fallback.images.length > 0 ? fallback.images : [fallback.image],
       description: fallback.description || "",
       featured: Boolean(fallback.featured),
       active: true,
@@ -580,7 +606,7 @@ export async function createProduct(data: Omit<DBProduct, "createdAt" | "updated
       stock: data.stock,
       right_stock: data.rightStock || null,
       left_stock: data.leftStock || null,
-      image: data.image || "/assets/products/bat-collection.webp",
+      image: data.image || "/assets/products/placeholder.webp",
       images: data.images || [],
       description: data.description || "",
       featured: data.featured ?? false,
@@ -966,7 +992,7 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   const allImages = await getProductImages(productId);
   const mainImgRow = allImages.find((i) => i.isMain) || allImages[0];
   await sb.from("products").update({
-    image: mainImgRow?.url || "/assets/products/bat-collection.webp",
+    image: mainImgRow?.url || "/assets/products/placeholder.webp",
     images: allImages.map((i) => i.url),
     updated_at: now,
   }).eq("id", productId);
@@ -1066,7 +1092,24 @@ export async function getCategories(includeInactive = false): Promise<DBCategory
   return list.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+// Categories live in the `categories` table; database IDs are the source of truth.
+function mapCategoryRow(d: any): DBCategory {
+  return { id: d.id, name: d.name, sortOrder: d.sort_order || 0, active: Boolean(d.active) };
+}
+
 export async function createCategory(name: string): Promise<DBCategory> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const existing = await getCategories(true);
+    const { data, error } = await sb
+      .from("categories")
+      .insert({ name, sort_order: existing.length, active: true })
+      .select("*")
+      .single();
+    if (error) throw new Error(`Category could not be saved: ${error.message}`);
+    revalidateProductPages();
+    return mapCategoryRow(data);
+  }
   const newCat: DBCategory = {
     id: nextCategoryId++,
     name,
@@ -1074,67 +1117,89 @@ export async function createCategory(name: string): Promise<DBCategory> {
     active: true,
   };
   memoryCategories.push(newCat);
-
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      await sb.from("categories").insert({
-        name: newCat.name,
-        sort_order: newCat.sortOrder,
-        active: true,
-      });
-    }
-  } catch (err) {
-    console.error("[Supabase createCategory Error]:", err);
-  }
-
   return newCat;
 }
 
 export async function updateCategory(id: number, data: Partial<DBCategory>): Promise<DBCategory | null> {
-  const index = memoryCategories.findIndex((c) => c.id === id);
-  if (index === -1) return null;
-  memoryCategories[index] = { ...memoryCategories[index], ...data };
-
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      await sb.from("categories").update({
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data: row, error } = await sb
+      .from("categories")
+      .update({
         ...(data.name ? { name: data.name } : {}),
         ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
         ...(data.active !== undefined ? { active: data.active } : {}),
-      }).eq("id", id);
-    }
-  } catch (err) {
-    console.error("[Supabase updateCategory Error]:", err);
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw new Error(`Category could not be updated: ${error.message}`);
+    revalidateProductPages();
+    return row ? mapCategoryRow(row) : null;
   }
-
+  const index = memoryCategories.findIndex((c) => c.id === id);
+  if (index === -1) return null;
+  memoryCategories[index] = { ...memoryCategories[index], ...data };
   return memoryCategories[index];
 }
 
 export async function deleteCategory(id: number): Promise<boolean> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data, error } = await sb.from("categories").delete().eq("id", id).select("id");
+    if (error) throw new Error(`Category could not be deleted: ${error.message}`);
+    revalidateProductPages();
+    return Boolean(data && data.length > 0);
+  }
   const initialLength = memoryCategories.length;
   memoryCategories = memoryCategories.filter((c) => c.id !== id);
-
-  try {
-    const sb = getAdminSupabase();
-    if (sb) {
-      await sb.from("categories").delete().eq("id", id);
-    }
-  } catch (err) {
-    console.error("[Supabase deleteCategory Error]:", err);
-  }
-
   return memoryCategories.length < initialLength;
 }
 
 // ─── FAQ Operations ──────────────────────────────────────────────────────────
+// FAQs are stored in the `faqs` table. The built-in list is only a fallback
+// for when the database is unreachable or still empty.
+function mapFaqRow(d: any): DBFaq {
+  return {
+    id: d.id,
+    question: d.question,
+    answer: d.answer,
+    sortOrder: d.sort_order || 0,
+    active: Boolean(d.active),
+  };
+}
+
 export async function getFaqs(includeInactive = false): Promise<DBFaq[]> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    try {
+      let query = sb.from("faqs").select("*").order("sort_order", { ascending: true });
+      if (!includeInactive) query = query.eq("active", true);
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map(mapFaqRow);
+      }
+    } catch (err) {
+      console.error("[Supabase getFaqs Error]:", err);
+    }
+  }
   const list = includeInactive ? memoryFaqs : memoryFaqs.filter((f) => f.active);
   return list.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function createFaq(question: string, answer: string): Promise<DBFaq> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const existing = await getFaqs(true);
+    const { data, error } = await sb
+      .from("faqs")
+      .insert({ question, answer, sort_order: existing.length, active: true })
+      .select("*")
+      .single();
+    if (error) throw new Error(`FAQ could not be saved: ${error.message}`);
+    revalidateProductPages();
+    return mapFaqRow(data);
+  }
   const newFaq: DBFaq = {
     id: nextFaqId++,
     question,
@@ -1147,6 +1212,23 @@ export async function createFaq(question: string, answer: string): Promise<DBFaq
 }
 
 export async function updateFaq(id: number, data: Partial<DBFaq>): Promise<DBFaq | null> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data: row, error } = await sb
+      .from("faqs")
+      .update({
+        ...(data.question !== undefined ? { question: data.question } : {}),
+        ...(data.answer !== undefined ? { answer: data.answer } : {}),
+        ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+        ...(data.active !== undefined ? { active: data.active } : {}),
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw new Error(`FAQ could not be updated: ${error.message}`);
+    revalidateProductPages();
+    return row ? mapFaqRow(row) : null;
+  }
   const index = memoryFaqs.findIndex((f) => f.id === id);
   if (index === -1) return null;
   memoryFaqs[index] = { ...memoryFaqs[index], ...data };
@@ -1154,19 +1236,132 @@ export async function updateFaq(id: number, data: Partial<DBFaq>): Promise<DBFaq
 }
 
 export async function deleteFaq(id: number): Promise<boolean> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data, error } = await sb.from("faqs").delete().eq("id", id).select("id");
+    if (error) throw new Error(`FAQ could not be deleted: ${error.message}`);
+    revalidateProductPages();
+    return Boolean(data && data.length > 0);
+  }
   const initialLength = memoryFaqs.length;
   memoryFaqs = memoryFaqs.filter((f) => f.id !== id);
   return memoryFaqs.length < initialLength;
 }
 
 // ─── Site Settings Operations ─────────────────────────────────────────────────
+// Business/contact settings that the admin can edit and that are saved in the
+// `site_settings` table (key/value). Saving them in the database means a change
+// survives restarts and applies to every server instance.
+const PERSISTED_SETTING_KEYS: Record<string, keyof DBSettings> = {
+  whatsapp_number: "whatsappNumber",
+  contact_email: "contactEmail",
+  contact_phone: "contactPhone",
+  factory_address: "factoryAddress",
+  business_name: "businessName",
+  announcement_text: "announcementText",
+  catalogue_url: "catalogueUrl",
+  instagram_url: "instagramUrl",
+  facebook_url: "facebookUrl",
+  tiktok_url: "tiktokUrl",
+};
+
+const SETTING_LABELS: Record<string, string> = {
+  whatsapp_number: "WhatsApp Support Number",
+  contact_email: "Contact Email Address",
+  contact_phone: "Contact Phone",
+  factory_address: "Factory Address",
+  business_name: "Business Name",
+  announcement_text: "Announcement Bar Text",
+  catalogue_url: "Catalogue PDF URL",
+  instagram_url: "Instagram URL",
+  facebook_url: "Facebook URL",
+  tiktok_url: "TikTok URL",
+};
+
+// Secrets are only ever read from environment variables. They are never saved
+// to the database and never sent to a browser.
+const SECRET_SETTING_FIELDS: Array<keyof DBSettings> = [
+  "safepaySecretKey",
+  "safepayWebhookSecret",
+  "stripeSecretKey",
+];
+
 export async function getSettings(): Promise<DBSettings> {
-  return { ...memorySettings };
+  const merged: DBSettings = { ...memorySettings };
+  const sb = getAdminSupabase();
+  if (sb) {
+    try {
+      const { data, error } = await sb.from("site_settings").select("key, value");
+      if (!error && data) {
+        for (const row of data as Array<{ key: string; value: string }>) {
+          const field = PERSISTED_SETTING_KEYS[row.key];
+          if (field && typeof row.value === "string" && row.value.trim()) {
+            (merged as any)[field] = row.value;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Supabase getSettings Error]:", err);
+    }
+  }
+  return merged;
+}
+
+/** Settings safe to show publicly (no secrets, no internal toggles). */
+export function toPublicSettings(settings: DBSettings) {
+  return {
+    whatsappNumber: settings.whatsappNumber,
+    contactEmail: settings.contactEmail,
+    contactPhone: settings.contactPhone,
+    factoryAddress: settings.factoryAddress,
+    businessName: settings.businessName,
+    announcementText: settings.announcementText,
+    catalogueUrl: settings.catalogueUrl,
+    instagramUrl: settings.instagramUrl,
+    facebookUrl: settings.facebookUrl,
+    tiktokUrl: settings.tiktokUrl,
+    safepayEnabled: settings.safepayEnabled,
+    stripeEnabled: settings.stripeEnabled,
+    stripePublishableKey: settings.stripePublishableKey,
+  };
+}
+
+/** Settings for the admin screen: secrets are replaced by a "configured" marker. */
+export function toAdminSettings(settings: DBSettings): DBSettings {
+  const copy: DBSettings = { ...settings };
+  for (const field of SECRET_SETTING_FIELDS) {
+    (copy as any)[field] = (settings as any)[field] ? "•••••••• (set on server)" : "";
+  }
+  return copy;
 }
 
 export async function updateSettings(data: Partial<DBSettings>): Promise<DBSettings> {
-  memorySettings = { ...memorySettings, ...data };
-  return { ...memorySettings };
+  const incoming: Partial<DBSettings> = { ...data };
+  // Never accept secrets from the browser.
+  for (const field of SECRET_SETTING_FIELDS) {
+    delete (incoming as any)[field];
+  }
+  memorySettings = { ...memorySettings, ...incoming };
+
+  const sb = getAdminSupabase();
+  if (sb) {
+    const rows = Object.entries(PERSISTED_SETTING_KEYS)
+      .filter(([, field]) => typeof (incoming as any)[field] === "string")
+      .map(([key, field]) => ({
+        key,
+        value: String((incoming as any)[field]).trim().slice(0, 500),
+        label: SETTING_LABELS[key] || key,
+        updated_at: new Date().toISOString(),
+      }));
+    if (rows.length > 0) {
+      const { error } = await sb.from("site_settings").upsert(rows, { onConflict: "key" });
+      if (error) throw new Error(`Settings could not be saved: ${error.message}`);
+      // Contact details, announcement text and links appear on static pages.
+      revalidateProductPages();
+    }
+  }
+
+  return getSettings();
 }
 
 // ─── Enquiry Operations ──────────────────────────────────────────────────────
@@ -1180,19 +1375,25 @@ export async function getEnquiries(): Promise<DBEnquiry[]> {
         .order("created_at", { ascending: false });
 
       if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
-          id: d.id,
-          type: d.type || "contact",
-          name: d.name,
-          email: d.email || undefined,
-          phone: d.phone || undefined,
-          country: d.country || undefined,
-          message: d.message,
-          product: d.product || undefined,
-          extras: typeof d.extras === "object" ? JSON.stringify(d.extras) : d.extras,
-          read: Boolean(d.read),
-          createdAt: d.created_at,
-        }));
+        return data.map((d: any) => {
+          const extrasObj = parseExtras(d.extras);
+          return {
+            id: d.id,
+            type: d.type || "contact",
+            name: d.name,
+            email: d.email || undefined,
+            phone: d.phone || undefined,
+            country: d.country || undefined,
+            message: d.message,
+            product: d.product || undefined,
+            extras: d.extras === null || d.extras === undefined
+              ? undefined
+              : typeof d.extras === "object" ? JSON.stringify(d.extras) : d.extras,
+            read: Boolean(d.read),
+            spam: Boolean(extrasObj?._admin?.spam),
+            createdAt: d.created_at,
+          };
+        });
       }
     }
   } catch (err) {
@@ -1236,14 +1437,85 @@ export async function createEnquiry(
   return newEnquiry;
 }
 
+function parseExtras(raw: unknown): Record<string, any> | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Record<string, any>;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Finds the same message from the same sender within the time window. */
+export async function findRecentDuplicateEnquiry(
+  input: { name: string; email?: string; message: string },
+  windowMs: number
+): Promise<boolean> {
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const sb = getAdminSupabase();
+  if (sb) {
+    try {
+      let query = sb.from("enquiries").select("id").gte("created_at", since).eq("message", input.message).limit(1);
+      query = input.email ? query.eq("email", input.email) : query.eq("name", input.name);
+      const { data, error } = await query;
+      if (!error) return Boolean(data && data.length > 0);
+    } catch {}
+  }
+  return memoryEnquiries.some(
+    (e) =>
+      e.createdAt >= since &&
+      e.message === input.message &&
+      (input.email ? e.email === input.email : e.name === input.name)
+  );
+}
+
 export async function markEnquiryRead(id: number, read = true): Promise<DBEnquiry | null> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data, error } = await sb.from("enquiries").update({ read }).eq("id", id).select("id").maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const all = await getEnquiries();
+    return all.find((e) => e.id === id) || null;
+  }
   const item = memoryEnquiries.find((e) => e.id === id);
   if (!item) return null;
   item.read = read;
   return item;
 }
 
+/** Marks or unmarks an enquiry as spam without deleting anything. */
+export async function setEnquirySpam(id: number, spam: boolean): Promise<DBEnquiry | null> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data: row, error } = await sb.from("enquiries").select("extras").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) return null;
+    const extras = parseExtras(row.extras) || {};
+    const nextExtras = { ...extras, _admin: { ...(extras._admin || {}), spam, updatedAt: new Date().toISOString() } };
+    const { error: updateError } = await sb
+      .from("enquiries")
+      .update({ extras: nextExtras, ...(spam ? { read: true } : {}) })
+      .eq("id", id);
+    if (updateError) throw new Error(updateError.message);
+    const all = await getEnquiries();
+    return all.find((e) => e.id === id) || null;
+  }
+  const item = memoryEnquiries.find((e) => e.id === id);
+  if (!item) return null;
+  item.spam = spam;
+  return item;
+}
+
 export async function deleteEnquiry(id: number): Promise<boolean> {
+  const sb = getAdminSupabase();
+  if (sb) {
+    const { data, error } = await sb.from("enquiries").delete().eq("id", id).select("id");
+    if (error) throw new Error(error.message);
+    return Boolean(data && data.length > 0);
+  }
   const index = memoryEnquiries.findIndex((e) => e.id === id);
   if (index === -1) return false;
   memoryEnquiries.splice(index, 1);
@@ -1263,6 +1535,9 @@ function mapToSupabaseStatus(status?: string): "completed" | "confirmed" | "pend
     s === "order_confirmed" ||
     s === "payment_verified" ||
     s === "in_production" ||
+    s === "pictures_sent" ||
+    s === "balance_requested" ||
+    s === "balance_paid" ||
     s === "ready_for_dispatch" ||
     s === "dispatched" ||
     s === "confirmed"
@@ -1360,9 +1635,8 @@ export async function getOrders(options?: {
 }
 
 export async function getOrderById(id: string): Promise<DBOrder | null> {
-  const local = memoryOrders.find((o) => o.id === id || o.orderReference === id);
-  if (local) return local;
-
+  // Database first: a memory copy can be stale when several server instances run,
+  // and edits built on a stale copy would overwrite newer notes.
   try {
     const sb = getAdminSupabase();
     if (sb) {
@@ -1392,7 +1666,7 @@ export async function getOrderById(id: string): Promise<DBOrder | null> {
     }
   } catch {}
 
-  return null;
+  return memoryOrders.find((o) => o.id === id || o.orderReference === id) || null;
 }
 
 export async function getOrderByTrackerId(trackerId: string): Promise<DBOrder | null> {
@@ -1407,7 +1681,19 @@ export async function createOrder(
   data: Omit<DBOrder, "id" | "createdAt" | "updatedAt"> & { id?: string }
 ): Promise<DBOrder> {
   const year = new Date().getFullYear();
-  const id = data.id || `SCK-${year}-${String(nextOrderSequence++).padStart(3, "0")}`;
+  // Random 6-digit IDs: an in-memory counter restarts on every serverless cold
+  // start and would re-use IDs that already exist in the database.
+  let id = data.id || "";
+  if (!id) {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const candidate = `SCK-${year}-${100000 + (crypto.randomBytes(4).readUInt32BE(0) % 900000)}`;
+      if (!(await getOrderById(candidate))) {
+        id = candidate;
+        break;
+      }
+    }
+    if (!id) id = `SCK-${year}-${String(nextOrderSequence++).padStart(3, "0")}-${Date.now() % 100000}`;
+  }
   const newOrder: DBOrder = {
     ...data,
     id,
@@ -1428,7 +1714,9 @@ export async function createOrder(
       const sbStatus = mapToSupabaseStatus(newOrder.status);
       const sbNotes = `[Status: ${newOrder.status}]\n${newOrder.notes || ""}`;
 
-      const { error } = await sb.from("orders").upsert({
+      // insert (not upsert): an ID clash must fail loudly, never overwrite
+      // another customer's order.
+      const { error } = await sb.from("orders").insert({
         id: newOrder.id,
         customer_name: newOrder.customerName,
         customer_phone: newOrder.customerPhone || null,
@@ -1442,7 +1730,7 @@ export async function createOrder(
         notes: sbNotes,
         created_at: newOrder.createdAt,
         updated_at: newOrder.updatedAt,
-      }, { onConflict: "id" });
+      });
 
       if (error) {
         memoryOrders = memoryOrders.filter((order) => order.id !== newOrder.id);
@@ -1461,27 +1749,19 @@ export async function createOrder(
 }
 
 export async function updateOrder(id: string, data: Partial<DBOrder>): Promise<DBOrder | null> {
-  const index = memoryOrders.findIndex((o) => o.id === id);
   const nowStr = new Date().toISOString();
-  let updated: DBOrder;
-
-  if (index !== -1) {
-    memoryOrders[index] = {
-      ...memoryOrders[index],
-      ...data,
-      updatedAt: nowStr,
-    };
-    updated = memoryOrders[index];
-  } else {
-    const existing = await getOrderById(id);
-    if (!existing) return null;
-    updated = {
-      ...existing,
-      ...data,
-      updatedAt: nowStr,
-    };
-    memoryOrders.unshift(updated);
-  }
+  const index = memoryOrders.findIndex((o) => o.id === id);
+  // Merge onto the freshest copy (database first), never onto a possibly stale memory copy.
+  const base = getAdminSupabase() ? await getOrderById(id) : index !== -1 ? memoryOrders[index] : await getOrderById(id);
+  if (!base) return null;
+  const updated: DBOrder = {
+    ...(index !== -1 ? memoryOrders[index] : {}),
+    ...base,
+    ...data,
+    updatedAt: nowStr,
+  };
+  if (index !== -1) memoryOrders[index] = updated;
+  else memoryOrders.unshift(updated);
 
   // Sync update to Supabase with CHECK constraint compliant status
   try {
@@ -1896,15 +2176,7 @@ export async function verifyAndConfirmOrder(
     }
   } catch {}
 
-  // 4. Dispatch Automated Confirmation Notifications if not already confirmed
-  if (!alreadyConfirmed && updatedOrder) {
-    try {
-      const { sendOrderConfirmedNotifications } = await import("./notifications.ts");
-      sendOrderConfirmedNotifications(updatedOrder).catch((err) => {
-        console.warn("[Confirmation Notification Dispatch Notice]:", err);
-      });
-    } catch {}
-  }
+  // 4. Confirmation messages are sent by the API route (once, after the response).
 
   return {
     success: true,
@@ -1926,9 +2198,12 @@ export async function updateOrderStatus(
   }
 
   const nowStr = new Date().toISOString();
-  const updatedNotes = note
-    ? `${existingOrder.notes || ""}\n[${new Date().toLocaleDateString()}] Status changed to ${newStatus} by ${adminEmail}: ${note}`
-    : existingOrder.notes;
+  // Every status change is written into the order's notes so the history
+  // survives restarts (the in-memory history below is lost on serverless).
+  const auditLine = `[${nowStr.slice(0, 16).replace("T", " ")} UTC] Status: ${existingOrder.status} → ${newStatus} by ${adminEmail}${
+    note ? ` — ${note}` : ""
+  }`;
+  const updatedNotes = `${existingOrder.notes || ""}\n${auditLine}`;
 
   const updatedOrder = await updateOrder(orderId, {
     status: newStatus as any,
@@ -2013,12 +2288,17 @@ export async function rejectPaymentSubmission(
     return { success: false, error: `Payment rejection could not be saved: ${err instanceof Error ? err.message : "database error"}` };
   }
 
-  // Update Order
-  await updateOrder(submission.orderId, {
-    paymentStatus: newStatus,
-    status: newStatus,
-    notes: `${memoryOrders.find(o => o.id === submission.orderId)?.notes || ""}\n[Admin Review]: Payment rejected by ${adminEmail}. Reason: ${rejectionReason}`
-  });
+  // Update Order: append to the order's real notes (never replace them).
+  const orderNow = await getOrderById(submission.orderId);
+  if (orderNow) {
+    await updateOrder(submission.orderId, {
+      paymentStatus: newStatus,
+      status: newStatus,
+      notes: `${orderNow.notes || ""}\n[${nowStr.slice(0, 16).replace("T", " ")} UTC] ${
+        requestReupload ? "New payment screenshot requested" : "Payment rejected"
+      } by ${adminEmail} — ${rejectionReason}`,
+    });
+  }
 
   // Record audit history
   memoryPaymentStatusHistory.unshift({
@@ -2033,6 +2313,93 @@ export async function rejectPaymentSubmission(
   });
 
   return { success: true, submission };
+}
+
+/**
+ * Takes the tick off a checked payment: the order goes back to "needs checking".
+ * Nothing is deleted; the reason is written to the order history and the audit table.
+ */
+export async function reopenPaymentSubmission(
+  submissionId: string,
+  adminEmail: string,
+  reason: string
+): Promise<{ success: boolean; submission?: DBPaymentSubmission; order?: DBOrder; error?: string }> {
+  const submission = (await getPaymentSubmissionById(submissionId)) || memoryPaymentSubmissions.find((p) => p.id === submissionId) || null;
+  if (!submission) return { success: false, error: "Payment submission not found" };
+  if (submission.status !== "payment_verified") return { success: false, error: "Only a checked (ticked) payment can be reopened." };
+
+  const order = await getOrderById(submission.orderId);
+  if (!order) return { success: false, error: "Associated order could not be found." };
+  const blocked = ["ready_for_dispatch", "dispatched", "delivered", "completed", "cancelled", "refunded"];
+  if (blocked.includes(String(order.status).toLowerCase())) {
+    return { success: false, error: "This order is already packed or closed, so its payment can no longer be reopened." };
+  }
+
+  const nowStr = new Date().toISOString();
+  const cleanReason = reason.replace(/\s+/g, " ").trim().slice(0, 300);
+
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      const { error } = await sb
+        .from("payment_submissions")
+        .update({ status: "payment_submitted", verified_by: null, verified_at: null, updated_at: nowStr })
+        .eq("id", submission.id);
+      if (error) throw new Error(error.message);
+    }
+  } catch (err) {
+    return { success: false, error: `Could not reopen the payment: ${err instanceof Error ? err.message : "database error"}` };
+  }
+
+  const reopened: DBPaymentSubmission = { ...submission, status: "payment_submitted", verifiedBy: undefined, verifiedAt: undefined, updatedAt: nowStr };
+  const mIndex = memoryPaymentSubmissions.findIndex((p) => p.id === submission.id);
+  if (mIndex !== -1) memoryPaymentSubmissions[mIndex] = reopened;
+
+  const updatedOrder = await updateOrder(order.id, {
+    status: "payment_submitted" as any,
+    paymentStatus: "payment_submitted" as any,
+    notes: `${order.notes || ""}\n[${nowStr.slice(0, 16).replace("T", " ")} UTC] Payment reopened (tick removed) by ${adminEmail} — ${cleanReason}`,
+  });
+
+  const history: DBPaymentStatusHistory = {
+    id: `psh_${Date.now()}_${String(nextHistorySeq++).padStart(3, "0")}`,
+    paymentSubmissionId: submission.id,
+    orderId: submission.orderId,
+    oldStatus: "payment_verified",
+    newStatus: "payment_submitted",
+    changedBy: adminEmail,
+    internalNote: `Reopened: ${cleanReason}`,
+    createdAt: nowStr,
+  };
+  memoryPaymentStatusHistory.unshift(history);
+  try {
+    const sb = getAdminSupabase();
+    if (sb) {
+      await sb.from("payment_status_history").insert({
+        id: history.id,
+        payment_submission_id: history.paymentSubmissionId,
+        order_id: history.orderId,
+        old_status: history.oldStatus,
+        new_status: history.newStatus,
+        changed_by: history.changedBy,
+        internal_note: history.internalNote || null,
+        created_at: history.createdAt,
+      });
+    }
+  } catch {}
+
+  return { success: true, submission: reopened, order: updatedOrder || order };
+}
+
+/** Sets the owner's short note on an order (one "Admin Note:" line; other notes are kept). */
+export async function setOrderAdminNote(orderId: string, note: string): Promise<{ success: boolean; order?: DBOrder; error?: string }> {
+  const order = await getOrderById(orderId);
+  if (!order) return { success: false, error: "Order not found." };
+  const clean = note.replace(/\s+/g, " ").trim().slice(0, 300);
+  const lines = (order.notes || "").split("\n").filter((l) => !/^Admin Note:/.test(l.trim()));
+  if (clean) lines.push(`Admin Note: ${clean}`);
+  const updated = await updateOrder(orderId, { notes: lines.join("\n") });
+  return updated ? { success: true, order: updated } : { success: false, error: "Could not save the note." };
 }
 
 export async function getPaymentStatusHistory(submissionIdOrOrderId: string): Promise<DBPaymentStatusHistory[]> {

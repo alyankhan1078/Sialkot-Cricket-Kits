@@ -430,6 +430,230 @@ export function generateCustomBatWhatsAppMessage(config: {
 
 export const CUSTOM_BAT_STORAGE_KEY = "sialkot:custom-bat-order";
 
+// ─── Server-trusted pricing ──────────────────────────────────────────────────
+// The browser must never decide what a custom bat costs. Every custom bat
+// product ID encodes its construction and tier price, and that price must be
+// one of the official tiers above. Anything else is rejected.
+
+const BEAUTY_PROCESSED_TIER_SLUGS: Record<number, string> = {
+  140: "essential",
+  190: "performance",
+  220: "advanced",
+  230: "premium",
+  250: "top",
+};
+
+const BONAFIDE_TIER_SLUGS: Record<number, string> = {
+  220: "entry",
+  250: "performance",
+  300: "professional",
+  400: "elite",
+  500: "top-spec",
+};
+
+/**
+ * Builds the canonical product ID for an adult custom bat configuration.
+ * Junior sizes use their real catalogue product instead (priced from the database).
+ */
+export function customProductIdFor(options: {
+  construction: string;
+  price: number;
+  budgetMode?: boolean;
+}): string | null {
+  const price = Number(options.price);
+  if (options.budgetMode) {
+    return CUSTOM_BAT_CONFIG.budgetTiers.some((t) => t.price === price)
+      ? `custom-bat-recommended-build-${price}`
+      : null;
+  }
+  const construction = (options.construction || "").toLowerCase();
+  if (construction.includes("beauty")) {
+    const slug = BEAUTY_PROCESSED_TIER_SLUGS[price];
+    return slug ? `custom-bat-beauty-processed-${price}-${slug}` : null;
+  }
+  if (construction.includes("bonafide")) {
+    const slug = BONAFIDE_TIER_SLUGS[price];
+    return slug ? `custom-bat-bonafide-${price}-${slug}` : null;
+  }
+  return null;
+}
+
+/**
+ * Returns the official price for an adult custom bat product ID, or null when the
+ * ID is not a recognised custom bat. Used by the order API so a tampered request
+ * cannot change the price.
+ */
+export function resolveCustomBatPrice(productId: string): { price: number; tierLabel: string; construction: string } | null {
+  if (!productId) return null;
+
+  const budget = /^custom-bat-recommended-build-(\d+)$/.exec(productId);
+  if (budget) {
+    const tier = CUSTOM_BAT_CONFIG.budgetTiers.find((t) => t.price === Number(budget[1]));
+    return tier ? { price: tier.price, tierLabel: tier.label, construction: "Recommended Budget Build" } : null;
+  }
+
+  const beauty = /^custom-bat-beauty-processed-(\d+)-([a-z-]+)$/.exec(productId);
+  if (beauty) {
+    const price = Number(beauty[1]);
+    if (BEAUTY_PROCESSED_TIER_SLUGS[price] !== beauty[2]) return null;
+    const tier = CUSTOM_BAT_CONFIG.beautyProcessedTiers.find((t) => t.price === price);
+    return tier ? { price: tier.price, tierLabel: tier.label, construction: "Beauty Processed" } : null;
+  }
+
+  const bonafide = /^custom-bat-bonafide-(\d+)-([a-z-]+)$/.exec(productId);
+  if (bonafide) {
+    const price = Number(bonafide[1]);
+    if (BONAFIDE_TIER_SLUGS[price] !== bonafide[2]) return null;
+    const tier = CUSTOM_BAT_CONFIG.bonafideTiers.find((t) => t.price === price);
+    return tier ? { price: tier.price, tierLabel: tier.label, construction: "Bonafide" } : null;
+  }
+
+  return null;
+}
+
+/** Structured custom bat specification stored with the order item. */
+export interface CustomBatSpec {
+  size: string;
+  construction: string;
+  tier: string;
+  handle: string;
+  weight: string;
+  profile: string;
+  services: string[];
+  engravingText: string;
+  requirements: string;
+}
+
+function cleanSpecText(value: unknown, max = 200): string {
+  return typeof value === "string" ? value.replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, max) : "";
+}
+
+/** Whitelists and length-limits a custom spec sent by the browser. */
+export function sanitizeCustomBatSpec(raw: unknown): CustomBatSpec | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const services = Array.isArray(r.services)
+    ? (r.services as unknown[]).map((s) => cleanSpecText(s, 80)).filter(Boolean).slice(0, 6)
+    : [];
+  const spec: CustomBatSpec = {
+    size: cleanSpecText(r.size, 80),
+    construction: cleanSpecText(r.construction, 80),
+    tier: cleanSpecText(r.tier, 80),
+    handle: cleanSpecText(r.handle, 80),
+    weight: cleanSpecText(r.weight, 40),
+    profile: cleanSpecText(r.profile, 80),
+    services,
+    engravingText: cleanSpecText(r.engravingText, 60),
+    requirements: cleanSpecText(r.requirements, 1000),
+  };
+  return spec.size || spec.construction || spec.profile ? spec : null;
+}
+
+/**
+ * Rebuilds a resumable checkout configuration from an unpaid custom bat lead
+ * (the `extras` saved with older enquiries). Returns null when the lead does not
+ * contain enough detail to price it safely; the admin can then send the customer
+ * to the configurator instead.
+ */
+export function buildResumeOrderFromLead(
+  // Lead data comes from older enquiries with varying shapes; every field is checked below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  extras: Record<string, any> | null | undefined,
+  customer: { name?: string; country?: string }
+): CustomBatOrder | null {
+  if (!extras || typeof extras !== "object") return null;
+  const price = Number(extras.price);
+  const construction = String(extras.construction || "");
+  const sizeId = String(extras.sizeId || "");
+  const size = CUSTOM_BAT_CONFIG.sizes.find((s) => s.id === sizeId);
+  if (!size || size.category !== "adult" || !price || !construction) return null;
+
+  const productId = customProductIdFor({
+    construction,
+    price,
+    budgetMode: construction.toLowerCase().includes("budget"),
+  });
+  if (!productId) return null;
+  const resolved = resolveCustomBatPrice(productId);
+  if (!resolved) return null;
+
+  const percent = [30, 50, 100].includes(Number(extras.advancePercent)) ? Number(extras.advancePercent) : 30;
+  const { advanceAmount, remainingBalance } = calculateAdvancePayment(resolved.price, percent);
+  const services: string[] = Array.isArray(extras.services) ? extras.services.map(String) : [];
+  const engravingText =
+    extras.engraving && typeof extras.engraving === "object" && extras.engraving.selected
+      ? String(extras.engraving.text || "")
+      : "";
+
+  return {
+    orderType: "custom-bat",
+    customer: { name: customer.name || "", country: customer.country && customer.country !== "Unspecified" ? customer.country : "" },
+    bat: {
+      size: size.name,
+      sizeId: size.id,
+      playerCategory: "adult",
+      constructionType: resolved.construction,
+      qualityLevel: String(extras.tierLabel || resolved.tierLabel),
+      selectedPrice: resolved.price,
+      handlePreference: String(extras.handle || "Please advise"),
+      preferredWeight: String(extras.weight || ""),
+      profile: String(extras.profile || ""),
+      requirements: String(extras.notes || ""),
+    },
+    services: {
+      knockingIn: services.some((s) => s.toLowerCase().includes("knocking")),
+      engraving: Boolean(engravingText),
+      engravingText,
+      livePingVideo: services.some((s) => s.toLowerCase().includes("ping")),
+      selectedServiceNames: services,
+    },
+    payment: {
+      advancePercentage: percent,
+      orderValue: resolved.price,
+      amountDueNow: advanceAmount,
+      remainingBalance,
+    },
+    customProductId: productId,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/** URL-safe base64 helpers that work in both the browser and Node. */
+export function encodeResumePayload(order: CustomBatOrder): string {
+  const json = JSON.stringify(order);
+  const b64 =
+    typeof Buffer !== "undefined"
+      ? Buffer.from(json, "utf-8").toString("base64")
+      : btoa(unescape(encodeURIComponent(json)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodeResumePayload(value: string): CustomBatOrder | null {
+  try {
+    const b64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const json =
+      typeof Buffer !== "undefined"
+        ? Buffer.from(b64, "base64").toString("utf-8")
+        : decodeURIComponent(escape(atob(b64)));
+    const parsed = JSON.parse(json);
+    if (!parsed || parsed.orderType !== "custom-bat" || !parsed.bat || !parsed.payment) return null;
+    // Re-price from the official tiers; never trust the link.
+    const resolved = resolveCustomBatPrice(String(parsed.customProductId || ""));
+    if (!resolved) return null;
+    const percent = [30, 50, 100].includes(Number(parsed.payment.advancePercentage))
+      ? Number(parsed.payment.advancePercentage)
+      : 30;
+    const { advanceAmount, remainingBalance } = calculateAdvancePayment(resolved.price, percent);
+    return {
+      ...parsed,
+      bat: { ...parsed.bat, selectedPrice: resolved.price },
+      payment: { advancePercentage: percent, orderValue: resolved.price, amountDueNow: advanceAmount, remainingBalance },
+    } as CustomBatOrder;
+  } catch {
+    return null;
+  }
+}
+
 export interface CustomBatOrder {
   orderType: "custom-bat";
   customer: {

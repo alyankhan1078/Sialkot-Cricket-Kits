@@ -1020,6 +1020,11 @@ function OrderSuccessContent() {
             Payment details submitted successfully. Your payment is currently being verified. We will confirm your order after verification.
           </p>
 
+          <p style={{ color: "#e2e8f0", fontSize: ".9rem", maxWidth: 640, margin: "12px auto 0", lineHeight: 1.6 }}>
+            Tap the green button to send your order number to us on WhatsApp. You will get our reply there, and we will
+            message you again as soon as your payment is checked.
+          </p>
+
           {/* Actions Bar */}
           <div className="actions-bar" style={{ marginTop: 22, display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
             <a
@@ -1040,7 +1045,7 @@ function OrderSuccessContent() {
                 fontSize: ".86rem",
               }}
             >
-              <MessageCircle size={17} /> Confirm on WhatsApp
+              <MessageCircle size={17} /> Get your confirmation on WhatsApp
             </a>
 
             <button

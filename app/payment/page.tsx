@@ -15,7 +15,7 @@ import {
 import { whatsappUrl } from "@/src/lib/whatsapp";
 
 export const metadata: Metadata = {
-  title: "Official Payment Methods & Bank Details | Sialkot Cricket Kits",
+  title: "Official Payment Methods & Bank Details",
   description: "Official accepted payment channels, verified UBL bank wire details, Payoneer account, Pakistani mobile wallets (JazzCash, Nayapay, SadaPay, EasyPaisa), and factory information for Sialkot Cricket Kits orders.",
   robots: { index: false, follow: false },
 };

@@ -3,7 +3,7 @@ import { ShieldCheck, ArrowLeft, Printer } from "lucide-react";
 import { POLICY_METADATA, POLICY_SECTIONS, POLICY_LEGAL_NOTE } from "@/src/lib/policy-agreement";
 
 export const metadata = {
-  title: "International Shipping, Returns & Product Agreement | Sialkot Cricket Kits",
+  title: "International Shipping, Returns & Product Agreement",
   description:
     "Official Commercial & Consumer Agreement covering natural willow disclosure, Bonafide bats, Beauty Processed bats, customisation, international shipping, customs, and payment verification.",
 };

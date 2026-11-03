@@ -232,7 +232,7 @@ export default function AdminSettingsPage() {
             background: "none",
             border: "none",
             borderBottom: activeTab === "general" ? "2px solid var(--adm-primary)" : "2px solid transparent",
-            color: activeTab === "general" ? "#fff" : "var(--adm-muted)",
+            color: activeTab === "general" ? "var(--adm-text)" : "var(--adm-muted)",
             fontWeight: activeTab === "general" ? 600 : 400,
             cursor: "pointer",
             display: "flex",
@@ -252,7 +252,7 @@ export default function AdminSettingsPage() {
             background: "none",
             border: "none",
             borderBottom: activeTab === "payments" ? "2px solid var(--adm-primary)" : "2px solid transparent",
-            color: activeTab === "payments" ? "#fff" : "var(--adm-muted)",
+            color: activeTab === "payments" ? "var(--adm-text)" : "var(--adm-muted)",
             fontWeight: activeTab === "payments" ? 600 : 400,
             cursor: "pointer",
             display: "flex",
@@ -272,7 +272,7 @@ export default function AdminSettingsPage() {
             background: "none",
             border: "none",
             borderBottom: activeTab === "security" ? "2px solid var(--adm-primary)" : "2px solid transparent",
-            color: activeTab === "security" ? "#fff" : "var(--adm-muted)",
+            color: activeTab === "security" ? "var(--adm-text)" : "var(--adm-muted)",
             fontWeight: activeTab === "security" ? 600 : 400,
             cursor: "pointer",
             display: "flex",
@@ -289,7 +289,7 @@ export default function AdminSettingsPage() {
         <div
           style={{
             background: "rgba(16, 185, 129, 0.15)",
-            color: "#34d399",
+            color: "#047857",
             padding: "0.75rem 1rem",
             borderRadius: "8px",
             marginBottom: "1.25rem",
@@ -306,7 +306,7 @@ export default function AdminSettingsPage() {
       {/* Tab 1: General Store Settings */}
       {activeTab === "general" && (
         <form onSubmit={handleSaveSettings} className="admin-card">
-          <h2 style={{ fontSize: "1.2rem", margin: "0 0 1.25rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h2 style={{ fontSize: "1.2rem", margin: "0 0 1.25rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Globe size={20} color="var(--adm-primary)" />
             <span>Storefront Contact Information</span>
           </h2>
@@ -385,7 +385,7 @@ export default function AdminSettingsPage() {
           </div>
 
           <div style={{ margin: "1.25rem 0 0.5rem", borderTop: "1px solid var(--adm-border)", paddingTop: "1.25rem" }}>
-            <h3 style={{ fontSize: "1rem", color: "#fff", margin: "0 0 0.85rem" }}>Official Social Media Channels</h3>
+            <h3 style={{ fontSize: "1rem", color: "var(--adm-text)", margin: "0 0 0.85rem" }}>Official Social Media Channels</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
               <div className="admin-form-group">
                 <label>Instagram Profile URL</label>
@@ -435,13 +435,13 @@ export default function AdminSettingsPage() {
       {activeTab === "payments" && (
         <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* UBL Bank Details & Admin Verification Lock */}
-          <div className="admin-card" style={{ border: "1.5px solid rgba(242, 169, 40, 0.4)", background: "linear-gradient(135deg, rgba(242, 169, 40, 0.04) 0%, rgba(17, 24, 39, 0.8) 100%)" }}>
+          <div className="admin-card" style={{ border: "1.5px solid rgba(242, 169, 40, 0.4)", background: "#fffbeb" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
-              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <Building2 size={20} color="#f2a928" />
                 <span>Official UBL Beneficiary Bank Account (Centralized)</span>
               </h2>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#4ade80", fontSize: "0.75rem", fontWeight: 700 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#15803d", fontSize: "0.75rem", fontWeight: 700 }}>
                 <span>🔒 Beneficiary: ALYAN WAZIR</span>
               </div>
             </div>
@@ -450,18 +450,18 @@ export default function AdminSettingsPage() {
               All customer bank transfers and international remittances are deposited into the verified UBL account titled <strong>ALYAN WAZIR</strong>.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", background: "rgba(0,0,0,0.3)", padding: "14px", borderRadius: "10px", marginBottom: "1rem" }}>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Bank Name</small><strong style={{ color: "#fff" }}>United Bank Limited (UBL)</strong></div>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Beneficiary Title</small><strong style={{ color: "#f2a928" }}>ALYAN WAZIR</strong></div>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Account Number</small><code style={{ color: "#38bdf8", fontSize: ".9rem" }}>0881304929964</code></div>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>IBAN</small><code style={{ color: "#38bdf8", fontSize: ".9rem" }}>PK93UNIL0109000304929964</code></div>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>SWIFT / BIC</small><code style={{ color: "#fff" }}>UNILPKKA</code></div>
-              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Branch Name</small><span style={{ color: "#fff" }}>0881 – Wana</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", background: "#ffffff", border: "1px solid var(--adm-card-border)", padding: "14px", borderRadius: "10px", marginBottom: "1rem" }}>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Bank Name</small><strong style={{ color: "var(--adm-text)" }}>United Bank Limited (UBL)</strong></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Beneficiary Title</small><strong style={{ color: "#b45309" }}>ALYAN WAZIR</strong></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Account Number</small><code style={{ color: "#1d4ed8", fontSize: ".9rem" }}>0881304929964</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>IBAN</small><code style={{ color: "#1d4ed8", fontSize: ".9rem" }}>PK93UNIL0109000304929964</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>SWIFT / BIC</small><code style={{ color: "var(--adm-text)" }}>UNILPKKA</code></div>
+              <div><small style={{ color: "var(--adm-muted)", display: "block" }}>Branch Name</small><span style={{ color: "var(--adm-text)" }}>0881 – Wana</span></div>
             </div>
 
             {/* Verification Lock Checkbox */}
             <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "8px", padding: "12px 14px" }}>
-              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: ".82rem", color: "#4ade80", lineHeight: 1.4 }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: ".82rem", color: "#15803d", lineHeight: 1.4 }}>
                 <input
                   type="checkbox"
                   checked={settings.ublDetailsVerifiedByAdmin ?? true}
@@ -477,7 +477,7 @@ export default function AdminSettingsPage() {
 
           {/* Future UBL Card Gateway Notice */}
           <div className="admin-card" style={{ border: "1px dashed #334155" }}>
-            <h3 style={{ fontSize: ".98rem", margin: "0 0 6px", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+            <h3 style={{ fontSize: ".98rem", margin: "0 0 6px", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: 6 }}>
               <ShieldCheck size={16} color="#94a3b8" />
               <span>Future UBL Internet Payment Gateway (IPG) Integration</span>
             </h3>
@@ -485,13 +485,13 @@ export default function AdminSettingsPage() {
               The architecture is prepared for the official UBL Internet Payment Gateway. Card checkout remains disabled (<code>UBL_CARD_GATEWAY_ENABLED = false</code>) until production merchant credentials are confirmed.
             </p>
           </div>
-          <div className="admin-card" style={{ border: "1px solid rgba(34, 197, 94, 0.35)", background: "linear-gradient(135deg, rgba(34, 197, 94, 0.04) 0%, rgba(17, 24, 39, 0.8) 100%)" }}>
+          <div className="admin-card" style={{ border: "1px solid rgba(34, 197, 94, 0.35)", background: "#f0fdf4" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "8px" }}>
-              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <h2 style={{ fontSize: "1.15rem", margin: 0, color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <ShieldCheck size={20} color="#22c55e" />
                 <span>Safepay Pakistan Hosted Checkout (Primary Gateway)</span>
               </h2>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#4ade80", fontSize: "0.75rem", fontWeight: 700 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34, 197, 94, 0.15)", padding: "4px 10px", borderRadius: "999px", color: "#15803d", fontSize: "0.75rem", fontWeight: 700 }}>
                 <span>🏦 Direct UBL Settlement</span>
               </div>
             </div>
@@ -544,14 +544,14 @@ export default function AdminSettingsPage() {
                 />
               </div>
             </div>
-            <div style={{ marginTop: "0.75rem", fontSize: "0.78rem", color: "#64748b" }}>
+            <div style={{ marginTop: "0.75rem", fontSize: "0.78rem", color: "#475569" }}>
               💡 Webhook URL to register in Safepay Merchant Dashboard: <code>https://sialkotcricketkits.co.uk/api/webhooks/safepay</code>
             </div>
           </div>
 
           {/* Card Processing / Stripe */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <CreditCard size={20} color="#3b82f6" />
               <span>Credit / Debit Card Processing (Stripe / Apple Pay / Google Pay)</span>
             </h2>
@@ -585,7 +585,7 @@ export default function AdminSettingsPage() {
 
           {/* Direct Bank Wire / IBAN */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Building2 size={20} color="#a855f7" />
               <span>Official Bank Account (IBAN & SWIFT)</span>
             </h2>
@@ -647,7 +647,7 @@ export default function AdminSettingsPage() {
 
           {/* Pakistan Mobile Wallets & Microfinance */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Wallet size={20} color="#22c55e" />
               <span>Pakistan Domestic Wallets, Microfinance & Raast ID</span>
             </h2>
@@ -717,7 +717,7 @@ export default function AdminSettingsPage() {
 
           {/* International Remittance (Payoneer / Wise / Remitly / WU) */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.15rem", margin: "0 0 1rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Send size={20} color="#f59e0b" />
               <span>International Remittance (Payoneer, Wise & Remitly)</span>
             </h2>
@@ -762,7 +762,7 @@ export default function AdminSettingsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 640 }}>
           {/* 1. Authorised Admin Identity & Role Card */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <ShieldCheck size={20} color="#10b981" />
               <span>Supabase Auth · Role-Based Access</span>
             </h2>
@@ -777,17 +777,17 @@ export default function AdminSettingsPage() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "0.75rem 1rem",
-                  background: "rgba(15, 23, 42, 0.6)",
+                  background: "#f8fafc",
                   border: "1px solid var(--adm-card-border)",
                   borderRadius: "10px",
                   fontSize: "0.85rem",
                 }}
               >
                 <div>
-                  <div style={{ color: "#ffffff", fontWeight: 700 }}>{adminEmail}</div>
-                  <div style={{ color: "#64748b", fontSize: "0.74rem" }}>Immutable Administrator Account</div>
+                  <div style={{ color: "var(--adm-text)", fontWeight: 700 }}>{adminEmail}</div>
+                  <div style={{ color: "#475569", fontSize: "0.74rem" }}>Immutable Administrator Account</div>
                 </div>
-                <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "3px 10px", borderRadius: 999, fontWeight: 800 }}>
+                <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.2)", color: "#047857", padding: "3px 10px", borderRadius: 999, fontWeight: 800 }}>
                   Role: admin
                 </span>
               </div>
@@ -800,7 +800,7 @@ export default function AdminSettingsPage() {
                 borderRadius: "10px",
                 padding: "0.85rem 1rem",
                 fontSize: "0.82rem",
-                color: "#93c5fd",
+                color: "#1e40af",
                 lineHeight: 1.5,
                 display: "flex",
                 flexDirection: "column",
@@ -825,7 +825,7 @@ export default function AdminSettingsPage() {
 
           {/* 2. Direct Password Update in Supabase */}
           <form onSubmit={handleUpdatePassword} className="admin-card">
-            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Lock size={20} color="#f59e0b" />
               <span>Update Supabase Admin Password</span>
             </h2>
@@ -837,7 +837,7 @@ export default function AdminSettingsPage() {
               <div
                 style={{
                   background: passwordMsg.includes("success") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                  color: passwordMsg.includes("success") ? "#34d399" : "#f87171",
+                  color: passwordMsg.includes("success") ? "#047857" : "#b91c1c",
                   border: passwordMsg.includes("success") ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
                   padding: "0.75rem 1rem",
                   borderRadius: "8px",
@@ -885,11 +885,11 @@ export default function AdminSettingsPage() {
 
           {/* 3. Session Security Card */}
           <div className="admin-card">
-            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "var(--adm-text)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Lock size={20} color="#3b82f6" />
               <span>Session Policy &amp; Security</span>
             </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.82rem", color: "#94a3b8" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.82rem", color: "#475569" }}>
               <div>🛡️ <strong>Session Lifetime:</strong> 12 hours (43,200 seconds) with HttpOnly, Secure SameSite cookies.</div>
               <div>⚡ <strong>No-Store Cache Control:</strong> Authenticated admin data is never cached on intermediaries or browser disk.</div>
               <div>🚫 <strong>Public Registration:</strong> Self-service registration is strictly disabled.</div>
