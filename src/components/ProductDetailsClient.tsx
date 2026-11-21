@@ -269,8 +269,8 @@ export function ProductDetailsClient({ product }: { product: Product }) {
 
         {/* Product Stock Line */}
         <div className="detail-stock" style={{ marginBottom: 16 }}>
-          <span>Catalogue stock</span>
-          <strong>{typeof product.stock === "number" ? `${product.stock} available` : product.stock}</strong>
+          <span>Availability</span>
+          <strong>In stock</strong>
           {product.rightStock !== undefined && (
             <small>Right-hand: {product.rightStock} · Left-hand: {product.leftStock}</small>
           )}

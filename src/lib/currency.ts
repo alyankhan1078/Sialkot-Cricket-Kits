@@ -25,7 +25,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "US Dollar",
     symbol: "$",
     flag: "🇺🇸",
-    rateFromGbp: 1.30,
+    rateFromGbp: 1.34,
     decimals: 0,
     prefix: true,
   },
@@ -34,7 +34,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "Pakistani Rupee",
     symbol: "Rs",
     flag: "🇵🇰",
-    rateFromGbp: 370,
+    rateFromGbp: 369,
     decimals: 0,
     prefix: true,
   },
@@ -43,7 +43,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "Euro",
     symbol: "€",
     flag: "🇪🇺",
-    rateFromGbp: 1.18,
+    rateFromGbp: 1.20,
     decimals: 0,
     prefix: true,
   },
@@ -52,7 +52,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "Australian Dollar",
     symbol: "A$",
     flag: "🇦🇺",
-    rateFromGbp: 1.98,
+    rateFromGbp: 1.94,
     decimals: 0,
     prefix: true,
   },
@@ -61,7 +61,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "Canadian Dollar",
     symbol: "C$",
     flag: "🇨🇦",
-    rateFromGbp: 1.78,
+    rateFromGbp: 1.89,
     decimals: 0,
     prefix: true,
   },
@@ -70,7 +70,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "UAE Dirham",
     symbol: "AED",
     flag: "🇦🇪",
-    rateFromGbp: 4.77,
+    rateFromGbp: 4.90,
     decimals: 0,
     prefix: false,
   },
@@ -79,7 +79,7 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: "Saudi Riyal",
     symbol: "SAR",
     flag: "🇸🇦",
-    rateFromGbp: 4.87,
+    rateFromGbp: 5.01,
     decimals: 0,
     prefix: false,
   },
@@ -93,6 +93,15 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     prefix: true,
   },
 };
+
+// Rates checked 22 Nov 2026 (mid-market, rounded). Review them every few weeks.
+Object.assign(CURRENCIES, {
+  ZAR: { code: "ZAR", name: "South African Rand", symbol: "R", flag: "🇿🇦", rateFromGbp: 22.2, decimals: 0, prefix: true },
+  KWD: { code: "KWD", name: "Kuwaiti Dinar", symbol: "KWD", flag: "🇰🇼", rateFromGbp: 0.41, decimals: 1, prefix: false },
+  QAR: { code: "QAR", name: "Qatari Riyal", symbol: "QAR", flag: "🇶🇦", rateFromGbp: 4.87, decimals: 0, prefix: false },
+  OMR: { code: "OMR", name: "Omani Rial", symbol: "OMR", flag: "🇴🇲", rateFromGbp: 0.51, decimals: 1, prefix: false },
+  BHD: { code: "BHD", name: "Bahraini Dinar", symbol: "BHD", flag: "🇧🇭", rateFromGbp: 0.5, decimals: 1, prefix: false },
+} satisfies Record<string, CurrencyConfig>);
 
 export const DEFAULT_CURRENCY = "GBP";
 
@@ -136,7 +145,12 @@ export function formatCurrencyPrice(
 
 // Map Country Code (ISO 3166-1 alpha-2) to Currency Code
 export const COUNTRY_TO_CURRENCY_MAP: Record<string, string> = {
-  PK: "GBP", // Pakistani customers see Pounds (£ / GBP)
+  PK: "PKR", // Pakistan: rupees
+  ZA: "ZAR", // South Africa
+  KW: "KWD", // Kuwait
+  QA: "QAR", // Qatar
+  OM: "OMR", // Oman
+  BH: "BHD", // Bahrain
   GB: "GBP", // United Kingdom
   UK: "GBP",
   US: "USD", // United States
@@ -158,13 +172,22 @@ export const COUNTRY_TO_CURRENCY_MAP: Record<string, string> = {
   GR: "EUR",
   FI: "EUR",
   CY: "EUR",
+  LU: "EUR",
+  MT: "EUR",
+  SK: "EUR",
+  SI: "EUR",
+  EE: "EUR",
+  LV: "EUR",
+  LT: "EUR",
+  HR: "EUR",
 };
 
 // Map Timezones to default currency when offline / fast client-side check
 export function detectCurrencyFromTimezone(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    if (tz.includes("Karachi") || tz.includes("Pakistan")) return "GBP";
+    if (tz.includes("Karachi") || tz.includes("Pakistan")) return "PKR";
+    if (tz.includes("Johannesburg")) return "ZAR";
     if (
       tz.includes("New_York") ||
       tz.includes("Chicago") ||

@@ -94,10 +94,7 @@ export default async function ProductPage({ params }: PageProps) {
       priceCurrency: "GBP",
       price: product.price,
       itemCondition: "https://schema.org/NewCondition",
-      availability:
-        String(product.stock) === "0"
-          ? "https://schema.org/OutOfStock"
-          : "https://schema.org/InStock",
+      availability: "https://schema.org/InStock",
       seller: {
         "@type": "Organization",
         name: "Sialkot Cricket Kits",

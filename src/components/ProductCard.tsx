@@ -58,8 +58,7 @@ export function ProductCard({ product }: { product: Product }) {
         </p>
 
         <div className="stock-line">
-          <span>{typeof product.stock === "number" ? `${product.stock} in stock` : product.stock}</span>
-          {product.rightStock !== undefined && <small>RH {product.rightStock} · LH {product.leftStock}</small>}
+          <span>In stock</span>
         </div>
 
         <strong className="product-price">{formatPrice(product.price)}</strong>

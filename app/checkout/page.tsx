@@ -1949,7 +1949,7 @@ export default function CheckoutPage() {
                         value={evidenceData.currencySent}
                         onChange={(e) => setEvidenceData({ ...evidenceData, currencySent: e.target.value })}
                       >
-                        {["GBP", "USD", "EUR", "AED", "SAR", "AUD", "CAD", "PKR"].map((code) => (
+                        {["GBP", "USD", "EUR", "AED", "SAR", "AUD", "CAD", "ZAR", "NZD", "PKR"].map((code) => (
                           <option key={code} value={code}>
                             {code}
                           </option>

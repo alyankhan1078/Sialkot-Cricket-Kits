@@ -146,7 +146,7 @@ export function ShopClient({
 
       const matchesAvailability =
         availability === "all" ||
-        (availability === "in-stock" && product.stock !== "Confirm on WhatsApp") ||
+        availability === "in-stock" ||
         (availability === "favourites" && favourites.includes(product.id));
 
       return matchesQuery && matchesCategory && matchesPrice && matchesAvailability;
