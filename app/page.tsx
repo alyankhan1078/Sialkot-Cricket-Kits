@@ -20,6 +20,30 @@ const OTHER_BRANDS = /gray|nicolls|kookaburra|\bgm\b|gunn|\bsg\b|\bss\b|mrf|new 
 
 const FEATURE_ID = "beauty-processed-bats-apex-pro";
 
+const HOME_GUIDES = [
+  {
+    slug: "beauty-processed-vs-bonafide-cricket-bats",
+    title: "Beauty processed or bonafide: which should I buy?",
+    teaser: "Beauty processed bats get extra cosmetic finishing for a clean, even face. Bonafide bats are left natural, so you see the real grain.",
+    image: "/assets/products/bats/apex-edition/apex-pro-edge-a.webp",
+    imageAlt: "Edge of a beauty processed bat",
+  },
+  {
+    slug: "how-to-choose-a-cricket-bat",
+    title: "How heavy should my cricket bat be?",
+    teaser: "Lighter than you think. Most club batters are happiest between 1,160 g and 1,250 g (2lb 9oz to 2lb 12oz).",
+    image: "/assets/products/bats/apex-edition/apex-pro-profile-detail.webp",
+    imageAlt: "Profile of a cricket bat",
+  },
+  {
+    slug: "cricket-bat-size-chart",
+    title: "What size bat does my child need?",
+    teaser: "Go by height, not age: size 5 for about 152 to 159 cm, size 6 for 160 to 164 cm, Harrow for 165 to 169 cm.",
+    image: "/assets/products/bats/apex-edition/apex-pro-toe-front.webp",
+    imageAlt: "Toe of a cricket bat",
+  },
+];
+
 const fmt = (n: number) => `£${Number(n).toLocaleString("en-GB")}`;
 
 export default async function HomePage() {
@@ -193,53 +217,15 @@ export default async function HomePage() {
             <p>Three questions we get asked every day.</p>
           </header>
           <div className="guide-grid">
-            <article className="guide">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/products/bats/apex-edition/apex-pro-edge-a.webp" alt="Edge of a beauty processed bat" loading="lazy" decoding="async" />
-              <h3>Beauty processed or bonafide: which should I buy?</h3>
-              <p>
-                Beauty processed bats get extra cosmetic finishing for a clean, even face. Bonafide bats are left natural
-                and unbleached, so you see the real grain and the odd natural mark.
-              </p>
-              <details>
-                <summary>Read more</summary>
-                <p>
-                  The finish doesn&apos;t make a bat play better on its own. Judge any bat on its pick-up, its ping and its
-                  weight, which is why we&apos;ll send you a video of the exact bat before you pay. If you like to read the
-                  grain, go bonafide. If you want a clean-looking match bat, go beauty processed.
-                </p>
-              </details>
-            </article>
-            <article className="guide">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/products/bats/apex-edition/apex-pro-profile-detail.webp" alt="Profile of a cricket bat" loading="lazy" decoding="async" />
-              <h3>How heavy should my cricket bat be?</h3>
-              <p>
-                Lighter than you think. Most club batters are happiest between 1,160 g and 1,250 g (2lb 9oz to 2lb 12oz).
-              </p>
-              <details>
-                <summary>Read more</summary>
-                <p>
-                  Under 1,160 g suits juniors and wristy stroke-makers who want quick hands. Over 1,250 g suits big hitters
-                  on true pitches. If you&apos;re between two weights, take the lighter one: it&apos;ll feel better in the
-                  30th over than in the first. Every bat we sell has its weight written on the blade.
-                </p>
-              </details>
-            </article>
-            <article className="guide">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/products/bats/apex-edition/apex-pro-toe-front.webp" alt="Toe of a cricket bat" loading="lazy" decoding="async" />
-              <h3>What size bat does my child need?</h3>
-              <p>Go by height, not age. A bat that&apos;s too long is the most common mistake with junior players.</p>
-              <details>
-                <summary>Read more</summary>
-                <p>
-                  As a rough guide: size 4 for about 130 to 137 cm, size 5 for 137 to 145 cm, size 6 for 145 to 152 cm,
-                  and Harrow for 152 to 160 cm. Above that, a full-size short handle. Send us your child&apos;s height on
-                  WhatsApp and we&apos;ll confirm the size before it ships.
-                </p>
-              </details>
-            </article>
+            {HOME_GUIDES.map((g) => (
+              <article className="guide" key={g.slug}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={g.image} alt={g.imageAlt} loading="lazy" decoding="async" />
+                <h3>{g.title}</h3>
+                <p>{g.teaser}</p>
+                <Link href={`/guides/${g.slug}`} className="guide-read">Read the guide</Link>
+              </article>
+            ))}
           </div>
         </div>
       </section>

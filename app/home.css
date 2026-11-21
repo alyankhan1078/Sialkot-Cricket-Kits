@@ -231,3 +231,5 @@
 .gn-about h2 { margin: 0; font-family: var(--font-head); font-weight: 800; font-size: clamp(1.4rem, 2.2vw, 1.8rem); text-transform: uppercase; }
 .gn-about p { margin: 0 0 14px; color: #333; line-height: 1.7; }
 @media (max-width: 760px) { .gn-about-inner { grid-template-columns: 1fr; gap: 12px; } }
+.guide-read { margin-top: 14px; display: block; padding: 10px 0; text-align: center; border: 1px solid var(--brand); color: var(--ink); font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: background 0.15s ease, color 0.15s ease; }
+.guide-read:hover { background: var(--brand); color: #fff; }

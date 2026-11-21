@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getProducts, getCategories } from "../src/lib/data-service.ts";
+import { GUIDES } from "../src/data/guides.tsx";
 
 const BASE_URL = "https://sialkotcricketkits.com";
 
@@ -115,5 +116,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("[Sitemap Products Error]:", err);
   }
 
-  return [...staticPages, ...categoryEntries, ...productEntries];
+  const guideEntries: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/guides`, lastModified: currentDate, changeFrequency: "monthly", priority: 0.7 },
+    ...GUIDES.map((g) => ({
+      url: `${BASE_URL}/guides/${g.slug}`,
+      lastModified: new Date(g.updated),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+
+  return [...staticPages, ...categoryEntries, ...guideEntries, ...productEntries];
 }

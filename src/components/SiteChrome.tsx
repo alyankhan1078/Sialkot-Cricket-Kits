@@ -107,6 +107,7 @@ const categoryBar: [string, string, boolean?][] = [
   ["Bags", "/shop?category=Kit%20%26%20Duffle%20Bags"],
   ["Teamwear", "/shop?category=Teamwear"],
   ["Shop All", "/shop"],
+  ["Guides", "/guides"],
   ["About", "/about"],
 ];
 
@@ -675,6 +676,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <Link href="/policies/international-agreement" style={{ color: "#b45309", fontWeight: 600 }}>
             International Agreement
           </Link>
+          <Link href="/guides">Bat buying guides</Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/payment">Payment guidance</Link>
           <Link href="/privacy">Privacy Policy</Link>

@@ -432,6 +432,14 @@ export function ProductDetailsClient({ product }: { product: Product }) {
           >
             Chat on WhatsApp ({BUSINESS_CONFIG.displayPhone}) <ArrowRight size={14} />
           </a>
+          {isBatCategory && (
+            <p style={{ margin: "10px 0 0", fontSize: ".9rem" }}>
+              Or read our{" "}
+              <Link href="/guides/cricket-bat-size-chart" style={{ color: "#0369a1", fontWeight: 700 }}>bat size chart</Link>{" "}
+              and{" "}
+              <Link href="/guides/how-to-choose-a-cricket-bat" style={{ color: "#0369a1", fontWeight: 700 }}>how to choose a bat</Link>.
+            </p>
+          )}
         </div>
 
         {/* Shipping & Transit Note */}
