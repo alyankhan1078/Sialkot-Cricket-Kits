@@ -3,11 +3,11 @@ import { CustomBatConfigurator } from "@/src/components/CustomBatConfigurator";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/custom-bat" },
-  title: "Custom Cricket Bat Configurator",
+  title: "Custom Cricket Bats, Made to Order in Sialkot",
   description:
-    "Build your bespoke cricket bat online. Select size, Beauty Processed or Bonafide English Willow, price tier, handle, profile, knocking-in, and 30% advance deposit.",
+    "Design a custom cricket bat online: size, beauty processed or bonafide willow, weight, handle, profile, knocking-in and your name on the blade. Made in Sialkot, shipped worldwide.",
   openGraph: {
-    title: "Custom Cricket Bat Configurator | Sialkot Cricket Kits",
+    title: "Custom Cricket Bats, Made to Order in Sialkot | Sialkot Cricket Kits",
     description:
       "Handcrafted English Willow cricket bats tailored to your exact specifications. Select willow grade, profile, handle, and 30% advance payment.",
     images: ["/assets/products/bats/special-edition/special-edition-front-a.webp"],

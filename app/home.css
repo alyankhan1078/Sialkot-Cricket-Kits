@@ -225,3 +225,9 @@
 @media (prefers-reduced-motion: reduce) {
   .gn-card-img img, .rail-progress span { transition: none; }
 }
+
+/* About the shop */
+.gn-about-inner { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); gap: 32px; padding-bottom: clamp(44px, 5vw, 72px); }
+.gn-about h2 { margin: 0; font-family: var(--font-head); font-weight: 800; font-size: clamp(1.4rem, 2.2vw, 1.8rem); text-transform: uppercase; }
+.gn-about p { margin: 0 0 14px; color: #333; line-height: 1.7; }
+@media (max-width: 760px) { .gn-about-inner { grid-template-columns: 1fr; gap: 12px; } }

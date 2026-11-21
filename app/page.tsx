@@ -10,9 +10,9 @@ import "./home.css";
 
 export const metadata = {
   alternates: { canonical: "/" },
-  title: { absolute: "Cricket Bats & Kit Made in Sialkot | Sialkot Cricket Kits" },
+  title: { absolute: "Sialkot Cricket Bats & Kit, Direct from Our Bat Shop | Sialkot Cricket Kits" },
   description:
-    "Cricket bats, pads, gloves and team kit from our shop in Sialkot, Pakistan. See photos and a ping video of your bat on WhatsApp before it ships. Tracked delivery worldwide.",
+    "Sialkot cricket bats, pads, gloves and team kit, direct from our bat shop in Model Town, Sialkot. Ping video of your bat before it ships. Delivery across Pakistan and worldwide.",
 };
 
 // Names of other companies' brands. We keep those products off the homepage showcase.
@@ -259,6 +259,26 @@ export default async function HomePage() {
           >
             <MessageCircle size={18} aria-hidden="true" /> Chat on WhatsApp
           </a>
+        </div>
+      </section>
+
+      {/* About the shop: plain text for buyers and search engines */}
+      <section className="gn-section gn-about" aria-labelledby="about-title">
+        <div className="gn-wrap gn-about-inner">
+          <h2 id="about-title">Cricket bats from Sialkot</h2>
+          <div>
+            <p>
+              Sialkot is one of the world&apos;s great centres for cricket bats and sports gear, and our shop is in Model
+              Town. Our bats are weighed by hand with the weight written on the blade, and we&apos;ll send you photos and
+              a ping video of the exact bat you&apos;re buying before it&apos;s packed.
+            </p>
+            <p>
+              We sell beauty processed and bonafide bats, junior and Harrow size bats, custom bats made to your spec,
+              plus batting pads, gloves, keeping gear, helmets, kit bags and teamwear. Orders ship with tracking across
+              Pakistan and worldwide, including the UK, USA, Australia, New Zealand and Europe, with prices shown in
+              GBP. Clubs can message us on WhatsApp for team orders.
+            </p>
+          </div>
         </div>
       </section>
 

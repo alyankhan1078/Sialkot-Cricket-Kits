@@ -11,7 +11,7 @@ export type CategorySeo = {
 
 export const CATEGORY_SEO: Record<string, CategorySeo> = {
   "Beauty Processed Bats": {
-    title: "Beauty Processed Cricket Bats",
+    title: "Sialkot Cricket Bats: Beauty Processed Range",
     heading: "Beauty processed cricket bats",
     description:
       "Beauty processed cricket bats shaped in Sialkot. Weight written on every blade, ping video on request, prices in GBP, tracked worldwide delivery.",
@@ -29,8 +29,8 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
     productNoun: "Cricket Bat",
   },
   "Junior & Harrow Bats": {
-    title: "Junior Cricket Bats: Size 4, 5, 6 & Harrow",
-    heading: "Junior and Harrow bats",
+    title: "Harrow Size & Junior Cricket Bats (Size 4, 5, 6)",
+    heading: "Junior and Harrow size bats",
     description:
       "Junior cricket bats in sizes 4, 5, 6 and Harrow from Sialkot. Light pick-up for young players, tracked worldwide delivery.",
     intro:
