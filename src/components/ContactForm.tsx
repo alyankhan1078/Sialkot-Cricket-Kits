@@ -283,7 +283,7 @@ export function ContactForm() {
             maxLength={100}
             value={form.productModel}
             onChange={(e) => update("productModel", e.target.value)}
-            placeholder="e.g. Apex Pro Grade 1+ Bat / Test Pads"
+            placeholder="e.g. Apex Pro bat"
           />
         </div>
 

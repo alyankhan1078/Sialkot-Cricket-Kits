@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     telephone: true,
   },
   openGraph: {
-    title: "Sialkot Cricket Kits | Premium Cricket Bats & Equipment",
+    title: "Sialkot Cricket Kits | Cricket Bats & Kit, Straight from Sialkot",
     description:
-      "Handcrafted English Willow cricket bats, protective equipment, kit bags, and custom bat configurations dispatched directly from Sialkot with worldwide delivery.",
+      "Cricket bats, pads, gloves, kit bags and custom bats from our shop in Sialkot. Ping video of your bat before it ships, tracked delivery worldwide.",
     url: "https://sialkotcricketkits.com",
     siteName: "Sialkot Cricket Kits",
     type: "website",
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Sialkot Cricket Kits - Handcrafted Cricket Equipment Dispatched Worldwide",
+        alt: "Sialkot Cricket Kits: Straight from Sialkot",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sialkot Cricket Kits | Premium Cricket Bats & Equipment",
-    description: "Handcrafted English Willow cricket equipment from Sialkot with worldwide delivery.",
+    title: "Sialkot Cricket Kits | Cricket Bats & Kit, Straight from Sialkot",
+    description: "Cricket bats and kit from our shop in Sialkot, with tracked delivery worldwide.",
     images: ["/og.png"],
   },
   icons: {
@@ -105,7 +105,7 @@ export default function RootLayout({
     },
     image: "https://sialkotcricketkits.com/assets/brand/sialkot-cricket-kits-logo.png",
     description:
-      "Manufacturer and international distributor of premium English Willow cricket bats, batting pads, gloves, helmets, and custom cricket gear based in Sialkot, Pakistan.",
+      "Cricket bat and kit shop in Model Town, Sialkot, Pakistan, selling bats, pads, gloves, helmets, kit bags and custom bats with tracked delivery worldwide.",
     email: "sialkotcricketkits@gmail.com",
     telephone: "+923231438214",
     priceRange: "££",

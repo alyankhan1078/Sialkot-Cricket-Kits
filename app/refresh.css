@@ -195,3 +195,115 @@ body { font-family: var(--font-body); color: var(--ink); background: #fff; -webk
   .brand-lockup strong { font-size: 0.9rem !important; }
   .header-actions a.header-icon[href*="focus=search"] { display: none !important; }
 }
+
+/* ── Inner pages: hero, FAQ list, value boxes, call-to-action bands ── */
+.page-hero {
+  min-height: 0 !important;
+  padding: clamp(44px, 6vw, 80px) clamp(16px, 2.6vw, 36px) !important;
+  background: #f5f5f5 !important;
+  color: var(--ink) !important;
+  border-bottom: 1px solid #e5e5e5;
+}
+.page-hero > div { max-width: 1400px !important; margin: 0 auto; width: 100%; }
+.page-hero .eyebrow, .eyebrow { color: var(--brand) !important; font-family: var(--font-head); font-weight: 800 !important; letter-spacing: 0.1em !important; }
+.page-hero h1 {
+  font-family: var(--font-head) !important;
+  font-weight: 900 !important;
+  font-style: italic;
+  font-size: clamp(2.2rem, 5vw, 4rem) !important;
+  line-height: 0.95 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: uppercase;
+  color: var(--ink) !important;
+}
+.page-hero p:not(.eyebrow) { color: #444 !important; max-width: 46rem !important; }
+
+.story-section { background: #fff !important; }
+.story-section h2, .simple-cta h2, .about-cta h2 {
+  font-family: var(--font-head) !important;
+  font-weight: 800 !important;
+  font-size: clamp(1.6rem, 3vw, 2.4rem) !important;
+  letter-spacing: 0 !important;
+  line-height: 1.05 !important;
+}
+.story-section > div:last-child p { color: #333; }
+
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 2.6vw, 36px) clamp(48px, 6vw, 80px);
+  background: #fff;
+}
+.values-grid article { padding: 24px; background: #f5f5f5; display: flex; flex-direction: column; gap: 8px; }
+.values-grid svg { color: var(--brand); width: 28px; height: 28px; }
+.values-grid h3 { margin: 6px 0 0; font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; text-transform: uppercase; }
+.values-grid p { margin: 0; color: #444; line-height: 1.6; font-size: 0.93rem; }
+
+.about-cta, .simple-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: clamp(36px, 5vw, 56px) clamp(16px, 2.6vw, 36px);
+  background: var(--ink);
+  color: #fff;
+}
+.about-cta h2, .simple-cta h2 { color: #fff !important; text-transform: uppercase; }
+.about-cta .eyebrow, .simple-cta .eyebrow { margin: 0 0 6px; }
+.about-cta .button, .simple-cta .button { border-radius: 0 !important; font-family: var(--font-head); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.faq-page-grid { max-width: 900px; margin: 0 auto; padding: clamp(32px, 5vw, 64px) clamp(16px, 2.6vw, 36px); display: flex; flex-direction: column; }
+.faq-page-grid details { border-bottom: 1px solid #e2e2e2; }
+.faq-page-grid details:first-child { border-top: 2px solid var(--ink); }
+.faq-page-grid summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 44px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+.faq-page-grid summary::-webkit-details-marker { display: none; }
+.faq-page-grid summary span { font-family: var(--font-head); font-weight: 800; color: var(--brand); font-size: 0.85rem; }
+.faq-page-grid summary b { justify-self: end; font-size: 1.3rem; font-weight: 400; transition: transform 0.2s ease; }
+.faq-page-grid details[open] summary b { transform: rotate(45deg); }
+.faq-page-grid details p { margin: -6px 0 22px 52px; color: #333; line-height: 1.7; }
+.faq-page-grid summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+@media (max-width: 900px) { .values-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .values-grid { grid-template-columns: 1fr; }
+  .faq-page-grid summary { grid-template-columns: 34px 1fr 20px; font-size: 0.96rem; }
+  .faq-page-grid details p { margin-left: 0; }
+}
+
+/* 404 */
+.not-found h1 { font-family: var(--font-head) !important; font-weight: 900 !important; font-style: italic; text-transform: uppercase; letter-spacing: -0.01em !important; }
+.not-found .button { border-radius: 0 !important; background: var(--brand) !important; box-shadow: none !important; font-family: var(--font-head); font-weight: 800; }
+
+/* Contact page: bring the old navy/blue/yellow accents into the site palette */
+.contact-hero-section { background: var(--ink) !important; }
+.contact-hero-title, .contact-page-root h2 { font-family: var(--font-head) !important; font-weight: 900 !important; }
+.contact-hero-title { font-style: italic; }
+.contact-hero-eyebrow { color: #ff7a52 !important; font-family: var(--font-head); }
+.contact-hero-btn, .card-action-btn, .oem-btn, .loc-maps-btn { border-radius: 0 !important; font-family: var(--font-head); font-weight: 800 !important; text-transform: uppercase; letter-spacing: 0.03em; }
+.card-action-btn.email, .contact-hero-btn.secondary-email { background: var(--ink) !important; color: #fff !important; border-color: var(--ink) !important; }
+.card-action-btn.dark, .card-action-btn.neutral { background: var(--ink) !important; color: #fff !important; }
+.oem-btn.whatsapp { background: var(--brand) !important; color: #fff !important; }
+.contact-cards-grid > *, .enquiry-form-card, .fast-step-card, .contact-social-grid > *, .oem-banner-card { border-radius: 0 !important; }
+.oem-banner-card { background: var(--ink) !important; }
+.oem-badge, .card-badge { border-radius: 0 !important; }
+
+/* Product page touches */
+.related-section .section-intro h2 { font-family: var(--font-head); font-weight: 800; letter-spacing: 0; text-transform: uppercase; font-size: clamp(1.5rem, 2.4vw, 2rem); }
+.related-section { background: #fff !important; }
+.product-detail-copy h1 { font-family: var(--font-head) !important; font-weight: 900 !important; text-transform: uppercase; letter-spacing: -0.005em !important; }
+.detail-price { color: var(--ink) !important; font-family: var(--font-body); font-weight: 700 !important; }
+.page-hero h1 { margin-bottom: 14px !important; }

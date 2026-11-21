@@ -32,7 +32,7 @@ export default async function FAQPage() {
       <section className="page-hero compact-hero">
         <div>
           <p className="eyebrow">Ordering information</p>
-          <h1>Frequently asked questions.</h1>
+          <h1>Frequently asked questions</h1>
           <p>Clear guidance for local and international customers before an order is confirmed.</p>
         </div>
       </section>
@@ -51,7 +51,7 @@ export default async function FAQPage() {
       <section className="simple-cta">
         <div>
           <p className="eyebrow dark">Need a specific answer?</p>
-          <h2>Ask us directly.</h2>
+          <h2>Still have a question?</h2>
         </div>
         <a
           className="button whatsapp"

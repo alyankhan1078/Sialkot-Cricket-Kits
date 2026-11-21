@@ -736,8 +736,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <p className="footer-legal">
-          Prices are in British Pounds (£ / GBP), excluding delivery, and remain subject to stock and
-          specification confirmation. Product names and trademarks belong to their respective owners. ©{" "}
+          Prices are shown in your local currency at current exchange rates, exclude delivery, and are
+          confirmed with you before dispatch. Product names and trademarks belong to their respective owners. ©{" "}
           {new Date().getFullYear()} {settings.businessName}.
         </p>
       </footer>

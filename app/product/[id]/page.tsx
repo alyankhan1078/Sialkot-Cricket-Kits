@@ -157,7 +157,7 @@ export default async function ProductPage({ params }: PageProps) {
         <section className="section related-section">
           <div className="section-intro">
             <p className="eyebrow dark">More in this category</p>
-            <h2>Related products.</h2>
+            <h2>You may also like</h2>
           </div>
           <div className="product-grid four">
             {related.map((item) => (
