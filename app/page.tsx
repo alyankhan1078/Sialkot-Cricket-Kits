@@ -27,7 +27,7 @@ export default async function HomePage() {
   const live = products.filter((p) => p.active !== false && p.image);
 
   const bats = live
-    .filter((p) => ["Beauty Processed Bats", "Bonafide Bats"].includes(p.category) && !/custom/i.test(p.id))
+    .filter((p) => ["Beauty Processed Bats", "Bonafide Bats"].includes(p.category) && !/custom/i.test(p.id) && !OTHER_BRANDS.test(p.name))
     .sort((a, b) => Number(a.price) - Number(b.price));
 
   const feature = live.find((p) => p.id === FEATURE_ID);
