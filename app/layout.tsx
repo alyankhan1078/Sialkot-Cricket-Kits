@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/montserrat/wght.css";
+import "@fontsource-variable/montserrat/wght-italic.css";
 import "./globals.css";
+import "./refresh.css";
 import { SiteChrome } from "@/src/components/SiteChrome";
 import { StoreProvider } from "@/src/components/StoreProvider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sialkotcricketkits.com"),
   title: {
-    default: "Sialkot Cricket Kits | World Top-Class Cricket Bats & Gear Worldwide",
+    default: "Cricket Bats & Kit Made in Sialkot | Sialkot Cricket Kits",
     template: "%s | Sialkot Cricket Kits",
   },
   description:
-    "Shop authentic handcrafted cricket bats, batting gloves, pads, helmets, kit bags and customized English Willow cricket equipment from Sialkot Cricket Kits. Tracked worldwide delivery and live product ping videos.",
+    "Cricket bats, batting pads, gloves, helmets, kit bags and custom bats from our shop in Sialkot, Pakistan. Prices in GBP, ping video of your bat on request, tracked worldwide delivery.",
   keywords: [
     "Cricket Bats",
     "English Willow Bats",
@@ -66,9 +70,6 @@ export const metadata: Metadata = {
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
     shortcut: ["/favicon.ico"],
-  },
-  alternates: {
-    canonical: "https://sialkotcricketkits.com",
   },
   robots: {
     index: true,

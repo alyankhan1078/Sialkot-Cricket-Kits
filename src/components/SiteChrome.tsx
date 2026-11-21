@@ -21,7 +21,6 @@ import {
   ArrowRight,
   Instagram,
   Facebook,
-  Home,
 } from "lucide-react";
 import { useStore } from "@/src/components/StoreProvider";
 import { whatsappUrl } from "@/src/lib/whatsapp";
@@ -60,9 +59,9 @@ const catalogueColumns: CatalogueColumn[] = [
   {
     heading: "Cricket Bats",
     badge: "Master Willow",
-    icon: "🏏",
+    icon: "",
     items: [
-      { name: "Beauty Processed Bats", href: "/shop?category=Beauty%20Processed%20Bats", highlight: "Pro Grade 1+" },
+      { name: "Beauty Processed Bats", href: "/shop?category=Beauty%20Processed%20Bats", highlight: "Best sellers" },
       { name: "Bonafide Bats", href: "/shop?category=Bonafide%20Bats", highlight: "Match Profiles" },
       { name: "Junior & Harrow Bats", href: "/shop?category=Junior%20%26%20Harrow%20Bats", highlight: "Sizes 4-6" },
       { name: "Custom Bat Lab", href: "/custom-bat", isSpecial: true, highlight: "Bespoke Specs" },
@@ -71,7 +70,7 @@ const catalogueColumns: CatalogueColumn[] = [
   {
     heading: "Protective Gear",
     badge: "Test Grade",
-    icon: "🛡️",
+    icon: "",
     items: [
       { name: "Batting Pads", href: "/shop?category=Batting%20Pads" },
       { name: "Batting Gloves", href: "/shop?category=Batting%20Gloves" },
@@ -85,7 +84,7 @@ const catalogueColumns: CatalogueColumn[] = [
   {
     heading: "Luggage & Teamwear",
     badge: "Tournament Grade",
-    icon: "🎒",
+    icon: "",
     items: [
       { name: "Kit & Duffle Bags", href: "/shop?category=Kit%20%26%20Duffle%20Bags", highlight: "Wheeled / Stand" },
       { name: "Teamwear", href: "/shop?category=Teamwear" },
@@ -95,14 +94,28 @@ const catalogueColumns: CatalogueColumn[] = [
   },
 ];
 
+// Category bar under the logo row (label, link, highlighted?)
+const categoryBar: [string, string, boolean?][] = [
+  ["Custom Bats", "/custom-bat", true],
+  ["Cricket Bats", "/shop?category=Beauty%20Processed%20Bats"],
+  ["Bonafide Bats", "/shop?category=Bonafide%20Bats"],
+  ["Junior Bats", "/shop?category=Junior%20%26%20Harrow%20Bats"],
+  ["Batting Pads", "/shop?category=Batting%20Pads"],
+  ["Batting Gloves", "/shop?category=Batting%20Gloves"],
+  ["Wicketkeeping", "/shop?category=Keeping%20Gloves"],
+  ["Helmets", "/shop?category=Helmets"],
+  ["Bags", "/shop?category=Kit%20%26%20Duffle%20Bags"],
+  ["Teamwear", "/shop?category=Teamwear"],
+  ["Shop All", "/shop"],
+  ["About", "/about"],
+];
+
 // Customer-facing nav links
 const navItems = [
   ["Home", "/"],
   ["Custom Bat", "/custom-bat"],
   ["About", "/about"],
-  ["Reviews", "/reviews"],
   ["Contact", "/contact"],
-  ["Track Order", "/tracking"],
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -201,32 +214,24 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Slim announcement bar with auto-currency indicator */}
-      <div className="announcement-bar" role="banner">
-        <span>Worldwide delivery available</span>
-        <span className="announcement-bar-sep">·</span>
-        <span>Live product &amp; ping videos</span>
-        <span className="announcement-bar-sep">·</span>
-        <span className="currency-announcement-tag">
-          Prices in <strong>{currencies[currency]?.flag} {currency} ({currencies[currency]?.symbol})</strong>
-        </span>
-      </div>
-
       {/* Header — white/light */}
       <header className="site-header">
         <Link className="brand-lockup" href="/">
           <img src="/assets/brand/logo-160.webp" alt="" width={58} height={58} decoding="async" />
           <span>
             <strong>{settings.businessName}</strong>
-            <small>Performance equipment · Sialkot</small>
-            <span className="brand-home-chip">
-              <Home size={10} strokeWidth={2.5} />
-              <span>Home</span>
-            </span>
+            <small>Made in Sialkot<span className="ab-hide-sm"> · Shipped worldwide</span></small>
           </span>
         </Link>
 
-        {/* Desktop navigation */}
+        {/* Search, like the big brand stores: always visible on desktop */}
+        <form action="/shop" method="get" className="gn-search" role="search">
+          <label htmlFor="site-search" className="sr-only">Search the shop</label>
+          <input id="site-search" name="search" type="search" placeholder="Search bats, pads, gloves…" autoComplete="off" />
+          <button type="submit" aria-label="Search"><Search size={18} /></button>
+        </form>
+
+        {/* Desktop navigation (legacy catalogue menu, hidden by the new category bar) */}
         <nav className="desktop-nav" aria-label="Main navigation">
           {/* Catalogue Dropdown Trigger */}
           <div
@@ -263,7 +268,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                     className="megamenu-header-all"
                     onClick={handleNavClick}
                   >
-                    <span>View All 140+ Items</span>
+                    <span>View all products</span>
                     <ArrowRight size={13} />
                   </Link>
                 </div>
@@ -394,7 +399,26 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+        <nav className="gn-catnav" aria-label="Shop categories">
+          <ul>
+            {categoryBar.map(([label, href, accent]) => (
+              <li key={href}>
+                <Link href={href} className={accent ? "is-accent" : undefined} onClick={handleNavClick}>
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </header>
+
+      <div className="gn-promo" role="note">
+        <span>Ping video of your bat before it ships</span>
+        <span className="gn-promo-hide">Tracked delivery worldwide</span>
+        <span className="gn-promo-hide">
+          Prices in {currencies[currency]?.flag} {currency}
+        </span>
+      </div>
 
       {/* Mobile Drawer */}
       <div
@@ -460,7 +484,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
                     onClick={handleNavClick}
                     tabIndex={menuOpen ? 0 : -1}
                   >
-                    <span>⚡ Browse All Equipment (140+)</span>
+                    <span>Browse all equipment</span>
                     <ChevronRight size={14} />
                   </Link>
 
@@ -649,7 +673,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <Link href="/shop">Shop equipment</Link>
           <Link href="/custom-bat">Custom bat service</Link>
           <Link href="/policies/international-agreement" style={{ color: "#b45309", fontWeight: 600 }}>
-            🛡️ International Agreement
+            International Agreement
           </Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/payment">Payment guidance</Link>

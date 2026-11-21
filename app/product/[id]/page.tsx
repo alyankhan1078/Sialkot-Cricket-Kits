@@ -6,6 +6,7 @@ import { ProductCard } from "@/src/components/ProductCard";
 import { ProductDetailsClient } from "@/src/components/ProductDetailsClient";
 import { formatPrice } from "@/src/data/products";
 import { getProductById, getProducts } from "@/src/lib/data-service";
+import { productSeoName } from "@/src/lib/category-seo";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -16,12 +17,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Some stored SEO titles already end with a (sometimes truncated) brand
   // suffix such as "| Sialkot Cricke". Strip it and add the brand exactly once.
-  const baseTitle = (product.seoTitle || product.name).replace(/\s*[|–-]\s*Sialkot\s*Cri[a-z]*(\s*Ki[a-z]*)?\s*$/i, "").trim() || product.name;
+  // Lead with what the item is ("Apex Pro Beauty Processed Cricket Bat") so the title matches what people search.
+  const baseTitle = (product.seoTitle || productSeoName(product.name, product.category)).replace(/\s*[|–-]\s*Sialkot\s*Cri[a-z]*(\s*Ki[a-z]*)?\s*$/i, "").trim() || product.name;
   const title = `${baseTitle} | Sialkot Cricket Kits`;
   const description =
     product.seoDescription ||
     product.shortDescription ||
-    `${product.name} available at Sialkot Cricket Kits for £${product.price}. Handcrafted in Sialkot with worldwide tracked delivery.`;
+    `${productSeoName(product.name, product.category)} from Sialkot, £${product.price}. Ping video on request, tracked worldwide delivery.`;
   const canonicalUrl = `https://sialkotcricketkits.com/product/${product.id}`;
   const images = product.image ? [product.image] : ["/assets/brand/sialkot-cricket-kits-logo.png"];
 
@@ -70,14 +72,17 @@ export default async function ProductPage({ params }: PageProps) {
     stock: product.stock,
   };
 
+  const absolute = (src: string) => (src.startsWith("http") ? src : `https://sialkotcricketkits.com${src}`);
+  const productUrl = `https://sialkotcricketkits.com/product/${product.id}`;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": `${productUrl}#product`,
+    url: productUrl,
     name: product.name,
-    image: product.image?.startsWith("http")
-      ? product.image
-      : `https://sialkotcricketkits.com${product.image}`,
+    image: (product.images?.length ? product.images.slice(0, 6) : [product.image]).filter(Boolean).map(absolute),
     description: product.shortDescription || product.description,
+    category: product.category,
     sku: product.id,
     brand: {
       "@type": "Brand",

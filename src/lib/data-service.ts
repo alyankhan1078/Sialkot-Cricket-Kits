@@ -1,5 +1,6 @@
 import { categoryOrder, products as staticProducts } from "../data/products.ts";
 import { faqs as initialFaqs } from "../data/faqs.ts";
+import { PRODUCT_CONTENT_MAP } from "../data/product-content.ts";
 import { getAdminSupabase, requireAdminSupabase } from "./supabase.ts";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
@@ -429,7 +430,8 @@ function mapDbRowToProduct(d: any): DBProduct {
     image: d.image,
     images: Array.isArray(d.images) ? d.images : typeof d.images === "string" ? JSON.parse(d.images) : undefined,
     description: d.description || "",
-    shortDescription: d.short_description || undefined,
+    // Fall back to the written copy in product-content.ts when the database field is empty
+    shortDescription: d.short_description || PRODUCT_CONTENT_MAP[d.id]?.shortDescription || undefined,
     openingStatement: d.opening_statement || undefined,
     highlights: Array.isArray(d.highlights) ? d.highlights : undefined,
     bestFor: d.best_for || undefined,

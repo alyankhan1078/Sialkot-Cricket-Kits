@@ -23,6 +23,7 @@ import { ProductCard } from "@/src/components/ProductCard";
 import { useStore } from "@/src/components/StoreProvider";
 import { categories as defaultCategories, products as defaultProducts, type Product, BEST_SELLING_PRODUCT_IDS } from "@/src/data/products";
 import { whatsappUrl } from "@/src/lib/whatsapp";
+import { CATEGORY_SEO } from "@/src/lib/category-seo";
 
 type SortOption = "featured" | "price-low" | "price-high" | "name";
 type PriceFilter = "all" | "under-50" | "50-150" | "150-250" | "250-plus";
@@ -32,16 +33,18 @@ const PAGE_SIZE = 24;
 export function ShopClient({
   initialProducts,
   initialCategories,
+  initialCategory,
 }: {
   /** Loaded on the server, so the first paint already shows live prices. */
   initialProducts?: Product[];
   initialCategories?: string[];
+  initialCategory?: string;
 }) {
   const productsList = initialProducts && initialProducts.length > 0 ? initialProducts : defaultProducts;
   const categoriesList =
     initialCategories && initialCategories.length > 0 ? initialCategories : defaultCategories.map((c) => c.name);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All equipment");
+  const [category, setCategory] = useState(initialCategory ?? "All equipment");
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
   const [availability, setAvailability] = useState("all");
   const [sort, setSort] = useState<SortOption>("featured");
@@ -66,8 +69,11 @@ export function ShopClient({
 
     // Initial check
     const initialParams = new URLSearchParams(window.location.search);
-    const initialCategory = initialParams.get("category");
-    if (initialCategory) setCategory(initialCategory);
+    const urlCategory = initialParams.get("category");
+    if (urlCategory) setCategory(urlCategory);
+    // ?search= comes from the header search box and Google's sitelinks search box
+    const initialSearch = initialParams.get("search");
+    if (initialSearch) setQuery(initialSearch);
     if (initialParams.get("focus") === "search") searchRef.current?.focus();
 
     window.addEventListener("popstate", checkUrl);
@@ -371,31 +377,13 @@ export function ShopClient({
 
   return (
     <>
-      {/* Shop Hero — compact, premium, light */}
-      <section
-        style={{
-          position: "relative",
-          background: "radial-gradient(700px 300px at 85% 30%, rgba(242,169,40,0.12), transparent 70%), linear-gradient(180deg, #16130f 0%, #1d1913 100%)",
-          borderBottom: "1px solid rgba(255,255,255,.06)",
-          padding: "3.5rem clamp(1.2rem, 6vw, 6rem)",
-          width: "100%", boxSizing: "border-box",
-        }}
-      >
-        <div style={{ maxWidth: 820 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(242,169,40,.14)", border: "1px solid rgba(242,169,40,.35)", padding: "5px 12px", borderRadius: 999, marginBottom: 14 }}>
-            <Sparkles size={13} color="#f2a928" />
-            <span style={{ color: "#f2a928", fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em" }}>
-              Official 2026 Factory Catalogue
-            </span>
-          </div>
-          <h1 style={{ fontSize: "clamp(1.7rem, 3.5vw, 3rem)", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-.03em", lineHeight: 1.15, textTransform: "uppercase" }}>
-            Shop Cricket Equipment.
-          </h1>
-          <p style={{ color: "#d9d0c3", fontSize: ".98rem", lineHeight: 1.6, margin: "0", maxWidth: 620 }}>
-            {productsList.length} products made in Sialkot: bats, pads, gloves, bags and more. Tracked courier delivery to the UK, USA,
-            Australia, New Zealand, Europe and Pakistan. Prices in GBP.
-          </p>
-        </div>
+      {/* Shop header: the heading follows the selected category so each category page has its own H1 */}
+      <section className="shop-hero-gn">
+        <h1>{CATEGORY_SEO[category]?.heading ?? "Shop all cricket equipment"}</h1>
+        <p>
+          {CATEGORY_SEO[category]?.intro ??
+            `${productsList.length} products from Sialkot: bats, pads, gloves, bags and more. Prices in GBP, tracked delivery worldwide.`}
+        </p>
       </section>
 
       {/* Main Catalogue Container */}

@@ -4,6 +4,7 @@ import { getFaqs } from "@/src/lib/data-service";
 import { whatsappUrl } from "@/src/lib/whatsapp";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/faq" },
   title: "Frequently Asked Questions",
   description:
     "Answers about worldwide delivery, English Willow bats, customization, live ping videos, stock confirmation and international ordering.",
@@ -12,8 +13,22 @@ export const metadata: Metadata = {
 export default async function FAQPage() {
   const faqs = await getFaqs();
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }}
+      />
       <section className="page-hero compact-hero">
         <div>
           <p className="eyebrow">Ordering information</p>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RotateCcw, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/refund-policy" },
   title: "Refund & Return Policy",
   description:
     "Refund and Return Policy for Sialkot Cricket Kits. Learn about our inspection guarantee, replacements, and refund conditions.",

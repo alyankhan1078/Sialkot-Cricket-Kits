@@ -40,7 +40,7 @@ export function ProductCard({ product }: { product: Product }) {
           <Heart size={18} fill={favourite ? "currentColor" : "none"} />
         </button>
         {isBest ? (
-          <span className="product-badge best-seller">🔥 Best Seller</span>
+          <span className="product-badge best-seller">Best seller</span>
         ) : product.featured ? (
           <span className="product-badge">Featured</span>
         ) : null}

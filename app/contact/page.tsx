@@ -21,6 +21,7 @@ import { whatsappUrl } from "@/src/lib/whatsapp";
 import { BUSINESS_CONFIG } from "@/src/lib/business-config";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
   title: "Contact Us — Factory Support & Orders",
   description:
     "Direct contact with Sialkot master batmakers and customer support. WhatsApp, email, live bat ping videos, OEM inquiries and express worldwide delivery support.",

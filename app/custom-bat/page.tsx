@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CustomBatConfigurator } from "@/src/components/CustomBatConfigurator";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/custom-bat" },
   title: "Custom Cricket Bat Configurator",
   description:
     "Build your bespoke cricket bat online. Select size, Beauty Processed or Bonafide English Willow, price tier, handle, profile, knocking-in, and 30% advance deposit.",
